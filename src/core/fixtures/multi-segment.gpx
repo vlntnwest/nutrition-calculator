@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Garmin Connect"
+     xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>UTDP 2026</name>
+  </metadata>
+  <trk>
+    <name>UTDP 2026</name>
+    <trkseg>
+      <trkpt lat="45.7640" lon="4.8357">
+        <ele>172.4</ele>
+        <time>2025-11-29T23:00:12Z</time>
+      </trkpt>
+      <trkpt lat="45.7641" lon="4.8359">
+        <ele>173.1</ele>
+        <time>2025-11-29T23:00:15Z</time>
+      </trkpt>
+    </trkseg>
+    <trkseg>
+      <trkpt lat="45.7642" lon="4.8360">
+        <ele>174.0</ele>
+        <time>2025-11-29T23:00:18Z</time>
+      </trkpt>
+      <trkpt lat="45.7644" lon="4.8362">
+        <ele>175.0</ele>
+        <time>2025-11-29T23:00:21Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>
