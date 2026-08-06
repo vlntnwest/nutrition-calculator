@@ -1,32 +1,13 @@
 import { XMLParser } from "fast-xml-parser";
-
-export type RawPoint = {
-  lat: number;
-  lon: number;
-  ele: number | null; // null = absent, JAMAIS 0
-};
-
-export type RawTrack = {
-  name: string | null; // <trk><name> ou <metadata><name> ou <rte><name>
-  points: RawPoint[];
-  skipped: number; // <trkpt> écartés faute de coordonnées exploitables
-};
-
-type GpxPoint = { "@_lat"?: string; "@_lon"?: string; ele?: number };
-
-type GpxTrkseg = { trkpt?: GpxPoint[] };
-
-type GpxTrk = { name?: string | number; trkseg?: GpxTrkseg[] };
-
-type GpxRte = { name?: string | number; rtept?: GpxPoint[] };
-
-type GpxRoot = {
-  gpx?: {
-    metadata?: { name?: string | number };
-    trk?: GpxTrk[];
-    rte?: GpxRte[];
-  };
-};
+import type {
+  GpxPoint,
+  GpxRoot,
+  RawPoint,
+  RawTrack,
+  GpxTrkseg,
+  GpxTrk,
+  GpxRte,
+} from "./type";
 
 // null = attribut absent, vide ou non numérique. Un point isolé ne fait pas
 // échouer l'import : parseGpx le compte dans `skipped`.
