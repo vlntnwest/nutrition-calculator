@@ -81,9 +81,10 @@ et c'est pour cette raison qu'elle est tenue à l'écart du framework.
 La règle pratique : **si une fonction de `core/` a besoin d'importer quoi que ce
 soit de `app/`, c'est qu'elle est au mauvais endroit.**
 
-Le calcul y est découpé en neuf fonctions enchaînées, du XML au plan : lecture du
-GPX, ancrage sur la distance cumulée, rééchantillonnage, lissage, D+,
-simplification, modèle d'allure, répartition du temps, répartition nutritionnelle.
+Le calcul y est découpé en fonctions pures enchaînées, du XML au plan : lecture du
+GPX, ancrage sur la distance cumulée, interpolation des altitudes manquantes,
+rééchantillonnage, lissage, D+, simplification, modèle d'allure, répartition du
+temps, répartition nutritionnelle.
 Chacune est documentée avec ses hypothèses et ses seuils dans
 **[`docs/noyau-de-calcul.md`](docs/noyau-de-calcul.md)** — pourquoi le
 rééchantillonnage se fait à pas de distance et non à nombre de points, pourquoi le
@@ -116,7 +117,7 @@ La suite visée, par ordre de valeur :
 | --- | --- |
 | Caractérisation | 10 GPX de courses françaises confrontés à leur D+ officiel publié |
 | Propriété | L'invariant de somme : `Σ durées des tronçons === temps total`, quels que soient le profil, le temps visé et les durées imposées |
-| Unitaire | Les neuf fonctions du noyau |
+| Unitaire | Les fonctions du noyau |
 | Intégration | Écriture puis relecture d'un plan, expiration |
 | Bout en bout | Un seul parcours nominal, plus le cas « zéro ravito » |
 

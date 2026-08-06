@@ -1,6 +1,10 @@
 import type { ElevatedPoint } from "./type";
 
 export function resample(points: ElevatedPoint[], stepM = 10): ElevatedPoint[] {
+  if (stepM <= 0) {
+    throw new Error("Step must be positive");
+  }
+
   if (points.length === 0) {
     throw new Error("File without points");
   }
@@ -32,7 +36,9 @@ export function resample(points: ElevatedPoint[], stepM = 10): ElevatedPoint[] {
     });
   }
 
-  if (result[result.length - 1].d !== last.d) {
+  if (result[result.length - 1].d === last.d) {
+    result[result.length - 1] = { ...last };
+  } else {
     result.push({ ...last });
   }
 

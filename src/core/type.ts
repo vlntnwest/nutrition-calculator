@@ -9,7 +9,7 @@ export type RawPoint = {
 export type RawTrack = {
   name: string | null; // <trk><name> ou <metadata><name> ou <rte><name>
   points: RawPoint[];
-  skipped: number; // <trkpt> écartés faute de coordonnées exploitables
+  skipped: number; // <trkpt> ou <rtept> écartés faute de coordonnées exploitables
 };
 
 export type GpxPoint = { "@_lat"?: string; "@_lon"?: string; ele?: number };
