@@ -27,3 +27,5 @@ export type GpxRoot = {
     rte?: GpxRte[];
   };
 };
+
+export type ElevatedPoint = RoutePoint & { ele: number };
