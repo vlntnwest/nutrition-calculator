@@ -83,22 +83,21 @@ soit de `app/`, c'est qu'elle est au mauvais endroit.**
 
 ## Le noyau de calcul
 
-Le pipeline, dans l'ordre. Chaque fonction est documentée ici avec ses hypothèses
-et ses seuils au fur et à mesure qu'elle est écrite.
+Le pipeline, dans l'ordre :
 
-| Fonction | Entrée → sortie | État |
-| --- | --- | --- |
-| `parseGpx` | XML → points bruts | ✅ |
-| `withCumulativeDistance` | points → points ancrés sur `d` | ✅ |
-| `resample` | points → pas de distance constant | — |
-| `smooth` | points → altitudes filtrées | — |
-| `elevationGain` | points → D+ | — |
-| `simplify` | points → ~2 000 points pour l'affichage | — |
-| `paceModel` | pente → coefficient de coût | — |
-| `distributeTime` | tronçons + temps visé → durées | — |
-| `nutritionPlan` | plan + produits → besoins et unités | — |
+| Fonction | Entrée → sortie |
+| --- | --- |
+| `parseGpx` | XML → points bruts |
+| `withCumulativeDistance` | points → points ancrés sur `d` |
+| `resample` | points → pas de distance constant |
+| `smooth` | points → altitudes filtrées |
+| `elevationGain` | points → D+ |
+| `simplify` | points → ~2 000 points pour l'affichage |
+| `paceModel` | pente → coefficient de coût |
+| `distributeTime` | tronçons + temps visé → durées |
+| `nutritionPlan` | plan + produits → besoins et unités |
 
-### Ce qui est écrit
+### Lecture du GPX
 
 **`parseGpx`** lit les deux structures que le format autorise : `<trk>` (une trace
 enregistrée, découpée en segments qu'on concatène) et `<rte>` (un itinéraire
@@ -117,6 +116,8 @@ qu'on n'a pas su lire le fichier. Une altitude manquante, elle, vaut `null` et
 jamais `0` — le niveau de la mer est une altitude légitime, et la distinction
 conditionne l'interpolation à venir.
 
+### Distance cumulée
+
 **`withCumulativeDistance`** ancre chaque point sur `d`, sa distance en mètres
 depuis le départ, par la formule de haversine. Deux conventions y sont figées :
 
@@ -131,9 +132,9 @@ depuis le départ, par la formule de haversine. Deux conventions y sont figées 
   l'outil de la distance annoncée par l'organisateur, celle que le coureur a en
   tête. Le dénivelé a déjà son traitement propre, via la distance équivalente.
 
-### Seuils déjà arrêtés
+### Seuils du reste du pipeline
 
-Et la raison de chacun :
+Arrêtés en amont de l'écriture, et la raison de chacun :
 
 - **Rééchantillonnage à pas de distance constant (~10 m), avant tout filtrage.**
   L'espacement natif d'un GPX va de 2 m à 40 m selon l'activité et le mode
