@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { haversine, withCumulativeDistance } from "./distance";
-import type { RawPoint } from "./parseGpx";
+import type { RawPoint } from "./type.ts";
 
 test("verifie une distance calculé par haversine", () => {
   expect(haversine({ lat: 0, lon: 0 }, { lat: 1, lon: 0 })).toBeCloseTo(
