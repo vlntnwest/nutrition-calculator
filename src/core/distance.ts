@@ -1,8 +1,6 @@
-import type { RawPoint } from "./parseGpx";
+import type { RawPoint, RoutePoint } from "./type";
 
 type Coordinates = { lat: number; lon: number };
-
-export type RoutePoint = RawPoint & { d: number };
 
 const toRad = (value: number): number => (value * Math.PI) / 180;
 
