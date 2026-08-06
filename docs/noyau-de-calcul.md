@@ -24,8 +24,16 @@ Le pipeline, dans l'ordre :
 les segments sont concaténés, et `<rte>`, un itinéraire planifié — celui que
 produisent Openrunner ou Komoot, d'où provient une bonne part des parcours publiés
 par les organisateurs. Quand un fichier contient les deux, le `<trk>` l'emporte
-s'il a des points : donnée mesurée, plus dense, plus fidèle au relief. Elles ne
-sont jamais concaténées.
+s'il contient au moins un `<trkpt>` — valide ou non, la sélection se fait avant la
+validation : donnée mesurée, plus dense, plus fidèle au relief. Elles ne sont
+jamais concaténées.
+
+Conséquence assumée : un fichier dont le `<trk>` est intégralement corrompu et dont
+le `<rte>` serait exploitable échoue à l'import. Choisir la source la plus riche
+plutôt que la première non vide supposerait un seuil qu'aucune donnée ne permet
+aujourd'hui de placer — le même argument que celui qui écarte le ratio de points
+dans l'[ADR 004](adr/004-ecarter-les-points-invalides-plutot-que-refuser-le-fichier.md).
+Les dix GPX de référence trancheront.
 
 Un point aux coordonnées illisibles est écarté et compté dans `RawTrack.skipped`
 plutôt que de faire échouer l'import — voir

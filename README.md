@@ -116,7 +116,7 @@ La suite visée, par ordre de valeur :
 | --- | --- |
 | Caractérisation | 10 GPX de courses françaises confrontés à leur D+ officiel publié |
 | Propriété | L'invariant de somme : `Σ durées des tronçons === temps total`, quels que soient le profil, le temps visé et les durées imposées |
-| Unitaire | Les huit fonctions du noyau |
+| Unitaire | Les neuf fonctions du noyau |
 | Intégration | Écriture puis relecture d'un plan, expiration |
 | Bout en bout | Un seul parcours nominal, plus le cas « zéro ravito » |
 
