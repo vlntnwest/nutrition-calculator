@@ -6,9 +6,10 @@ et l'outil produit les temps de passage par tronçon et la quantité de glucides
 d'eau et de sodium à emporter entre chaque. Sans compte, sans installation, et
 sans être enfermé dans le catalogue d'une marque.
 
-> **État : phase 0.** Le socle d'ingénierie est en place ; le moteur de calcul
-> n'est pas encore écrit. Voir [Feuille de route](#feuille-de-route). Une capture
-> sera ajoutée dès qu'il y aura une interface à montrer.
+> **État : phase 1.** Le socle d'ingénierie est en place, et le noyau de calcul est
+> en cours d'écriture — lecture du GPX et distance cumulée sont faites, le reste
+> suit. Voir [Feuille de route](#feuille-de-route). Une capture sera ajoutée dès
+> qu'il y aura une interface à montrer.
 
 ## Pourquoi il existe
 
@@ -82,23 +83,57 @@ soit de `app/`, c'est qu'elle est au mauvais endroit.**
 
 ## Le noyau de calcul
 
-> Non implémenté à ce stade. Cette section décrit le contrat visé ; chaque fonction
-> y sera documentée avec ses hypothèses et ses seuils au fur et à mesure.
+Le pipeline, dans l'ordre. Chaque fonction est documentée ici avec ses hypothèses
+et ses seuils au fur et à mesure qu'elle est écrite.
 
-Huit fonctions, dans l'ordre du pipeline :
+| Fonction | Entrée → sortie | État |
+| --- | --- | --- |
+| `parseGpx` | XML → points bruts | ✅ |
+| `withCumulativeDistance` | points → points ancrés sur `d` | ✅ |
+| `resample` | points → pas de distance constant | — |
+| `smooth` | points → altitudes filtrées | — |
+| `elevationGain` | points → D+ | — |
+| `simplify` | points → ~2 000 points pour l'affichage | — |
+| `paceModel` | pente → coefficient de coût | — |
+| `distributeTime` | tronçons + temps visé → durées | — |
+| `nutritionPlan` | plan + produits → besoins et unités | — |
 
-| Fonction | Entrée → sortie |
-| --- | --- |
-| `parseGpx` | XML → points bruts |
-| `resample` | points → pas de distance constant |
-| `smooth` | points → altitudes filtrées |
-| `elevationGain` | points → D+ |
-| `simplify` | points → ~2 000 points pour l'affichage |
-| `paceModel` | pente → coefficient de coût |
-| `distributeTime` | tronçons + temps visé → durées |
-| `nutritionPlan` | plan + produits → besoins et unités |
+### Ce qui est écrit
 
-Quelques seuils déjà arrêtés, et la raison de chacun :
+**`parseGpx`** lit les deux structures que le format autorise : `<trk>` (une trace
+enregistrée, découpée en segments qu'on concatène) et `<rte>` (un itinéraire
+planifié, produit par Openrunner, Komoot ou gpx.studio — d'où provient une bonne
+part des parcours publiés par les organisateurs). Quand un fichier contient les
+deux, **le `<trk>` l'emporte s'il contient des points** : c'est de la donnée
+mesurée, plus dense, donc plus fidèle au relief. Les deux sources ne sont jamais
+concaténées, ce qui produirait la course en double.
+
+Un point aux coordonnées illisibles — attribut absent, vide, non numérique, hors
+bornes, ou à (0, 0) — **n'interrompt pas l'import : il est écarté et compté** dans
+`RawTrack.skipped`. Refuser une course entière pour un point corrompu sur 30 000
+serait un mauvais échange, mais un écart silencieux creuserait un trou invisible
+dans la trace. Le seul refus conservé est « aucun point exploitable », qui signifie
+qu'on n'a pas su lire le fichier. Une altitude manquante, elle, vaut `null` et
+jamais `0` — le niveau de la mer est une altitude légitime, et la distinction
+conditionne l'interpolation à venir.
+
+**`withCumulativeDistance`** ancre chaque point sur `d`, sa distance en mètres
+depuis le départ, par la formule de haversine. Deux conventions y sont figées :
+
+- **Rayon terrestre de 6 371 008,8 m** — le rayon moyen `(2a + b)/3` de l'ellipsoïde
+  WGS84, convention IUGG. La valeur exacte importe peu : l'écart avec un rayon
+  arrondi représente 14 cm sur 100 km, quand l'approximation sphérique en coûte
+  jusqu'à 500 m et le bruit GPS accumulé un à deux kilomètres. Ce qui compte est
+  qu'elle **ne change jamais** — deux ouvertures d'un même plan doivent donner le
+  même chiffre.
+- **Distance projetée au sol, jamais dans l'espace.** Compter la composante
+  verticale gonflerait le total de 1 à 3 % sur un ultra montagne et ferait diverger
+  l'outil de la distance annoncée par l'organisateur, celle que le coureur a en
+  tête. Le dénivelé a déjà son traitement propre, via la distance équivalente.
+
+### Seuils déjà arrêtés
+
+Et la raison de chacun :
 
 - **Rééchantillonnage à pas de distance constant (~10 m), avant tout filtrage.**
   L'espacement natif d'un GPX va de 2 m à 40 m selon l'activité et le mode
@@ -174,8 +209,28 @@ La suite visée, par ordre de valeur :
 
 Les fixtures GPX sont le test qui porte le plus de valeur du projet : c'est ce qui
 rend le calcul de D+ défendable, et le seul garde-fou de non-régression sur la
-partie réellement difficile. *La procédure d'ajout d'une fixture sera documentée
-ici lorsqu'elles seront en place, en phase 1.*
+partie réellement difficile.
+
+### Ajouter une fixture
+
+Les fichiers vivent dans `src/core/fixtures/` et se chargent par le helper
+`fixture("nom.gpx")` du fichier de test. La règle de placement :
+
+- **Un fichier sur disque** quand le XML est réaliste et qu'on le relira — une
+  structure légitime du format, un export d'un outil du marché, une course réelle.
+- **Une chaîne écrite dans le test** quand l'entrée est une anomalie fabriquée.
+  Un `null-island.gpx` de quinze lignes dont une seule compte n'aide personne, et
+  oblige à ouvrir un second fichier pour comprendre ce qui est testé.
+
+Deux principes valables pour toute valeur attendue :
+
+- **Elle doit venir d'une source indépendante de l'implémentation** — un calcul à
+  la main, une formule connue, un D+ publié par l'organisateur. Une valeur obtenue
+  en lançant le code puis recopiée ne vérifie rien : elle constate.
+- **Choisir des données qui rendent l'échec lisible.** Le test qui vérifie qu'un
+  `<trk>` l'emporte sur un `<rte>` place ses points à Lyon et à Genève : une
+  concaténation accidentelle ne produit pas « un point de trop » mais un saut de
+  150 km, dont la cause est évidente à la lecture.
 
 ## Décisions
 
@@ -186,8 +241,8 @@ page par décision, avec les alternatives écartées et ce qu'elles coûtent.
 
 | Phase | Contenu | État |
 | --- | --- | --- |
-| 0 | Socle : TypeScript strict, Biome, Vitest, CI, ADR | En cours |
-| 1 | Le noyau de calcul, en ligne de commande, sans interface | À venir |
+| 0 | Socle : TypeScript strict, Biome, Vitest, CI, ADR | Terminé |
+| 1 | Le noyau de calcul, en ligne de commande, sans interface | En cours |
 | 2 | Persistance : Drizzle, migrations versionnées, Postgres | À venir |
 | 3 | Écrans upload et paramètres, profil SVG | À venir |
 | 4 | Placement des ravitos : champ, profil, carte | À venir |
