@@ -104,7 +104,9 @@ export function parseGpx(xml: string): RawTrack {
   const skipped = candidates.length - points.length;
 
   // Écarter quelques points est normal ; les écarter tous signifie qu'on n'a
-  // pas su lire le fichier — seul cas qui justifie encore de refuser l'import.
+  // pas su lire le fichier. Second et dernier refus du parseur, avec la racine
+  // <gpx> manquante plus haut : tous deux portent sur le fichier entier, jamais
+  // sur un point isolé.
   if (points.length === 0) {
     throw new Error("No valid points found in GPX file");
   }

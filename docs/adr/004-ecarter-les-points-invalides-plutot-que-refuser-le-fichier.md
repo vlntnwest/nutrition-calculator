@@ -35,9 +35,13 @@ lever, et le point disparaît de la trace.
 *déduit* — différence entre le nombre de points en entrée et en sortie — et jamais
 incrémenté par un compteur, qui pourrait se désynchroniser du tableau.
 
-**Un seul refus subsiste : aucun point exploitable.** Écarter quelques points est
-normal ; les écarter tous signifie qu'on n'a pas su lire le fichier, et c'est le
-seul cas où l'import doit échouer.
+**Aucun point pris isolément ne fait échouer l'import.** Deux refus subsistent, et
+ils portent tous les deux sur le fichier entier, jamais sur un point. Un document
+sans racine `<gpx>` n'est pas un fichier GPX : il est rejeté avant qu'on cherche le
+moindre point. Et un GPX structurellement valide dont *tous* les points sont
+invalides est rejeté aussi — écarter quelques points est normal, les écarter tous
+signifie qu'on n'a pas su lire le fichier. Entre les deux, un point invalide est
+écarté et compté, rien de plus.
 
 ## Alternatives écartées
 
