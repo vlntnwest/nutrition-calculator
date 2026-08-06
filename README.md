@@ -99,38 +99,31 @@ Le pipeline, dans l'ordre :
 
 ### Lecture du GPX
 
-**`parseGpx`** lit les deux structures que le format autorise : `<trk>` (une trace
-enregistrée, découpée en segments qu'on concatène) et `<rte>` (un itinéraire
-planifié, produit par Openrunner, Komoot ou gpx.studio — d'où provient une bonne
-part des parcours publiés par les organisateurs). Quand un fichier contient les
-deux, **le `<trk>` l'emporte s'il contient des points** : c'est de la donnée
-mesurée, plus dense, donc plus fidèle au relief. Les deux sources ne sont jamais
-concaténées, ce qui produirait la course en double.
+`parseGpx` lit les deux structures du format : `<trk>`, une trace enregistrée dont
+les segments sont concaténés, et `<rte>`, un itinéraire planifié — celui que
+produisent Openrunner ou Komoot, d'où provient une bonne part des parcours publiés
+par les organisateurs. Quand un fichier contient les deux, le `<trk>` l'emporte
+s'il a des points : donnée mesurée, plus dense, plus fidèle au relief. Elles ne
+sont jamais concaténées.
 
-Un point aux coordonnées illisibles — attribut absent, vide, non numérique, hors
-bornes, ou à (0, 0) — **n'interrompt pas l'import : il est écarté et compté** dans
-`RawTrack.skipped`. Refuser une course entière pour un point corrompu sur 30 000
-serait un mauvais échange, mais un écart silencieux creuserait un trou invisible
-dans la trace. Le seul refus conservé est « aucun point exploitable », qui signifie
-qu'on n'a pas su lire le fichier. Une altitude manquante, elle, vaut `null` et
-jamais `0` — le niveau de la mer est une altitude légitime, et la distinction
-conditionne l'interpolation à venir.
+Un point aux coordonnées illisibles est écarté et compté dans `RawTrack.skipped`
+plutôt que de faire échouer l'import — voir
+[ADR 004](docs/adr/004-ecarter-les-points-invalides-plutot-que-refuser-le-fichier.md).
+Une altitude absente vaut `null` et jamais `0` : le niveau de la mer est une
+altitude légitime, et la distinction conditionne l'interpolation à venir.
 
 ### Distance cumulée
 
-**`withCumulativeDistance`** ancre chaque point sur `d`, sa distance en mètres
-depuis le départ, par la formule de haversine. Deux conventions y sont figées :
+`withCumulativeDistance` ancre chaque point sur `d`, sa distance en mètres depuis
+le départ, par la formule de haversine. Deux conventions y sont figées :
 
-- **Rayon terrestre de 6 371 008,8 m** — le rayon moyen `(2a + b)/3` de l'ellipsoïde
-  WGS84, convention IUGG. La valeur exacte importe peu : l'écart avec un rayon
-  arrondi représente 14 cm sur 100 km, quand l'approximation sphérique en coûte
-  jusqu'à 500 m et le bruit GPS accumulé un à deux kilomètres. Ce qui compte est
-  qu'elle **ne change jamais** — deux ouvertures d'un même plan doivent donner le
-  même chiffre.
+- **Rayon terrestre de 6 371 008,8 m**, rayon moyen `(2a + b)/3` de l'ellipsoïde
+  WGS84 (convention IUGG). La valeur exacte importe peu — 14 cm d'écart sur 100 km
+  face à un ou deux kilomètres de bruit GPS accumulé. Ce qui compte est qu'elle ne
+  change jamais : deux lectures d'un même plan doivent donner le même chiffre.
 - **Distance projetée au sol, jamais dans l'espace.** Compter la composante
-  verticale gonflerait le total de 1 à 3 % sur un ultra montagne et ferait diverger
-  l'outil de la distance annoncée par l'organisateur, celle que le coureur a en
-  tête. Le dénivelé a déjà son traitement propre, via la distance équivalente.
+  verticale ferait diverger l'outil de la distance officielle de la course, et le
+  dénivelé a déjà son traitement propre via la distance équivalente.
 
 ### Seuils du reste du pipeline
 
@@ -215,23 +208,17 @@ partie réellement difficile.
 ### Ajouter une fixture
 
 Les fichiers vivent dans `src/core/fixtures/` et se chargent par le helper
-`fixture("nom.gpx")` du fichier de test. La règle de placement :
+`fixture("nom.gpx")`. Un fichier sur disque quand le XML est réaliste et qu'on le
+relira ; une chaîne écrite dans le test quand l'entrée est une anomalie fabriquée.
 
-- **Un fichier sur disque** quand le XML est réaliste et qu'on le relira — une
-  structure légitime du format, un export d'un outil du marché, une course réelle.
-- **Une chaîne écrite dans le test** quand l'entrée est une anomalie fabriquée.
-  Un `null-island.gpx` de quinze lignes dont une seule compte n'aide personne, et
-  oblige à ouvrir un second fichier pour comprendre ce qui est testé.
+Deux principes pour toute valeur attendue :
 
-Deux principes valables pour toute valeur attendue :
-
-- **Elle doit venir d'une source indépendante de l'implémentation** — un calcul à
-  la main, une formule connue, un D+ publié par l'organisateur. Une valeur obtenue
-  en lançant le code puis recopiée ne vérifie rien : elle constate.
-- **Choisir des données qui rendent l'échec lisible.** Le test qui vérifie qu'un
-  `<trk>` l'emporte sur un `<rte>` place ses points à Lyon et à Genève : une
-  concaténation accidentelle ne produit pas « un point de trop » mais un saut de
-  150 km, dont la cause est évidente à la lecture.
+- **Elle vient d'une source indépendante de l'implémentation** — un calcul à la
+  main, une formule connue, un D+ publié par l'organisateur. Une valeur obtenue en
+  lançant le code puis recopiée ne vérifie rien : elle constate.
+- **Les données choisies rendent l'échec lisible.** Placer les points d'un cas
+  limite à 150 km l'un de l'autre plutôt qu'à trois mètres transforme un « il y a
+  un point de trop » en une cause évidente à la lecture.
 
 ## Décisions
 
