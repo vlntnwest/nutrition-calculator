@@ -2,11 +2,11 @@ import { XMLParser } from "fast-xml-parser";
 import type {
   GpxPoint,
   GpxRoot,
+  GpxRte,
+  GpxTrk,
+  GpxTrkseg,
   RawPoint,
   RawTrack,
-  GpxTrkseg,
-  GpxTrk,
-  GpxRte,
 } from "./type";
 
 // null = attribut absent, vide ou non numérique. Un point isolé ne fait pas
