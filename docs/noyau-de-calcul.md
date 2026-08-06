@@ -10,6 +10,7 @@ Le pipeline, dans l'ordre :
 | --- | --- |
 | `parseGpx` | XML → points bruts |
 | `withCumulativeDistance` | points → points ancrés sur `d` |
+| `fillMissingElevation` | points → altitudes toutes renseignées |
 | `resample` | points → pas de distance constant |
 | `smooth` | points → altitudes filtrées |
 | `elevationGain` | points → D+ |
