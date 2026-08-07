@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { fillMissingElevation } from "./elevation";
+import { elevationGain, fillMissingElevation } from "./elevation";
 
 test("renvoie erreuer si le tableau est vide en entrée", () => {
   expect(() => fillMissingElevation([])).toThrow("File without points");
@@ -109,4 +109,35 @@ test("point avant et apres le null au meme endroit recupere le before", () => {
     { lat: 1, lon: 0, ele: 150, d: 100 },
     { lat: 3, lon: 0, ele: 250, d: 100 },
   ]);
+});
+
+// Elevation Gain
+
+test("ignore le bruit sous le seuil et garde la montée nette", () => {
+  expect(
+    elevationGain(
+      [
+        { lat: 0, lon: 0, d: 0, ele: 100 },
+        { lat: 1, lon: 0, d: 10, ele: 102 },
+        { lat: 2, lon: 0, d: 20, ele: 101 },
+        { lat: 3, lon: 0, d: 30, ele: 103 },
+        { lat: 3, lon: 0, d: 40, ele: 102 },
+        { lat: 3, lon: 0, d: 50, ele: 104 },
+      ],
+      3,
+    ),
+  ).toEqual(4);
+});
+
+test("elevation gain simple", () => {
+  expect(
+    elevationGain(
+      [
+        { lat: 0, lon: 0, d: 0, ele: 100 },
+        { lat: 1, lon: 0, d: 10, ele: 110 },
+        { lat: 2, lon: 0, d: 20, ele: 120 },
+      ],
+      3,
+    ),
+  ).toEqual(20);
 });

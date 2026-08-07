@@ -49,3 +49,23 @@ export function fillMissingElevation(points: RoutePoint[]): ElevatedPoint[] {
   }
   return result as ElevatedPoint[];
 }
+
+export function elevationGain(points: ElevatedPoint[], threshold = 3): number {
+  // Suppose une distance constante entre les points
+  if (points.length === 0) {
+    throw new Error("File without points");
+  }
+  let ref = points[0].ele;
+  let totalGain = 0;
+
+  for (let i = 1; i < points.length; i++) {
+    const delta = points[i].ele - ref;
+    if (delta > threshold) {
+      totalGain += delta;
+      ref = points[i].ele;
+    } else if (delta < -threshold) {
+      ref = points[i].ele;
+    }
+  }
+  return totalGain;
+}
