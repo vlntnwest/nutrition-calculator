@@ -1,8 +1,8 @@
 import type { ElevatedPoint } from "./type";
 
 export function resample(points: ElevatedPoint[], stepM = 10): ElevatedPoint[] {
-  if (stepM <= 0) {
-    throw new Error("Step must be positive");
+  if (!Number.isFinite(stepM) || stepM <= 0) {
+    throw new Error("Step must be a finite positive number");
   }
 
   if (points.length === 0) {
