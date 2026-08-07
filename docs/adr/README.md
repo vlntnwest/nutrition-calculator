@@ -9,6 +9,7 @@ déjà le *quoi*, et l'historique Git dit le *quand*.
 | [002](002-ancrer-les-points-sur-la-distance-cumulee.md) | Ancrer les points sur la distance cumulée | Accepté |
 | [003](003-pas-d-authentification-uuid-dans-l-url.md) | Pas d'authentification, un UUID dans l'URL | Accepté |
 | [004](004-ecarter-les-points-invalides-plutot-que-refuser-le-fichier.md) | Écarter les points invalides plutôt que refuser le fichier | Accepté |
+| [005](005-lisser-par-mediane-puis-moyenne.md) | Lisser par médiane puis moyenne | Accepté |
 
 ## Convention
 

@@ -55,6 +55,21 @@ le départ, par la formule de haversine. Deux conventions y sont figées :
   verticale ferait diverger l'outil de la distance officielle de la course, et le
   dénivelé a déjà son traitement propre via la distance équivalente.
 
+## Lissage
+
+`smooth` enchaîne deux filtres, parce que le bruit d'altitude n'est pas d'une
+seule espèce : `medianFilter` sur 30 m supprime les pics isolés — décrochages GPS,
+tunnels — puis `meanFilter` sur 50 m réduit l'oscillation permanente de
+l'altimètre.
+
+L'ordre n'est pas interchangeable : une moyenne ne supprime pas un pic, elle
+l'étale sur ses voisins, et la médiane ne saurait plus l'en distinguer. Voir
+[ADR 005](adr/005-lisser-par-mediane-puis-moyenne.md), qui détaille pourquoi ce
+choix s'écarte de la moyenne glissante seule prévue à l'origine.
+
+Les deux fenêtres sont des ordres de grandeur, pas des valeurs mesurées. Les dix
+GPX de référence les trancheront.
+
 ## Seuils du reste du pipeline
 
 Arrêtés en amont de l'écriture, et la raison de chacun. Ils rejoindront les
@@ -65,7 +80,6 @@ sections ci-dessus au fur et à mesure que les fonctions seront écrites.
   d'enregistrement. Un filtre exprimé en nombre de points représente donc une
   distance physique différente sur chaque fichier — c'est un bug déguisé en
   paramètre. Voir [ADR 002](adr/002-ancrer-les-points-sur-la-distance-cumulee.md).
-- **Lissage sur une fenêtre en mètres (50–100 m)**, pour la même raison.
 - **Seuil à hystérésis sur l'accumulation du D+** : une montée n'est comptée
   qu'au-delà d'un gain net de ~3–5 m depuis le dernier minimum local sur une trace
   issue d'un modèle numérique de terrain, ~10 m sur une trace GPS brute. Sans ce
