@@ -1,0 +1,68 @@
+[
+  {
+    "fichier": "saintelyon.gpx",
+    "course": "SaintéLyon 82 km",
+    "type": "itineraire-planifie",
+    "createur": "Openrunner",
+    "officiel": { "denivelePositifM": 2300 },
+    "strava": null,
+    "garmin": null
+  },
+  {
+    "fichier": "saintelyon-benj.gpx",
+    "course": "SaintéLyon",
+    "type": "trace-montre",
+    "createur": "StravaGPX",
+    "officiel": null,
+    "strava": { "distanceKm": 78.84, "denivelePositifM": 2139 },
+    "garmin": { "distanceKm": 79.2, "denivelePositifM": 2208 }
+  },
+  {
+    "fichier": "saverne.gpx",
+    "course": "Saverne",
+    "type": "trace-montre",
+    "officiel": null,
+    "strava": { "distanceKm": 28.76, "denivelePositifM": 1450 },
+    "garmin": { "distanceKm": 28.38, "denivelePositifM": 1318 }
+  },
+  {
+    "fichier": "andlau.gpx",
+    "course": "Andlau",
+    "type": "trace-montre",
+    "officiel": null,
+    "strava": { "distanceKm": 25.53, "denivelePositifM": 959 },
+    "garmin": { "distanceKm": 25.4, "denivelePositifM": 1005 }
+  },
+  {
+    "fichier": "uthk.gpx",
+    "course": "UTHK",
+    "type": "trace-montre",
+    "officiel": null,
+    "strava": { "distanceKm": 104.39, "denivelePositifM": 4449 },
+    "garmin": { "distanceKm": 103.46, "denivelePositifM": 4434 }
+  },
+  {
+    "fichier": "utdc.gpx",
+    "course": "UTDC",
+    "type": "trace-montre",
+    "officiel": null,
+    "strava": { "distanceKm": 160.63, "denivelePositifM": 6373 },
+    "garmin": null
+  },
+  {
+    "fichier": "velo-hugo-iphone.gpx",
+    "course": "Sortie vélo (iPhone)",
+    "type": "trace-telephone",
+    "officiel": null,
+    "strava": { "distanceKm": 70.59, "denivelePositifM": 319 },
+    "garmin": { "distanceKm": 72.17, "denivelePositifM": 468 }
+  },
+  {
+    "fichier": "course-hugo-iphone.gpx",
+    "course": "Course sur route (iPhone)",
+    "type": "trace-telephone",
+    "officiel": null,
+    "strava": { "distanceKm": 22.8, "denivelePositifM": 30 },
+    "garmin": { "distanceKm": 22.34, "denivelePositifM": 291 }
+  }
+]

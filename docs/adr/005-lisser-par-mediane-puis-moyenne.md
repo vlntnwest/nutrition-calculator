@@ -3,6 +3,13 @@
 ## Statut
 
 Accepté — 2026-08-07
+**Remplacé par [006](006-couper-la-moyenne-par-defaut.md) — 2026-08-07**
+
+Le raisonnement sur les deux natures de bruit et sur l'ordre des filtres reste
+valable. Ce sont les fenêtres — annoncées ici comme indéfendables tant que les
+fichiers de référence n'auraient pas parlé — que la mesure a invalidées : la
+moyenne à 50 m retire du relief réel sans rien retirer d'autre sur les traces
+barométriques, qui sont les seules qu'on rencontre en pratique.
 
 ## Contexte
 
