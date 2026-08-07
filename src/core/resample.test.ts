@@ -41,3 +41,19 @@ test("un seul point d'entrée ressort le même point", () => {
     { d: 0, lat: 0, lon: 0, ele: 100 },
   ]);
 });
+
+test.each([
+  { step: -5, raison: "négatif" },
+  { step: 0, raison: "zéro" },
+  { step: NaN, raison: "NaN" },
+])("bloque stepM avec entrées erronées — $raison", ({ step }) => {
+  expect(() =>
+    resample(
+      [
+        { d: 0, lat: 0, lon: 0, ele: 100 },
+        { d: 25, lat: 1, lon: 0, ele: 200 },
+      ],
+      step,
+    ),
+  ).toThrow("Step must be a finite positive number");
+});
