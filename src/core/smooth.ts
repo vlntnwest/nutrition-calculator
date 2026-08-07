@@ -8,8 +8,8 @@ export function medianFilter(
     return points.map((p) => ({ ...p }));
   }
 
-  const pas = points[1].d - points[0].d;
-  const nbPoints = Math.floor(windowM / pas);
+  const step = points[1].d - points[0].d;
+  const nbPoints = Math.floor(windowM / step);
   const half = Math.floor(nbPoints / 2);
 
   const result: ElevatedPoint[] = [];
@@ -43,8 +43,8 @@ export function meanFilter(
     return points.map((p) => ({ ...p }));
   }
 
-  const pas = points[1].d - points[0].d;
-  const nbPoints = Math.floor(windowM / pas);
+  const step = points[1].d - points[0].d;
+  const nbPoints = Math.floor(windowM / step);
   const half = Math.floor(nbPoints / 2);
 
   const result: ElevatedPoint[] = [];
