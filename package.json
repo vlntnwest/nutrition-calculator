@@ -10,7 +10,8 @@
     "format": "biome format --write",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "next typegen && tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit",
+    "analyze": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/analyze.mts"
   },
   "dependencies": {
     "fast-xml-parser": "^5.10.1",

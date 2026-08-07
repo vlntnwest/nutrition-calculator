@@ -65,7 +65,8 @@ export function meanFilter(
 export function smooth(
   points: ElevatedPoint[],
   medianM = 30,
-  meanM = 50,
+  meanM = 0,
 ): ElevatedPoint[] {
-  return meanFilter(medianFilter(points, medianM), meanM);
+  const filtre = medianFilter(points, medianM);
+  return meanM > 0 ? meanFilter(filtre, meanM) : filtre;
 }
