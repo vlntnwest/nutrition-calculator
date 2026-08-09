@@ -177,9 +177,17 @@ pour tout le reste.
 ## Ajouter un fichier
 
 1. Déposer le `.gpx` dans `src/core/fixtures/references/`.
-2. Ajouter son entrée dans `manifest.json` : distance et D+ lus dans Strava et
-   dans Garmin sur **ce fichier**, pas sur la page de la course.
-3. Relancer `npm run analyze` et vérifier que le résultat reste plausible.
+2. **Le nettoyer** : `npm run strip-gpx -- src/core/fixtures/references/<nom>.gpx`.
+   Retire horodatages et extensions constructeur — fréquence cardiaque, cadence,
+   température — que le noyau ne lit jamais. Sur un export d'activité, cela
+   divise la taille par quatre ; sur un export d'itinéraire, déjà minimal, il n'y
+   a rien à retirer. Le nettoyage est textuel : namespaces, structure et ordre
+   des points restent ceux du fichier d'origine, pour que les fixtures continuent
+   d'éprouver `parseGpx` sur de vrais exports.
+3. Ajouter son entrée dans `manifest.json` : distance et D+ lus dans Strava sur
+   **ce fichier**, pas sur la page de la course.
+4. Relancer `npm run analyze` et vérifier que le résultat reste plausible.
+5. Ajouter la ligne correspondante au test de caractérisation.
 
 Noter la provenance et la date de téléchargement : un parcours change d'une
 édition à l'autre, et le dépôt est public.
