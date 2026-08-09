@@ -51,6 +51,29 @@ lisent le script et, à terme, le test de caractérisation.
 | `utdc.gpx` | trace montre | 160,63 / — | 6373 / — |
 | `velo-hugo-iphone.gpx` | trace téléphone | 70,59 / 72,17 | 319 / 468 |
 | `course-hugo-iphone.gpx` | trace téléphone | 22,80 / 22,34 | 30 / 291 |
+| `utdc-karim.gpx` | trace montre | 159,41 / 162,19 | 5450 / 5381 |
+| `strasparis.gpx` | vélo, appareil A | 518,44 / 519,48 | 2914 / 2222 |
+| `strasparis-karim.gpx` | vélo, appareil B | 511,08 / 516,72 | 2569 / 1757 |
+
+**La paire Strasbourg–Paris est la pièce la plus utile du corpus.** Même sortie,
+même moment, deux appareils : tout ce qui diffère entre les deux fichiers vient
+du capteur. Elle donne un test de cohérence qui ne dépend d'aucun outil externe —
+notre pipeline doit sortir des valeurs proches sur les deux.
+
+| | fichier A | fichier B | écart |
+| --- | --- | --- | --- |
+| Garmin | 2222 | 1757 | 26,5 % |
+| Strava | 2914 | 2569 | 13,4 % |
+| **nous** | 3177 | 2950 | **7,7 %** |
+
+Deux fois plus reproductible que Strava, trois fois plus que Garmin. Une part des
+7,7 % restants tient à l'échantillonnage : l'appareil B pose un point tous les
+19,5 m contre 7,2 m pour A, et `resample` ne peut pas inventer un relief qui n'a
+pas été mesuré.
+
+*(Le vélo est hors périmètre V1. Ces deux fichiers servent de test de robustesse,
+pas de référence de calibrage — 2500 m de D+ sur 518 km, c'est un rapport
+signal/bruit où le seuil optimal remonte à 2, contre 0 sur les trails.)*
 
 **Les deux fichiers téléphone ne valent que pour la distance.** Leurs D+ de
 référence sont inexploitables : Strava annonce 30 m sur la course, Garmin 291 m,
@@ -81,23 +104,45 @@ seuil d'hystérésis à 0.
 systématiquement ~1 à 2 % sous Strava — dont la mesure est elle-même au-dessus de
 Garmin. Haversine et la distance cumulée ne sont pas en cause.
 
-**Le D+ tient dans ±1,7 %** de la borne la plus proche sur les six traces de
-montre, là où Strava et Garmin divergent eux-mêmes de 3 % sur ces mêmes fichiers.
+**Le D+ est mesuré contre Strava seule.** Garmin est écarté depuis qu'on a
+constaté qu'il annonce 2222 m sur `strasparis.gpx` depuis le créateur de parcours
+et 3263 m après réimport du même fichier : 47 % d'écart à l'intérieur du même
+produit. Un chiffre qui dépend de la surface où on le lit ne mesure pas le
+fichier. Il reste dans le manifeste à titre indicatif.
 
-| Fichier | brut | pipeline | fourchette | écart |
+Sur les fichiers de course à pied, au seuil 0 :
+
+| Fichier | brut | resample | + médiane | effet médiane |
 | --- | --- | --- | --- | --- |
-| utdc | 6483 | 6362 | 6373 | −0,2 % |
-| saverne | 1427 | 1314 | 1318 – 1450 | −0,3 % |
-| saintelyon-benj | 2353 | 2232 | 2139 – 2208 | +1,1 % |
-| uthk | 4542 | 4372 | 4434 – 4449 | −1,4 % |
-| andlau | 983 | 943 | 959 – 1005 | −1,7 % |
-| vélo iPhone | 387 | 378 | 319 – 468 | ✓ |
-| course iPhone | 59 | 55 | 30 – 291 | ✓ |
-| saintelyon planifié | 2622 | 2538 | officiel 2300 | +10,3 % |
+| utdc | +1,7 % | +1,0 % | **−0,2 %** | −1,2 |
+| uthk | +2,1 % | −0,2 % | −1,7 % | −1,5 |
+| andlau | +2,5 % | +0,2 % | −1,7 % | −1,9 |
+| saintelyon-benj | +10,0 % | +7,1 % | **+4,3 %** | −2,8 |
+| utdc-karim | +12,4 % | +7,7 % | **+3,1 %** | −4,6 |
+| saverne | −1,6 % | −4,8 % | −9,4 % | −4,6 |
 
-L'itinéraire planifié reste à part, et son écart est attendu : sa référence est
-une annonce d'organisateur portant sur un parcours qui n'est pas exactement celui
-du fichier — 82,86 km contre 79,09 pour la trace de course.
+Écart absolu moyen : **3,4 % avec la médiane, 3,5 % sans.** La moyenne ne
+départage pas — mais la structure du tableau, si.
+
+**Plus un fichier est bruité, plus la médiane l'aide.** Les deux dont le brut
+dépasse +10 % sont ceux où elle rattrape le plus : 2,8 et 4,6 points. Ce sont
+précisément ceux qui contiennent du bruit réel — `utdc-karim` est le premier
+fichier du corpus où le lissage retire du bruit plutôt que du relief.
+
+Saverne va dans l'autre sens, mais son brut est **déjà sous** la référence
+(−1,6 %) : tout filtrage ne peut que l'en éloigner. Garmin lit d'ailleurs 1318 sur
+ce fichier contre 1450 pour Strava, et notre brut à 1427 tombe entre les deux —
+c'est vraisemblablement Strava qui lit haut ici.
+
+Le pire cas départage : **9,4 % avec la médiane, 7,7 % sans**. Elle reste
+conservée, parce que ce qu'elle coûte est borné et systématique quand ce qu'elle
+évite ne l'est pas — un seul décrochage GPS ajoute des dizaines de mètres sans
+que rien ne le signale. C'est l'arbitrage de l'ADR 006, désormais chiffré au lieu
+d'être supposé.
+
+L'itinéraire planifié `saintelyon.gpx` reste à part, à +10,3 % de l'annonce
+officielle. C'est attendu : sa référence porte sur un parcours qui n'est pas
+exactement celui du fichier — 82,86 km contre 79,09 pour la trace de course.
 
 Comment on en est arrivé là : la configuration initiale, médiane 30 et moyenne
 50, plaçait le D+ à −4 % en moyenne, avec un seul fichier dans la fourchette. Un

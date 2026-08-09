@@ -99,16 +99,66 @@ function analyser(chemin: string, entree?: Entree): void {
   if (entree?.officiel?.denivelePositifM)
     console.log(`    officiel ${entree.officiel.denivelePositifM} m`);
 
-  console.log(
-    `\n    seuil   brut   pipeline   ${bornes ? "dans la fourchette" : ""}`,
-  );
-  for (const seuil of SEUILS) {
-    const brut = Math.round(elevationGain(complets, seuil));
-    const pipe = Math.round(elevationGain(lisses, seuil));
-    const dedans = bornes && pipe >= bornes[0] && pipe <= bornes[1];
-    const marque = bornes ? (dedans ? "  \x1b[32m✓\x1b[0m" : "") : "";
+  // Référence des écarts : Strava seule.
+  //
+  // Garmin est écarté : sur le même fichier, il annonce 2222 m depuis le
+  // créateur de parcours et 3263 m après réimport. Un chiffre qui varie de
+  // 47 % selon la surface où on le lit ne mesure pas le fichier, il mesure
+  // l'outil. L'annonce de l'organisateur, elle, porte sur le parcours
+  // officiel et non sur ce fichier.
+  const moyenne = entree?.strava?.denivelePositifM ?? null;
+
+  if (moyenne !== null) {
     console.log(
-      `    ${String(seuil).padStart(3)}   ${String(brut).padStart(5)}   ${String(pipe).padStart(6)}${marque}`,
+      `    \x1b[1m-> reference des ecarts : Strava (${moyenne} m)\x1b[0m`,
+    );
+  }
+
+  const rangs = SEUILS.map((seuil) => ({
+    seuil,
+    brut: Math.round(elevationGain(complets, seuil)),
+    echant: Math.round(elevationGain(echantillonnes, seuil)),
+    pipe: Math.round(elevationGain(lisses, seuil)),
+  }));
+
+  // La valeur la plus proche de la référence, toutes colonnes confondues.
+  let meilleur = Number.POSITIVE_INFINITY;
+  if (moyenne !== null) {
+    for (const r of rangs) {
+      meilleur = Math.min(
+        meilleur,
+        Math.abs(r.brut - moyenne),
+        Math.abs(r.echant - moyenne),
+        Math.abs(r.pipe - moyenne),
+      );
+    }
+  }
+
+  const cellule = (valeur: number): string => {
+    const nombre = String(valeur).padStart(5);
+    if (moyenne === null) return `${nombre}         `;
+    const p = ((valeur - moyenne) / moyenne) * 100;
+    const texte = `${p >= 0 ? "+" : ""}${p.toFixed(1)}%`.padStart(7);
+    const proche = Math.abs(valeur - moyenne) === meilleur;
+    const dedans = bornes && valeur >= bornes[0] && valeur <= bornes[1];
+    const couleur = proche ? "\x1b[1;32m" : dedans ? "\x1b[32m" : "";
+    return couleur
+      ? `${couleur}${nombre} ${texte}\x1b[0m`
+      : `${nombre} ${texte}`;
+  };
+
+  // brut       : points d'origine, aucun traitement
+  // resample   : pas constant de 10 m, sans lissage
+  // + mediane  : resample puis filtre median (le pipeline actuel)
+  console.log("\n    seuil        brut         resample       + mediane");
+  for (const r of rangs) {
+    console.log(
+      `    ${String(r.seuil).padStart(3)}   ${cellule(r.brut)}   ${cellule(r.echant)}   ${cellule(r.pipe)}`,
+    );
+  }
+  if (moyenne !== null) {
+    console.log(
+      "\n    vert = dans la fourchette des outils, gras = le plus proche de la moyenne",
     );
   }
 }

@@ -64,5 +64,31 @@
     "officiel": null,
     "strava": { "distanceKm": 22.8, "denivelePositifM": 30 },
     "garmin": { "distanceKm": 22.34, "denivelePositifM": 291 }
+  },
+  {
+    "fichier": "utdc-karim.gpx",
+    "course": "UTDC (montre Garmin)",
+    "type": "trace-montre",
+    "officiel": { "distanceKm": 160, "denivelePositifM": 5200 },
+    "strava": { "distanceKm": 159.41, "denivelePositifM": 5450 },
+    "garmin": { "distanceKm": 162.19, "denivelePositifM": 5381 }
+  },
+  {
+    "fichier": "strasparis.gpx",
+    "course": "Strasbourg-Paris (appareil A)",
+    "type": "trace-velo",
+    "paire": "strasparis",
+    "officiel": null,
+    "strava": { "distanceKm": 518.44, "denivelePositifM": 2914 },
+    "garmin": { "distanceKm": 519.48, "denivelePositifM": 2222 }
+  },
+  {
+    "fichier": "strasparis-karim.gpx",
+    "course": "Strasbourg-Paris (appareil B)",
+    "type": "trace-velo",
+    "paire": "strasparis",
+    "officiel": null,
+    "strava": { "distanceKm": 511.08, "denivelePositifM": 2569 },
+    "garmin": { "distanceKm": 516.72, "denivelePositifM": 1757 }
   }
 ]
