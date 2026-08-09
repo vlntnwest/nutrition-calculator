@@ -32,31 +32,49 @@ const reference = (nom: string) =>
     "utf8",
   );
 
-// fichier, points bruts, écartés, distance (m), D+ (m), points simplifiés
+// fichier, points bruts, écartés, distance (m), D+ (m), points simplifiés, tronçons
 // Mesuré le 9 août 2026 avec les REGLAGES de pipeline.ts.
-const ATTENDU: Array<[string, number, number, number, number, number]> = [
-  ["saintelyon.gpx", 2160, 0, 82864, 2538, 1226],
-  ["saintelyon-benj.gpx", 37329, 0, 79095, 2232, 1293],
-  ["saverne.gpx", 15415, 0, 28350, 1314, 708],
-  ["andlau.gpx", 11305, 0, 25352, 943, 498],
-  ["uthk.gpx", 52500, 0, 103319, 4372, 2036],
-  ["utdc.gpx", 96668, 0, 159100, 6362, 2916],
-  ["velo-hugo-iphone.gpx", 14213, 0, 72035, 378, 651],
-  ["course-hugo-iphone.gpx", 6606, 0, 22308, 55, 275],
-  ["utdc-karim.gpx", 77390, 0, 161928, 5620, 2860],
-  ["strasparis.gpx", 72090, 0, 518367, 3177, 3493],
-  ["strasparis-karim.gpx", 26450, 0, 515606, 2950, 3436],
-];
+const ATTENDU: Array<[string, number, number, number, number, number, number]> =
+  [
+    ["saintelyon.gpx", 2160, 0, 82864, 2538, 1226, 54],
+    ["saintelyon-benj.gpx", 37329, 0, 79095, 2232, 1293, 57],
+    ["saverne.gpx", 15415, 0, 28350, 1314, 708, 28],
+    ["andlau.gpx", 11305, 0, 25352, 943, 498, 17],
+    ["uthk.gpx", 52500, 0, 103319, 4372, 2036, 74],
+    ["utdc.gpx", 96668, 0, 159100, 6362, 2916, 111],
+    ["velo-hugo-iphone.gpx", 14213, 0, 72035, 378, 651, 8],
+    ["course-hugo-iphone.gpx", 6606, 0, 22308, 55, 275, 1],
+    ["utdc-karim.gpx", 77390, 0, 161928, 5620, 2860, 114],
+    ["strasparis.gpx", 72090, 0, 518367, 3177, 3493, 66],
+    ["strasparis-karim.gpx", 26450, 0, 515606, 2950, 3436, 50],
+  ];
 
 test.each(
   ATTENDU,
-)("%s — %i points, %i écartés, %i m, %i m D+, %i points gardés", (fichier, pointsBruts, ecartes, distanceM, denivelePositifM, simplifies) => {
+)("%s — %i points, %i écartés, %i m, %i m D+, %i points gardés, %i tronçons", (fichier, pointsBruts, ecartes, distanceM, denivelePositifM, simplifies, troncons) => {
   const analyse = analyseTrace(reference(fichier));
 
   // Comptages : entiers, comparaison exacte.
   expect(analyse.pointsBruts).toBe(pointsBruts);
   expect(analyse.ecartes).toBe(ecartes);
   expect(analyse.points.length).toBe(simplifies);
+  expect(analyse.troncons.length).toBe(troncons);
+
+  // Les tronçons partitionnent la trace : ils sont jointifs, ils la couvrent
+  // d'un bout à l'autre, et leur D+ se resomme au total. Cette dernière
+  // égalité n'est vraie qu'à seuil d'hystérésis nul — la relâcher voudrait
+  // dire qu'on a changé `seuilM` sans y penser.
+  expect(analyse.troncons[0].debutM).toBe(0);
+  expect(analyse.troncons[analyse.troncons.length - 1].finM).toBeCloseTo(
+    analyse.distanceM,
+    -1,
+  );
+  for (let i = 1; i < analyse.troncons.length; i++) {
+    expect(analyse.troncons[i].debutM).toBe(analyse.troncons[i - 1].finM);
+  }
+  expect(
+    analyse.troncons.reduce((somme, t) => somme + t.denivelePositifM, 0),
+  ).toBeCloseTo(analyse.denivelePositifM, 6);
 
   // Distance et D+ : tolérance de 5 m. Les fonctions trigonométriques de la
   // bibliothèque mathématique ne sont pas garanties identiques au dernier bit
