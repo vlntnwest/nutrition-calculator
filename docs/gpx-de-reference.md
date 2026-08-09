@@ -151,6 +151,29 @@ intermédiaire, chaque cran de lissage supplémentaire éloigne du but. Voir
 l'[ADR 006](adr/006-couper-la-moyenne-par-defaut.md), qui remplace le 005 et
 détaille pourquoi la médiane est malgré tout conservée.
 
+## Le test de caractérisation
+
+`src/core/pipeline.caracterisation.test.ts` fige les valeurs que le noyau produit
+aujourd'hui sur les onze fichiers. Il n'affirme pas qu'elles sont justes — ce
+document explique pourquoi personne ne peut l'affirmer — il affirme qu'elles
+**n'ont pas changé**.
+
+Sa valeur est dans le diff : déplacer un seuil ou une fenêtre le fait virer au
+rouge sur les onze lignes à la fois, et le rapport d'échec devient un rapport
+d'impact lisible dans la PR. Sans lui, une modification de paramètre passe
+inaperçue jusqu'à ce que quelqu'un pense à relancer `npm run analyze`.
+
+**Quand il passe au rouge, on justifie avant de mettre à jour.** Les valeurs sont
+écrites à la main dans le fichier, sans script de régénération, et c'est
+délibéré : la friction est la fonctionnalité. Un test de caractérisation
+régénéré par réflexe n'enregistre plus les régressions, il les entérine.
+
+Les réglages qu'il verrouille sont rassemblés dans `REGLAGES`, en tête de
+`src/core/pipeline.ts` — un seul endroit à lire, un seul à changer.
+
+C'est le test le plus lent du dépôt : ~3,5 s pour 88 Mo de GPX, contre 200 ms
+pour tout le reste.
+
 ## Ajouter un fichier
 
 1. Déposer le `.gpx` dans `src/core/fixtures/references/`.
