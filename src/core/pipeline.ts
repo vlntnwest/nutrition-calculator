@@ -1,6 +1,7 @@
 // Extensions .ts explicites : ce module est le seul du noyau à faire des
 // imports de valeurs, et `node scripts/analyze.mts` les résout nativement.
 // Les autres fichiers n'importent que des types, effacés à la compilation.
+import { decoupeParPente, type Troncon } from "./decoupe.ts";
 import { withCumulativeDistance } from "./distance.ts";
 import { elevationGain, fillMissingElevation } from "./elevation.ts";
 import { parseGpx } from "./parseGpx.ts";
@@ -28,6 +29,12 @@ export const REGLAGES = {
   simplifieCarteDeg: 7.5e-5,
   /** Tolérance de simplification pour le profil, en mètres d'altitude. */
   simplifieProfilM: 1.5,
+  /** Tolérance du découpage en tronçons, en mètres d'altitude. */
+  decoupeToleranceM: 30,
+  /** Longueur en dessous de laquelle un tronçon est fusionné, en mètres. */
+  decoupeLongueurMinM: 300,
+  /** Pente en deçà de laquelle un tronçon est dit « roulant ». */
+  decoupeRoulantMax: 0.02,
 } as const;
 
 export type Analyse = {
@@ -48,6 +55,11 @@ export type Analyse = {
    * la carte et le profil.
    */
   points: ResolvedPoint[];
+  /**
+   * Le parcours découpé en morceaux de pente homogène. Comme le D+, ils sont
+   * lus sur la trace pleine résolution, jamais sur la simplifiée.
+   */
+  troncons: Troncon[];
 };
 
 /**
@@ -81,6 +93,12 @@ export function analyseTrace(
       lisses,
       reglages.simplifieCarteDeg,
       reglages.simplifieProfilM,
+    ),
+    troncons: decoupeParPente(
+      lisses,
+      reglages.decoupeToleranceM,
+      reglages.decoupeLongueurMinM,
+      reglages.decoupeRoulantMax,
     ),
   };
 }
