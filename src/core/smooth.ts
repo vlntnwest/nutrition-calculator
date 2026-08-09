@@ -1,9 +1,9 @@
-import type { ElevatedPoint } from "./type";
+import type { ResolvedPoint } from "./type";
 
 export function medianFilter(
-  points: ElevatedPoint[],
+  points: ResolvedPoint[],
   windowM = 30,
-): ElevatedPoint[] {
+): ResolvedPoint[] {
   if (points.length < 2) {
     return points.map((p) => ({ ...p }));
   }
@@ -12,7 +12,7 @@ export function medianFilter(
   const nbPoints = Math.floor(windowM / step);
   const half = Math.floor(nbPoints / 2);
 
-  const result: ElevatedPoint[] = [];
+  const result: ResolvedPoint[] = [];
 
   for (let i = 0; i < points.length; i++) {
     const start = Math.max(0, i - half);
@@ -36,9 +36,9 @@ export function medianFilter(
 }
 
 export function meanFilter(
-  points: ElevatedPoint[],
+  points: ResolvedPoint[],
   windowM = 50,
-): ElevatedPoint[] {
+): ResolvedPoint[] {
   if (points.length < 2) {
     return points.map((p) => ({ ...p }));
   }
@@ -47,7 +47,7 @@ export function meanFilter(
   const nbPoints = Math.floor(windowM / step);
   const half = Math.floor(nbPoints / 2);
 
-  const result: ElevatedPoint[] = [];
+  const result: ResolvedPoint[] = [];
 
   for (let i = 0; i < points.length; i++) {
     const start = Math.max(0, i - half);
@@ -63,10 +63,10 @@ export function meanFilter(
 }
 
 export function smooth(
-  points: ElevatedPoint[],
+  points: ResolvedPoint[],
   medianM = 30,
   meanM = 0,
-): ElevatedPoint[] {
+): ResolvedPoint[] {
   const filtre = medianFilter(points, medianM);
   return meanM > 0 ? meanFilter(filtre, meanM) : filtre;
 }

@@ -70,6 +70,36 @@ choix s'écarte de la moyenne glissante seule prévue à l'origine.
 Les deux fenêtres sont des ordres de grandeur, pas des valeurs mesurées. Les dix
 GPX de référence les trancheront.
 
+## Simplification
+
+`simplifyPoints` ramène ~16 000 points à ~2 000. C'est une compression **visuelle**,
+pas une étape de calcul : elle produit ce qui part en `jsonb` et alimente la carte
+et le profil, quand la distance et le D+ ont déjà été obtenus sur la trace pleine
+résolution. Recâbler `elevationGain` sur sa sortie coûterait jusqu'à 1,7 % de D+.
+
+Douglas-Peucker (`simplify-js`) ne fait que **sélectionner** : il ne déplace ni ne
+crée aucun point. Mais « la forme » qu'il préserve dépend de l'espace où on le
+lance, et deux consommateurs n'ont pas le même besoin :
+
+| Consommateur | Espace | Tolérance |
+| --- | --- | --- |
+| Carte | `[lon, lat]` | 7,5e-5 degré (~8 m) |
+| Profil | `[d, ele]` | 1,5 m d'altitude |
+
+Le sommet d'un col sur une route rectiligne est **sur la droite** en vue plane :
+la passe carte le supprime, à juste titre pour le dessin de la route. La passe
+profil y voit le point le plus important de la trace.
+
+**Les deux passes partent du tableau complet et leurs résultats sont unis** — un
+point survit si l'une des deux le réclame. Les enchaîner donnerait leur
+intersection : le sommet supprimé par la première ne pourrait plus être repêché.
+L'asymétrie est sans coût, un point superflu pour un consommateur étant par
+définition sur la droite qu'il aurait tracée.
+
+Mesuré sur le corpus : 75 à 93 % de points en moins, un D+ recalculé à moins de
+1,7 % du plein sur les traces de course à pied, et 145 ko pour le plus gros
+fichier en périmètre — la cible du §4 était ~150 ko.
+
 ## Seuils du reste du pipeline
 
 Arrêtés en amont de l'écriture, et la raison de chacun. Ils rejoindront les

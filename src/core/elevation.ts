@@ -1,6 +1,6 @@
-import type { ElevatedPoint, RoutePoint } from "./type";
+import type { ResolvedPoint, RoutePoint } from "./type";
 
-export function fillMissingElevation(points: RoutePoint[]): ElevatedPoint[] {
+export function fillMissingElevation(points: RoutePoint[]): ResolvedPoint[] {
   if (points.length === 0) {
     throw new Error("File without points");
   }
@@ -47,10 +47,10 @@ export function fillMissingElevation(points: RoutePoint[]): ElevatedPoint[] {
       }
     }
   }
-  return result as ElevatedPoint[];
+  return result as ResolvedPoint[];
 }
 
-export function elevationGain(points: ElevatedPoint[], threshold = 3): number {
+export function elevationGain(points: ResolvedPoint[], threshold = 3): number {
   // Suppose une distance constante entre les points
   if (points.length === 0) {
     throw new Error("File without points");
