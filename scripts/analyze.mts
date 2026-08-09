@@ -16,6 +16,7 @@ import { fileURLToPath } from "node:url";
 import { withCumulativeDistance } from "../src/core/distance.ts";
 import { elevationGain, fillMissingElevation } from "../src/core/elevation.ts";
 import { parseGpx } from "../src/core/parseGpx.ts";
+import { REGLAGES } from "../src/core/pipeline.ts";
 import { resample } from "../src/core/resample.ts";
 import { smooth } from "../src/core/smooth.ts";
 
@@ -62,8 +63,10 @@ function analyser(chemin: string, entree?: Entree): void {
   const ancres = withCumulativeDistance(trace.points);
   const complets = fillMissingElevation(ancres);
   const totalM = complets[complets.length - 1].d;
-  const echantillonnes = resample(complets, 10);
-  const lisses = smooth(echantillonnes);
+  // Mêmes réglages que le chemin canonique : le script explore des variantes
+  // de seuil, il ne doit pas explorer une autre configuration de base.
+  const echantillonnes = resample(complets, REGLAGES.pasM);
+  const lisses = smooth(echantillonnes, REGLAGES.medianeM, REGLAGES.moyenneM);
 
   console.log(`\n\x1b[1m${entree?.course ?? chemin}\x1b[0m`);
   console.log(`  fichier        ${chemin.split("/").pop()}`);
