@@ -5,8 +5,9 @@ import { withCumulativeDistance } from "./distance.ts";
 import { elevationGain, fillMissingElevation } from "./elevation.ts";
 import { parseGpx } from "./parseGpx.ts";
 import { resample } from "./resample.ts";
+import { simplifyPoints } from "./simplify.ts";
 import { smooth } from "./smooth.ts";
-import type { ElevatedPoint } from "./type.ts";
+import type { ResolvedPoint } from "./type.ts";
 
 /**
  * Les réglages du noyau, rassemblés ici pour qu'il n'existe qu'un seul endroit
@@ -23,6 +24,10 @@ export const REGLAGES = {
   moyenneM: 0,
   /** Seuil d'hystérésis du D+, en mètres. */
   seuilM: 0,
+  /** Tolérance de simplification pour la carte, en degrés (~8 m). */
+  simplifieCarteDeg: 7.5e-5,
+  /** Tolérance de simplification pour le profil, en mètres d'altitude. */
+  simplifieProfilM: 1.5,
 } as const;
 
 export type Analyse = {
@@ -32,9 +37,17 @@ export type Analyse = {
   /** Points écartés faute de coordonnées exploitables. */
   ecartes: number;
   distanceM: number;
+  /**
+   * Calculé sur la trace lissée en **pleine résolution**, jamais sur la trace
+   * simplifiée. C'est ce scalaire qui fait autorité et qui sera stocké ; les
+   * points ci-dessous ne servent qu'à dessiner. §14.3.
+   */
   denivelePositifM: number;
-  /** La trace lissée, à pas constant : ce que consomme la suite du pipeline. */
-  points: ElevatedPoint[];
+  /**
+   * La trace simplifiée : ~2 000 points, ce qui part en `jsonb` et alimente
+   * la carte et le profil.
+   */
+  points: ResolvedPoint[];
 };
 
 /**
@@ -52,14 +65,22 @@ export function analyseTrace(
   const ancres = withCumulativeDistance(trace.points);
   const complets = fillMissingElevation(ancres);
   const echantillonnes = resample(complets, reglages.pasM);
-  const points = smooth(echantillonnes, reglages.medianeM, reglages.moyenneM);
+  const lisses = smooth(echantillonnes, reglages.medianeM, reglages.moyenneM);
 
+  // Le pipeline se scinde ici. Le D+ se lit sur `lisses`, en pleine
+  // résolution ; `simplifyPoints` ne produit que le dessin. Mesuré sur le
+  // corpus, l'écart de D+ entre les deux vaut moins de 1,7 % — mais il ne
+  // sort jamais du noyau, puisque le chiffre affiché vient de `lisses`.
   return {
     nom: trace.name,
     pointsBruts: trace.points.length,
     ecartes: trace.skipped,
     distanceM: complets[complets.length - 1].d,
-    denivelePositifM: elevationGain(points, reglages.seuilM),
-    points,
+    denivelePositifM: elevationGain(lisses, reglages.seuilM),
+    points: simplifyPoints(
+      lisses,
+      reglages.simplifieCarteDeg,
+      reglages.simplifieProfilM,
+    ),
   };
 }

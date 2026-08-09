@@ -1,6 +1,6 @@
-import type { ElevatedPoint } from "./type";
+import type { ResolvedPoint } from "./type";
 
-export function resample(points: ElevatedPoint[], stepM = 10): ElevatedPoint[] {
+export function resample(points: ResolvedPoint[], stepM = 10): ResolvedPoint[] {
   if (!Number.isFinite(stepM) || stepM <= 0) {
     throw new Error("Step must be a finite positive number");
   }
@@ -13,7 +13,7 @@ export function resample(points: ElevatedPoint[], stepM = 10): ElevatedPoint[] {
     return points.map((p) => ({ ...p }));
   }
 
-  const result: ElevatedPoint[] = [];
+  const result: ResolvedPoint[] = [];
   const last = points[points.length - 1];
   let k = 0;
 

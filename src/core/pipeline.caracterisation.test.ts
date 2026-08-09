@@ -32,30 +32,31 @@ const reference = (nom: string) =>
     "utf8",
   );
 
-// fichier, points bruts, écartés, distance (m), D+ (m)
+// fichier, points bruts, écartés, distance (m), D+ (m), points simplifiés
 // Mesuré le 9 août 2026 avec les REGLAGES de pipeline.ts.
-const ATTENDU: Array<[string, number, number, number, number]> = [
-  ["saintelyon.gpx", 2160, 0, 82864, 2538],
-  ["saintelyon-benj.gpx", 37329, 0, 79095, 2232],
-  ["saverne.gpx", 15415, 0, 28350, 1314],
-  ["andlau.gpx", 11305, 0, 25352, 943],
-  ["uthk.gpx", 52500, 0, 103319, 4372],
-  ["utdc.gpx", 96668, 0, 159100, 6362],
-  ["velo-hugo-iphone.gpx", 14213, 0, 72035, 378],
-  ["course-hugo-iphone.gpx", 6606, 0, 22308, 55],
-  ["utdc-karim.gpx", 77390, 0, 161928, 5620],
-  ["strasparis.gpx", 72090, 0, 518367, 3177],
-  ["strasparis-karim.gpx", 26450, 0, 515606, 2950],
+const ATTENDU: Array<[string, number, number, number, number, number]> = [
+  ["saintelyon.gpx", 2160, 0, 82864, 2538, 1226],
+  ["saintelyon-benj.gpx", 37329, 0, 79095, 2232, 1293],
+  ["saverne.gpx", 15415, 0, 28350, 1314, 708],
+  ["andlau.gpx", 11305, 0, 25352, 943, 498],
+  ["uthk.gpx", 52500, 0, 103319, 4372, 2036],
+  ["utdc.gpx", 96668, 0, 159100, 6362, 2916],
+  ["velo-hugo-iphone.gpx", 14213, 0, 72035, 378, 651],
+  ["course-hugo-iphone.gpx", 6606, 0, 22308, 55, 275],
+  ["utdc-karim.gpx", 77390, 0, 161928, 5620, 2860],
+  ["strasparis.gpx", 72090, 0, 518367, 3177, 3493],
+  ["strasparis-karim.gpx", 26450, 0, 515606, 2950, 3436],
 ];
 
 test.each(
   ATTENDU,
-)("%s — %i points, %i écartés, %i m, %i m D+", (fichier, pointsBruts, ecartes, distanceM, denivelePositifM) => {
+)("%s — %i points, %i écartés, %i m, %i m D+, %i points gardés", (fichier, pointsBruts, ecartes, distanceM, denivelePositifM, simplifies) => {
   const analyse = analyseTrace(reference(fichier));
 
   // Comptages : entiers, comparaison exacte.
   expect(analyse.pointsBruts).toBe(pointsBruts);
   expect(analyse.ecartes).toBe(ecartes);
+  expect(analyse.points.length).toBe(simplifies);
 
   // Distance et D+ : tolérance de 5 m. Les fonctions trigonométriques de la
   // bibliothèque mathématique ne sont pas garanties identiques au dernier bit
@@ -63,6 +64,9 @@ test.each(
   // que nos machines. Cinq mètres sur 518 km valent 1e-5 — assez serré pour
   // attraper le moindre changement d'algorithme, assez lâche pour ne pas
   // rougir sur une différence d'arrondi.
+  // Le D+ est lu sur la trace pleine résolution, jamais sur la simplifiée qui
+  // en perd jusqu'à 1,7 %. C'est cette assertion qui verrouille la séparation
+  // du §14.3 : recâbler `elevationGain` sur `points` la ferait rougir.
   expect(analyse.distanceM).toBeCloseTo(distanceM, -1);
   expect(analyse.denivelePositifM).toBeCloseTo(denivelePositifM, -1);
 });
