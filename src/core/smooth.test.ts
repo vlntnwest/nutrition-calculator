@@ -22,7 +22,7 @@ test("rend les mediannes en fonction de la fenêtre en mètre", () => {
   ]);
 });
 
-test("rend les moyenne en fonction de la fenêtre en mètre", () => {
+test("rend les moyennes en fonction de la fenêtre en mètre", () => {
   expect(
     meanFilter(
       [
@@ -43,7 +43,7 @@ test("rend les moyenne en fonction de la fenêtre en mètre", () => {
   ]);
 });
 
-test("applique une lissage median puis une moyenne", () => {
+test("applique un lissage médian puis une moyenne", () => {
   expect(
     smooth([
       { d: 0, lat: 0, lon: 0, ele: 100 },

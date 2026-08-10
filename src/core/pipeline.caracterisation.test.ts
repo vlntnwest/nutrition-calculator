@@ -24,57 +24,58 @@
 
 import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
-import { analyseTrace } from "./pipeline";
+import { analyzeTrack } from "./pipeline";
 
-const reference = (nom: string) =>
+const reference = (name: string) =>
   readFileSync(
-    new URL(`./fixtures/references/${nom}`, import.meta.url),
+    new URL(`./fixtures/references/${name}`, import.meta.url),
     "utf8",
   );
 
 // fichier, points bruts, écartés, distance (m), D+ (m), points simplifiés, tronçons
 // Mesuré le 9 août 2026 avec les REGLAGES de pipeline.ts.
-const ATTENDU: Array<[string, number, number, number, number, number, number]> =
-  [
-    ["saintelyon.gpx", 2160, 0, 82864, 2538, 1226, 54],
-    ["saintelyon-benj.gpx", 37329, 0, 79095, 2232, 1293, 57],
-    ["saverne.gpx", 15415, 0, 28350, 1314, 708, 28],
-    ["andlau.gpx", 11305, 0, 25352, 943, 498, 17],
-    ["uthk.gpx", 52500, 0, 103319, 4372, 2036, 74],
-    ["utdc.gpx", 96668, 0, 159100, 6362, 2916, 111],
-    ["velo-hugo-iphone.gpx", 14213, 0, 72035, 378, 651, 8],
-    ["course-hugo-iphone.gpx", 6606, 0, 22308, 55, 275, 1],
-    ["utdc-karim.gpx", 77390, 0, 161928, 5620, 2860, 114],
-    ["strasparis.gpx", 72090, 0, 518367, 3177, 3493, 66],
-    ["strasparis-karim.gpx", 26450, 0, 515606, 2950, 3436, 50],
-  ];
+const EXPECTED: Array<
+  [string, number, number, number, number, number, number]
+> = [
+  ["saintelyon.gpx", 2160, 0, 82864, 2538, 1226, 54],
+  ["saintelyon-benj.gpx", 37329, 0, 79095, 2232, 1293, 57],
+  ["saverne.gpx", 15415, 0, 28350, 1314, 708, 28],
+  ["andlau.gpx", 11305, 0, 25352, 943, 498, 17],
+  ["uthk.gpx", 52500, 0, 103319, 4372, 2036, 74],
+  ["utdc.gpx", 96668, 0, 159100, 6362, 2916, 111],
+  ["velo-hugo-iphone.gpx", 14213, 0, 72035, 378, 651, 8],
+  ["course-hugo-iphone.gpx", 6606, 0, 22308, 55, 275, 1],
+  ["utdc-karim.gpx", 77390, 0, 161928, 5620, 2860, 114],
+  ["strasparis.gpx", 72090, 0, 518367, 3177, 3493, 66],
+  ["strasparis-karim.gpx", 26450, 0, 515606, 2950, 3436, 50],
+];
 
 test.each(
-  ATTENDU,
-)("%s — %i points, %i écartés, %i m, %i m D+, %i points gardés, %i tronçons", (fichier, pointsBruts, ecartes, distanceM, denivelePositifM, simplifies, troncons) => {
-  const analyse = analyseTrace(reference(fichier));
+  EXPECTED,
+)("%s — %i points, %i écartés, %i m, %i m D+, %i points gardés, %i tronçons", (file, rawPoints, skipped, distanceM, ascentM, simplified, segments) => {
+  const analysis = analyzeTrack(reference(file));
 
   // Comptages : entiers, comparaison exacte.
-  expect(analyse.pointsBruts).toBe(pointsBruts);
-  expect(analyse.ecartes).toBe(ecartes);
-  expect(analyse.points.length).toBe(simplifies);
-  expect(analyse.troncons.length).toBe(troncons);
+  expect(analysis.rawPoints).toBe(rawPoints);
+  expect(analysis.skipped).toBe(skipped);
+  expect(analysis.points.length).toBe(simplified);
+  expect(analysis.segments.length).toBe(segments);
 
   // Les tronçons partitionnent la trace : ils sont jointifs, ils la couvrent
   // d'un bout à l'autre, et leur D+ se resomme au total. Cette dernière
   // égalité n'est vraie qu'à seuil d'hystérésis nul — la relâcher voudrait
   // dire qu'on a changé `seuilM` sans y penser.
-  expect(analyse.troncons[0].debutM).toBe(0);
-  expect(analyse.troncons[analyse.troncons.length - 1].finM).toBeCloseTo(
-    analyse.distanceM,
+  expect(analysis.segments[0].startM).toBe(0);
+  expect(analysis.segments[analysis.segments.length - 1].endM).toBeCloseTo(
+    analysis.distanceM,
     -1,
   );
-  for (let i = 1; i < analyse.troncons.length; i++) {
-    expect(analyse.troncons[i].debutM).toBe(analyse.troncons[i - 1].finM);
+  for (let i = 1; i < analysis.segments.length; i++) {
+    expect(analysis.segments[i].startM).toBe(analysis.segments[i - 1].endM);
   }
   expect(
-    analyse.troncons.reduce((somme, t) => somme + t.denivelePositifM, 0),
-  ).toBeCloseTo(analyse.denivelePositifM, 6);
+    analysis.segments.reduce((total, t) => total + t.ascentM, 0),
+  ).toBeCloseTo(analysis.ascentM, 6);
 
   // Distance et D+ : tolérance de 5 m. Les fonctions trigonométriques de la
   // bibliothèque mathématique ne sont pas garanties identiques au dernier bit
@@ -85,6 +86,6 @@ test.each(
   // Le D+ est lu sur la trace pleine résolution, jamais sur la simplifiée qui
   // en perd jusqu'à 1,7 %. C'est cette assertion qui verrouille la séparation
   // du §14.3 : recâbler `elevationGain` sur `points` la ferait rougir.
-  expect(analyse.distanceM).toBeCloseTo(distanceM, -1);
-  expect(analyse.denivelePositifM).toBeCloseTo(denivelePositifM, -1);
+  expect(analysis.distanceM).toBeCloseTo(distanceM, -1);
+  expect(analysis.ascentM).toBeCloseTo(ascentM, -1);
 });

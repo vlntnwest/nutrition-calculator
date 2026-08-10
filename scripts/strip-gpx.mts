@@ -19,43 +19,43 @@
 
 import { readFileSync, statSync, writeFileSync } from "node:fs";
 
-const fichiers = process.argv.slice(2);
+const files = process.argv.slice(2);
 
-if (fichiers.length === 0) {
-  console.error("usage : npm run strip-gpx -- <fichier.gpx> [...]");
+if (files.length === 0) {
+  console.error("usage : npm run strip-gpx -- <file.gpx> [...]");
   process.exit(1);
 }
 
-const mo = (octets: number) => `${(octets / 1048576).toFixed(1)} Mo`;
+const megabytes = (bytes: number) => `${(bytes / 1048576).toFixed(1)} Mo`;
 
-let avantTotal = 0;
-let apresTotal = 0;
+let beforeTotal = 0;
+let afterTotal = 0;
 
-for (const chemin of fichiers) {
-  const avant = statSync(chemin).size;
+for (const path of files) {
+  const before = statSync(path).size;
 
-  const nettoye = readFileSync(chemin, "utf8")
+  const cleaned = readFileSync(path, "utf8")
     // <extensions> … </extensions>, y compris multilignes et imbriquées
     .replace(/[ \t]*<extensions>[\s\S]*?<\/extensions>\s*\n?/g, "")
     // <time>…</time>, et la variante auto-fermante
     .replace(/[ \t]*<time>[^<]*<\/time>\s*\n?/g, "")
     .replace(/[ \t]*<time\s*\/>\s*\n?/g, "");
 
-  writeFileSync(chemin, nettoye);
-  const apres = statSync(chemin).size;
+  writeFileSync(path, cleaned);
+  const after = statSync(path).size;
 
-  avantTotal += avant;
-  apresTotal += apres;
+  beforeTotal += before;
+  afterTotal += after;
 
-  const gain = ((1 - apres / avant) * 100).toFixed(0);
+  const gain = ((1 - after / before) * 100).toFixed(0);
   console.log(
-    `${chemin.split("/").pop()?.padEnd(26)} ${mo(avant).padStart(8)} -> ${mo(apres).padStart(8)}   -${gain} %`,
+    `${path.split("/").pop()?.padEnd(26)} ${megabytes(before).padStart(8)} -> ${megabytes(after).padStart(8)}   -${gain} %`,
   );
 }
 
-if (fichiers.length > 1) {
-  const gain = ((1 - apresTotal / avantTotal) * 100).toFixed(0);
+if (files.length > 1) {
+  const gain = ((1 - afterTotal / beforeTotal) * 100).toFixed(0);
   console.log(
-    `\n${"total".padEnd(26)} ${mo(avantTotal).padStart(8)} -> ${mo(apresTotal).padStart(8)}   -${gain} %`,
+    `\n${"total".padEnd(26)} ${megabytes(beforeTotal).padStart(8)} -> ${megabytes(afterTotal).padStart(8)}   -${gain} %`,
   );
 }
