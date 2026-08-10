@@ -1,7 +1,5 @@
 import simplify from "simplify-js";
-import type { ResolvedPoint } from "./type";
-
-type Marque = { x: number; y: number; i: number };
+import type { Mark, ResolvedPoint } from "./type";
 
 export function simplifyPoints(
   points: ResolvedPoint[],
@@ -10,23 +8,23 @@ export function simplifyPoints(
 ): ResolvedPoint[] {
   if (points.length <= 3) return points.map((p) => ({ ...p }));
 
-  const coords: Marque[] = points.map((p, i) => ({
+  const coords: Mark[] = points.map((p, i) => ({
     x: p.lon,
     y: p.lat,
     i,
   }));
-  const profile: Marque[] = points.map((p, i) => ({
+  const profile: Mark[] = points.map((p, i) => ({
     x: p.d,
     y: p.ele,
     i,
   }));
 
-  const coordsSimplifies = simplify(coords, toleranceDeg, true) as Marque[];
-  const profilSimplifies = simplify(profile, toleranceEleM, true) as Marque[];
+  const simplifiedCoords = simplify(coords, toleranceDeg, true) as Mark[];
+  const simplifiedProfile = simplify(profile, toleranceEleM, true) as Mark[];
 
-  const indexes = new Set<number>();
-  for (const m of coordsSimplifies) indexes.add(m.i);
-  for (const m of profilSimplifies) indexes.add(m.i);
+  const kept = new Set<number>();
+  for (const m of simplifiedCoords) kept.add(m.i);
+  for (const m of simplifiedProfile) kept.add(m.i);
 
-  return points.filter((_, i) => indexes.has(i)).map((p) => ({ ...p }));
+  return points.filter((_, i) => kept.has(i)).map((p) => ({ ...p }));
 }

@@ -67,6 +67,6 @@ export function smooth(
   medianM = 30,
   meanM = 0,
 ): ResolvedPoint[] {
-  const filtre = medianFilter(points, medianM);
-  return meanM > 0 ? meanFilter(filtre, meanM) : filtre;
+  const filtered = medianFilter(points, medianM);
+  return meanM > 0 ? meanFilter(filtered, meanM) : filtered;
 }

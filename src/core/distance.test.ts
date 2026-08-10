@@ -9,7 +9,7 @@ test("verifie une distance calculé par haversine", () => {
   );
 });
 
-test("cumule les distances depuis le départ", () => {
+test("cumule les distances from le départ", () => {
   const points = [
     { lat: 0, lon: 0, ele: 100 },
     { lat: 1, lon: 0, ele: 200 },

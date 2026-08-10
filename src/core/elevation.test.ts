@@ -95,7 +95,7 @@ test("deux points consécutifs sans elevation au meme endroit", () => {
   ]);
 });
 
-test("point avant et apres le null au meme endroit recupere le before", () => {
+test("point before et after le null au meme endroit recupere le before", () => {
   expect(
     fillMissingElevation([
       { lat: 0, lon: 0, ele: 100, d: 0 },

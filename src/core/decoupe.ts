@@ -1,19 +1,5 @@
 import simplify from "simplify-js";
-import type { ResolvedPoint } from "./type";
-
-export type TypeTroncon = "montee" | "descente" | "roulant";
-
-export type Troncon = {
-  debutM: number;
-  finM: number;
-  longueurM: number;
-  denivelePositifM: number;
-  deniveleNegatifM: number;
-  penteMoyenne: number;
-  type: TypeTroncon;
-};
-
-type Marque = { x: number; y: number; i: number };
+import type { Mark, ResolvedPoint, Segment, SegmentType } from "./type";
 
 /**
  * Découpe la trace en tronçons de pente homogène.
@@ -22,32 +8,30 @@ type Marque = { x: number; y: number; i: number };
  * @param longueurMinM Plancher sous lequel un tronçon est fusionné.
  * @param penteRoulanteMax Pente en deçà de laquelle un tronçon est « roulant ».
  */
-export function decoupeParPente(
+export function splitBySlope(
   points: ResolvedPoint[],
   toleranceM = 30,
-  longueurMinM = 300,
-  penteRoulanteMax = 0.02,
-): Troncon[] {
+  minLengthM = 300,
+  flatMax = 0.02,
+): Segment[] {
   if (points.length < 2) return [];
 
-  const profil: Marque[] = points.map((p, i) => ({ x: p.d, y: p.ele, i }));
-  const bornes = (simplify(profil, toleranceM, true) as Marque[]).map(
+  const profile: Mark[] = points.map((p, i) => ({ x: p.d, y: p.ele, i }));
+  const bounds = (simplify(profile, toleranceM, true) as Mark[]).map(
     (m) => m.i,
   );
 
-  fusionneLesCourts(points, bornes, longueurMinM);
+  mergeShortSegments(points, bounds, minLengthM);
 
-  const troncons: Troncon[] = [];
-  for (let i = 0; i < bornes.length - 1; i++) {
-    troncons.push(
-      construis(points, bornes[i], bornes[i + 1], penteRoulanteMax),
-    );
+  const segments: Segment[] = [];
+  for (let i = 0; i < bounds.length - 1; i++) {
+    segments.push(buildSegment(points, bounds[i], bounds[i + 1], flatMax));
   }
 
-  return troncons;
+  return segments;
 }
 
-function pente(points: ResolvedPoint[], a: number, b: number): number {
+function slope(points: ResolvedPoint[], a: number, b: number): number {
   const distance = points[b].d - points[a].d;
 
   return distance > 0 ? (points[b].ele - points[a].ele) / distance : 0;
@@ -60,78 +44,76 @@ function pente(points: ResolvedPoint[], a: number, b: number): number {
  * recommence — fusionner le plus court d'abord rend le résultat indépendant de
  * l'ordre de parcours.
  */
-function fusionneLesCourts(
+function mergeShortSegments(
   points: ResolvedPoint[],
-  bornes: number[],
-  longueurMinM: number,
+  bounds: number[],
+  minLengthM: number,
 ): void {
-  while (bornes.length > 2) {
+  while (bounds.length > 2) {
     let k = -1;
-    let plusCourt = longueurMinM;
+    let shortest = minLengthM;
 
-    for (let i = 0; i < bornes.length - 1; i++) {
-      const longueur = points[bornes[i + 1]].d - points[bornes[i]].d;
-      if (longueur < plusCourt) {
-        plusCourt = longueur;
+    for (let i = 0; i < bounds.length - 1; i++) {
+      const length = points[bounds[i + 1]].d - points[bounds[i]].d;
+      if (length < shortest) {
+        shortest = length;
         k = i;
       }
     }
 
     if (k === -1) return;
 
-    bornes.splice(borneASupprimer(points, bornes, k), 1);
+    bounds.splice(boundaryToDrop(points, bounds, k), 1);
   }
 }
 
 /** Quelle borne retirer pour fusionner le tronçon `k` avec son meilleur voisin. */
-function borneASupprimer(
+function boundaryToDrop(
   points: ResolvedPoint[],
-  bornes: number[],
+  bounds: number[],
   k: number,
 ): number {
   if (k === 0) return k + 1;
-  if (k === bornes.length - 2) return k;
+  if (k === bounds.length - 2) return k;
 
-  const courante = pente(points, bornes[k], bornes[k + 1]);
-  const gauche = Math.abs(pente(points, bornes[k - 1], bornes[k]) - courante);
-  const droite = Math.abs(
-    pente(points, bornes[k + 1], bornes[k + 2]) - courante,
-  );
+  const current = slope(points, bounds[k], bounds[k + 1]);
+  const left = Math.abs(slope(points, bounds[k - 1], bounds[k]) - current);
+  const right = Math.abs(slope(points, bounds[k + 1], bounds[k + 2]) - current);
 
-  return gauche <= droite ? k : k + 1;
+  return left <= right ? k : k + 1;
 }
 
-function construis(
+function buildSegment(
   points: ResolvedPoint[],
   a: number,
   b: number,
-  penteRoulanteMax: number,
-): Troncon {
-  let denivelePositifM = 0;
-  let deniveleNegatifM = 0;
+  flatMax: number,
+): Segment {
+  let ascentM = 0;
+  let descentM = 0;
 
   for (let i = a + 1; i <= b; i++) {
     const delta = points[i].ele - points[i - 1].ele;
-    if (delta > 0) denivelePositifM += delta;
-    else deniveleNegatifM -= delta;
+    if (delta > 0) ascentM += delta;
+    else descentM -= delta;
   }
 
-  const penteMoyenne = pente(points, a, b);
+  const meanSlope = slope(points, a, b);
 
   return {
-    debutM: points[a].d,
-    finM: points[b].d,
-    longueurM: points[b].d - points[a].d,
-    denivelePositifM,
-    deniveleNegatifM,
-    penteMoyenne,
-    type: classe(penteMoyenne, penteRoulanteMax),
+    startM: points[a].d,
+    endM: points[b].d,
+    lengthM: points[b].d - points[a].d,
+    ascentM,
+    descentM,
+    meanSlope,
+    type: classify(meanSlope, flatMax),
   };
 }
 
-function classe(penteMoyenne: number, penteRoulanteMax: number): TypeTroncon {
-  if (penteMoyenne > penteRoulanteMax) return "montee";
-  if (penteMoyenne < -penteRoulanteMax) return "descente";
+function classify(meanSlope: number, flatMax: number): SegmentType {
+  if (meanSlope > flatMax) return "climb";
+  if (meanSlope < -flatMax) return "descent";
 
-  return "roulant";
+  return "flat";
 }

@@ -49,12 +49,12 @@ test("rejette les fichiers non GPX", () => {
 });
 
 test.each([
-  { lat: "", raison: "attribut vide" },
-  { lat: "   ", raison: "blancs seuls" },
-  { lat: "N/A", raison: "valeur non numérique" },
-  { lat: "91.5", raison: "latitude hors bornes" },
-  { lat: "0", lon: "0", raison: "Null Island (0, 0)" },
-])("écarte un point et le compte — $raison", ({ lat, lon = "4.8359" }) => {
+  { lat: "", reason: "attribut vide" },
+  { lat: "   ", reason: "blancs seuls" },
+  { lat: "N/A", reason: "valeur non numérique" },
+  { lat: "91.5", reason: "latitude hors bornes" },
+  { lat: "0", lon: "0", reason: "Null Island (0, 0)" },
+])("écarte un point et le compte — $reason", ({ lat, lon = "4.8359" }) => {
   const xml = `<gpx><trk><trkseg>
     <trkpt lat="45.764" lon="4.8357"><ele>172.4</ele></trkpt>
     <trkpt lat="${lat}" lon="${lon}"><ele>173.1</ele></trkpt>

@@ -1,6 +1,4 @@
-import type { RawPoint, RoutePoint } from "./type";
-
-type Coordinates = { lat: number; lon: number };
+import type { Coordinates, RawPoint, RoutePoint } from "./type";
 
 const toRad = (value: number): number => (value * Math.PI) / 180;
 

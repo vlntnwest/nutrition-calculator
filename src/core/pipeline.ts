@@ -1,14 +1,14 @@
 // Extensions .ts explicites : ce module est le seul du noyau à faire des
 // imports de valeurs, et `node scripts/analyze.mts` les résout nativement.
 // Les autres fichiers n'importent que des types, effacés à la compilation.
-import { decoupeParPente, type Troncon } from "./decoupe.ts";
+import { splitBySlope } from "./decoupe.ts";
 import { withCumulativeDistance } from "./distance.ts";
 import { elevationGain, fillMissingElevation } from "./elevation.ts";
 import { parseGpx } from "./parseGpx.ts";
 import { resample } from "./resample.ts";
 import { simplifyPoints } from "./simplify.ts";
 import { smooth } from "./smooth.ts";
-import type { ResolvedPoint } from "./type.ts";
+import type { TrackAnalysis } from "./type.ts";
 
 /**
  * Les réglages du noyau, rassemblés ici pour qu'il n'existe qu'un seul endroit
@@ -16,51 +16,26 @@ import type { ResolvedPoint } from "./type.ts";
  * docs/gpx-de-reference.md, et déplacer l'un d'eux fait virer au rouge le test
  * de caractérisation — c'est le but.
  */
-export const REGLAGES = {
+export const SETTINGS = {
   /** Pas du rééchantillonnage, en mètres. ADR 002. */
-  pasM: 10,
+  stepM: 10,
   /** Fenêtre du filtre médian, en mètres. ADR 006. */
-  medianeM: 30,
+  medianM: 30,
   /** Fenêtre de la moyenne glissante. Coupée par défaut — ADR 006. */
-  moyenneM: 0,
+  meanM: 0,
   /** Seuil d'hystérésis du D+, en mètres. */
-  seuilM: 0,
+  thresholdM: 0,
   /** Tolérance de simplification pour la carte, en degrés (~8 m). */
-  simplifieCarteDeg: 7.5e-5,
+  simplifyMapDeg: 7.5e-5,
   /** Tolérance de simplification pour le profil, en mètres d'altitude. */
-  simplifieProfilM: 1.5,
+  simplifyProfileM: 1.5,
   /** Tolérance du découpage en tronçons, en mètres d'altitude. */
-  decoupeToleranceM: 30,
+  splitToleranceM: 30,
   /** Longueur en dessous de laquelle un tronçon est fusionné, en mètres. */
-  decoupeLongueurMinM: 300,
+  splitMinLengthM: 300,
   /** Pente en deçà de laquelle un tronçon est dit « roulant ». */
-  decoupeRoulantMax: 0.02,
+  splitFlatMax: 0.02,
 } as const;
-
-export type Analyse = {
-  nom: string | null;
-  /** Points présents dans le fichier, avant tout traitement. */
-  pointsBruts: number;
-  /** Points écartés faute de coordonnées exploitables. */
-  ecartes: number;
-  distanceM: number;
-  /**
-   * Calculé sur la trace lissée en **pleine résolution**, jamais sur la trace
-   * simplifiée. C'est ce scalaire qui fait autorité et qui sera stocké ; les
-   * points ci-dessous ne servent qu'à dessiner. §14.3.
-   */
-  denivelePositifM: number;
-  /**
-   * La trace simplifiée : ~2 000 points, ce qui part en `jsonb` et alimente
-   * la carte et le profil.
-   */
-  points: ResolvedPoint[];
-  /**
-   * Le parcours découpé en morceaux de pente homogène. Comme le D+, ils sont
-   * lus sur la trace pleine résolution, jamais sur la simplifiée.
-   */
-  troncons: Troncon[];
-};
 
 /**
  * Le chemin canonique : un GPX en entrée, une distance et un D+ en sortie.
@@ -69,36 +44,36 @@ export type Analyse = {
  * `npm run analyze`. Toute exploration de variantes doit se faire à côté, pas
  * en modifiant celle-ci.
  */
-export function analyseTrace(
+export function analyzeTrack(
   xml: string,
-  reglages: typeof REGLAGES = REGLAGES,
-): Analyse {
+  settings: typeof SETTINGS = SETTINGS,
+): TrackAnalysis {
   const trace = parseGpx(xml);
-  const ancres = withCumulativeDistance(trace.points);
-  const complets = fillMissingElevation(ancres);
-  const echantillonnes = resample(complets, reglages.pasM);
-  const lisses = smooth(echantillonnes, reglages.medianeM, reglages.moyenneM);
+  const anchored = withCumulativeDistance(trace.points);
+  const filled = fillMissingElevation(anchored);
+  const resampled = resample(filled, settings.stepM);
+  const smoothed = smooth(resampled, settings.medianM, settings.meanM);
 
   // Le pipeline se scinde ici. Le D+ se lit sur `lisses`, en pleine
   // résolution ; `simplifyPoints` ne produit que le dessin. Mesuré sur le
   // corpus, l'écart de D+ entre les deux vaut moins de 1,7 % — mais il ne
   // sort jamais du noyau, puisque le chiffre affiché vient de `lisses`.
   return {
-    nom: trace.name,
-    pointsBruts: trace.points.length,
-    ecartes: trace.skipped,
-    distanceM: complets[complets.length - 1].d,
-    denivelePositifM: elevationGain(lisses, reglages.seuilM),
+    name: trace.name,
+    rawPoints: trace.points.length,
+    skipped: trace.skipped,
+    distanceM: filled[filled.length - 1].d,
+    ascentM: elevationGain(smoothed, settings.thresholdM),
     points: simplifyPoints(
-      lisses,
-      reglages.simplifieCarteDeg,
-      reglages.simplifieProfilM,
+      smoothed,
+      settings.simplifyMapDeg,
+      settings.simplifyProfileM,
     ),
-    troncons: decoupeParPente(
-      lisses,
-      reglages.decoupeToleranceM,
-      reglages.decoupeLongueurMinM,
-      reglages.decoupeRoulantMax,
+    segments: splitBySlope(
+      smoothed,
+      settings.splitToleranceM,
+      settings.splitMinLengthM,
+      settings.splitFlatMax,
     ),
   };
 }

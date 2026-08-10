@@ -2,18 +2,18 @@ import { expect, test } from "vitest";
 import { paceDrift, paceModel } from "./pace";
 
 /** Recopiée de pace.ts : le creux du U, que les tests doivent pouvoir viser. */
-const DESCENTE_OPTIMALE = 0.072;
+const DESCENT_OPTIMUM = 0.072;
 
 test("le plat vaut 1", () => {
   expect(paceModel(0)).toBe(1);
 });
 
 test("la descente suit un U", () => {
-  const creux = paceModel(-DESCENTE_OPTIMALE);
+  const dip = paceModel(-DESCENT_OPTIMUM);
 
-  expect(creux).toBeLessThan(1);
-  expect(creux).toBeLessThan(paceModel(-0.03));
-  expect(creux).toBeLessThan(paceModel(-0.15));
+  expect(dip).toBeLessThan(1);
+  expect(dip).toBeLessThan(paceModel(-0.03));
+  expect(dip).toBeLessThan(paceModel(-0.15));
   expect(paceModel(-0.19)).toBeGreaterThan(1);
 });
 
@@ -47,8 +47,8 @@ test.each([
   [-0.105, 0.945],
   [-0.151, 1.034],
   [-0.191, 1.126],
-])("reste à moins de 3 %% de PacePro à %f", (pente, mesure) => {
-  expect(Math.abs(paceModel(pente) / mesure - 1)).toBeLessThan(0.03);
+])("reste à moins de 3 %% de PacePro à %f", (slope, mesure) => {
+  expect(Math.abs(paceModel(slope) / mesure - 1)).toBeLessThan(0.03);
 });
 
 test("la dérive est centrée sur le milieu de course", () => {
