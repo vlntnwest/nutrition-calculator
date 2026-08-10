@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "typecheck": "next typegen && tsc --noEmit",
     "analyze": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/analyze.mts",
-    "strip-gpx": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/strip-gpx.mts"
+    "strip-gpx": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/strip-gpx.mts",
+    "plan": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/plan.mts"
   },
   "dependencies": {
     "fast-xml-parser": "^5.10.1",
