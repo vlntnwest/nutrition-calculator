@@ -1,0 +1,120 @@
+import type { Product } from "./type.ts";
+
+/**
+ * Relevé sur les sites des marques et sur Nutri-Bay en août 2026. Les valeurs
+ * varient d'un parfum à l'autre : ce sont des références, pas un contrat.
+ */
+export const CATALOG: Product[] = [
+  {
+    id: "naak-gel-ultra",
+    brand: "Näak",
+    name: "Ultra Energy Gel",
+    type: "gel",
+    weightG: 57,
+    energyKcal: 200,
+    carbsG: 27,
+    sodiumMg: 190,
+    fluidMl: 0,
+    multiTransportable: true, // glucose:fructose 3:1 annoncé
+  },
+  {
+    id: "naak-bar-ultra",
+    brand: "Näak",
+    name: "Ultra Energy Bar",
+    type: "bar",
+    weightG: 50,
+    energyKcal: 200,
+    carbsG: 27,
+    sodiumMg: 190,
+    fluidMl: 0,
+    multiTransportable: true,
+  },
+  {
+    id: "naak-drink-ultra",
+    brand: "Näak",
+    name: "Ultra Energy Drink Mix",
+    type: "drink",
+    weightG: 72,
+    energyKcal: 250,
+    carbsG: 55,
+    sodiumMg: 400,
+    fluidMl: 500,
+    multiTransportable: true,
+  },
+  {
+    id: "naak-drink-salted-soup",
+    brand: "Näak",
+    name: "Ultra Energy Drink Mix — Salted Soup",
+    type: "drink",
+    weightG: 72,
+    energyKcal: 250,
+    carbsG: 56,
+    sodiumMg: 850,
+    fluidMl: 500,
+    multiTransportable: true,
+  },
+  {
+    id: "baouw-gel",
+    brand: "Baouw",
+    name: "Gel énergétique bio",
+    type: "gel",
+    weightG: 85,
+    energyKcal: 154,
+    carbsG: 30,
+    sodiumMg: 4, // 0,01 g de sel — autant dire rien
+    fluidMl: 0,
+    multiTransportable: false,
+  },
+  {
+    id: "baouw-bar-extra",
+    brand: "Baouw",
+    name: "Barre Extra",
+    type: "bar",
+    weightG: 50,
+    energyKcal: 201,
+    carbsG: 24.7,
+    sodiumMg: 333,
+    fluidMl: 0,
+    multiTransportable: false,
+  },
+  {
+    id: "baouw-puree",
+    brand: "Baouw",
+    name: "Purée énergétique bio",
+    type: "puree",
+    weightG: 90,
+    energyKcal: 66,
+    carbsG: 11,
+    sodiumMg: 0,
+    fluidMl: 0,
+    multiTransportable: false,
+  },
+  {
+    id: "decathlon-gel-plus",
+    brand: "Decathlon",
+    name: "Energy Gel+",
+    type: "gel",
+    weightG: 46,
+    energyKcal: 118,
+    carbsG: 30,
+    sodiumMg: 70,
+    fluidMl: 0,
+    multiTransportable: false,
+  },
+  {
+    id: "decathlon-iso-plus",
+    brand: "Decathlon",
+    name: "Boisson isotonique ISO+",
+    type: "drink",
+    weightG: 38,
+    energyKcal: 140,
+    carbsG: 33,
+    sodiumMg: 285,
+    fluidMl: 500,
+    multiTransportable: false,
+  },
+];
+
+export function productById(id: string): Product | undefined {
+  return CATALOG.find((p) => p.id === id);
+}
