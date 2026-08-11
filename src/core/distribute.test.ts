@@ -110,6 +110,24 @@ test("invariant de somme et monotonie", () => {
   );
 });
 
+/**
+ * La dérive se lit sur la progression dans la trace fournie, pas sur `d` en
+ * valeur absolue. Un secteur découpé au ravito commence au km 50 et doit se
+ * répartir comme s'il commençait à zéro.
+ */
+test("une trace qui ne part pas de zéro dérive comme les autres", () => {
+  const profile: PacingProfile = { climbIntensity: 0.25, split: 0.3 };
+  const base = trace([0, 10, 20, 5, 0, 15, 30]);
+  const shifted = base.map((p) => ({ ...p, d: p.d + 50_000 }));
+
+  const fromZero = distributeTime(base, 3600, profile);
+  const fromFar = distributeTime(shifted, 3600, profile);
+
+  for (const [i, p] of fromZero.entries()) {
+    expect(fromFar[i].t).toBeCloseTo(p.t, 9);
+  }
+});
+
 test("la géométrie traverse la fonction sans être touchée", () => {
   const points = trace([0, 30, 10]);
   const result = distributeTime(points, 600, EVEN);

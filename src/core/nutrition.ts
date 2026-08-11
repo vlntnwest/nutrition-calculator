@@ -194,8 +194,13 @@ function provision(
     sodiumMg: (fluidMl / 1000) * targets.sodiumMgL,
   };
 
-  const usable = products.filter((p) => p.carbsG > 0);
-  const weights = usable.map((_, i) => parts?.[i] ?? 1);
+  // La part est lue sur la position d'origine, avant le filtrage : sinon un
+  // produit sans glucides décale en silence toutes les parts qui le suivent.
+  const kept = products
+    .map((product, i) => ({ product, weight: parts?.[i] ?? 1 }))
+    .filter(({ product }) => product.carbsG > 0);
+  const usable = kept.map((k) => k.product);
+  const weights = kept.map((k) => k.weight);
   const totalWeight = weights.reduce((s, p) => s + p, 0);
   const ideal = usable.map((_, i) => (need.carbsG * weights[i]) / totalWeight);
 
@@ -311,7 +316,7 @@ function warnings(
       messages.push(
         `${s.name} : la boisson seule dépasse la cible d'hydratation ` +
           `(${Math.round(s.supply.fluidMl)} contre ${Math.round(s.need.fluidMl)} mL). ` +
-          `Diluer moins, ou passer des glucides sur du solidOnly.`,
+          `Diluer moins, ou passer des glucides sur du solide.`,
       );
     }
   }

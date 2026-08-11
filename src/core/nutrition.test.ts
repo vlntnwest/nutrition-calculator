@@ -300,3 +300,40 @@ test("sans produit, le plan le dit au lieu de diviser par zéro", () => {
   expect(plan.total.carbsG).toBe(0);
   expect(plan.warnings[0]).toContain("Aucun produit");
 });
+
+/**
+ * Les parts se lisent sur la liste passée par l'appelant. Un produit sans
+ * glucides est écarté du calcul, mais il ne doit pas décaler les parts de ceux
+ * qui le suivent.
+ */
+test("un produit sans glucides ne décale pas les parts", () => {
+  const water: Product = {
+    id: "eau-claire",
+    brand: "—",
+    name: "Eau claire",
+    type: "drink",
+    weightG: 0,
+    energyKcal: 0,
+    carbsG: 0,
+    sodiumMg: 0,
+    fluidMl: 500,
+    multiTransportable: false,
+  };
+
+  const plan = nutritionPlan(
+    flatTrack(40, 5),
+    [],
+    RUNNER,
+    TARGETS,
+    [water, gel, drink],
+    [0, 0.9, 0.1],
+  );
+
+  const served = (id: string) =>
+    plan.legs[0].servings.find((s) => s.product.id === id)?.units ?? 0;
+
+  // 90 % des glucides sur le gel : il doit en apporter bien plus que la boisson.
+  expect(served(gel.id) * gel.carbsG).toBeGreaterThan(
+    served(drink.id) * drink.carbsG,
+  );
+});
