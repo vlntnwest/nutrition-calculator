@@ -79,6 +79,25 @@ export type Segment = {
   type: SegmentType;
 };
 
+/**
+ * Un tronçon une fois le temps réparti — ce qu'on lit sur un roadbook.
+ *
+ * `speedKmh` et `vamMH` sont dérivés des champs voisins, comme `Leg.durationS`
+ * l'est de ses deux bornes : calculés une fois à la construction, jamais
+ * recalculés ailleurs.
+ */
+export type TimedSegment = Segment & {
+  startS: number;
+  arrivalS: number;
+  durationS: number;
+  speedKmh: number;
+  /**
+   * Vitesse ascensionnelle, en mètres de D+ par heure. C'est le chiffre qui
+   * parle en côte, là où les km/h ne disent plus rien.
+   */
+  vamMH: number;
+};
+
 export type PacingProfile = {
   /** De 0 à 1 : plus elle monte, moins les côtes ralentissent. */
   climbIntensity: number;

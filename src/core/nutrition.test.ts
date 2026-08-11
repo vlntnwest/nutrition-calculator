@@ -6,7 +6,6 @@ import {
   nutritionPlan,
   splitByAidStation,
   suggestedTargets,
-  timeAt,
 } from "./nutrition";
 import { CATALOG, productById } from "./products";
 import type { AidStation, Product, Targets, TimedPoint } from "./type";
@@ -81,14 +80,6 @@ test("les glucides ignorent la masse, l'hydratation non", () => {
 
   expect(light.carbsGH).toBe(heavy.carbsGH);
   expect(heavy.fluidMlH).toBeGreaterThan(light.fluidMlH);
-});
-
-test("timeAt interpole entre deux points", () => {
-  const points = flatTrack(1, 1);
-
-  expect(timeAt(points, 0)).toBe(0);
-  expect(timeAt(points, 1000)).toBeCloseTo(3600, 6);
-  expect(timeAt(points, 505)).toBeCloseTo(0.505 * 3600, 3);
 });
 
 test("sans ravito, la course est un seul secteur", () => {

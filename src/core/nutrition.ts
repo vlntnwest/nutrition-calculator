@@ -1,3 +1,4 @@
+import { timeAt } from "./distribute.ts";
 import { energyCost } from "./pace.ts";
 import type {
   AidStation,
@@ -50,20 +51,6 @@ export function suggestedTargets(runner: Runner, durationS: number): Targets {
     fluidMlH: 7 * runner.massKg,
     sodiumMgL: 600,
   };
-}
-
-/** Le temps cumulé à une distance donnée, par interpolation linéaire sur `d`. */
-export function timeAt(points: TimedPoint[], distanceM: number): number {
-  if (points.length === 0) return 0;
-
-  let i = 1;
-  while (i < points.length - 1 && points[i].d < distanceM) i++;
-
-  const a = points[i - 1];
-  const b = points[i];
-  if (b.d === a.d) return a.t;
-
-  return a.t + ((distanceM - a.d) / (b.d - a.d)) * (b.t - a.t);
 }
 
 /**
