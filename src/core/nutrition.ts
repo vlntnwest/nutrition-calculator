@@ -2,9 +2,11 @@ import { timeAt } from "./distribute.ts";
 import { energyCost } from "./pace.ts";
 import type {
   AidStation,
+  Intake,
   Leg,
   NutritionPlan,
   Product,
+  ProductType,
   RawLeg,
   Runner,
   Serving,
@@ -190,37 +192,46 @@ function provision(
   const kept = products
     .map((product, i) => ({ product, weight: parts?.[i] ?? 1 }))
     .filter(({ product }) => product.carbsG > 0);
-  const usable = kept.map((k) => k.product);
-  const weights = kept.map((k) => k.weight);
-  const totalWeight = weights.reduce((s, p) => s + p, 0);
-  const ideal = usable.map((_, i) => (need.carbsG * weights[i]) / totalWeight);
 
-  // Arrondir au supérieur produit par produit cumulerait les excès. On part du
-  // plancher et on ne rajoute que le nécessaire, en servant à chaque tour
-  // celui qui est le plus loin de sa part.
-  const units = usable.map((p, i) => Math.floor(ideal[i] / p.carbsG));
-  const supplied = () => usable.reduce((s, p, i) => s + units[i] * p.carbsG, 0);
+  // Le bidon délivre un flux continu commandé par l'hydratation : ce n'est pas
+  // une prise, et ce ne sont pas les glucides qui fixent sa quantité. On le
+  // dimensionne donc sur le liquide, en arrondissant vers le bas pour ne
+  // jamais dépasser la cible — le reste se boit en eau claire.
+  const drinks = kept.filter((k) => k.product.fluidMl > 0);
+  const solids = kept.filter((k) => k.product.fluidMl === 0);
+  const drinkWeight = drinks.reduce((s, k) => s + k.weight, 0);
+  const drinkUnits = drinks.map((k) => {
+    const shareMl =
+      drinkWeight > 0
+        ? (need.fluidMl * k.weight) / drinkWeight
+        : need.fluidMl / drinks.length;
 
-  while (usable.length > 0 && supplied() < need.carbsG) {
-    let chosen = 0;
-    let worst = -Infinity;
-    for (let i = 0; i < usable.length; i++) {
-      const gap = ideal[i] - units[i] * usable[i].carbsG;
-      if (gap > worst) {
-        worst = gap;
-        chosen = i;
-      }
-    }
-    units[chosen]++;
-  }
+    return Math.floor(shareMl / k.product.fluidMl);
+  });
+  const drinkCarbsG = drinks.reduce(
+    (s, k, i) => s + drinkUnits[i] * k.product.carbsG,
+    0,
+  );
 
-  const servings: Serving[] = usable
-    .map((product, i) => ({
-      product,
-      units: units[i],
-      intervalS: units[i] > 0 ? raw.durationS / units[i] : 0,
-    }))
-    .filter((r) => r.units > 0);
+  // Les solides comblent ce que la boisson n'a pas couvert. Sans solide, la
+  // boisson doit porter les glucides seule : on la complète au-delà de la
+  // cible d'hydratation, et `warnings` le signale plutôt que de laisser le
+  // coureur à court.
+  const filled =
+    solids.length > 0
+      ? [
+          ...drinks.map((k, i) => ({ ...k, units: drinkUnits[i] })),
+          ...allocate(solids, Math.max(need.carbsG - drinkCarbsG, 0)),
+        ]
+      : allocate(drinks, need.carbsG, drinkUnits);
+
+  const servings: Serving[] = filled
+    .filter((k) => k.units > 0)
+    .map((k) => ({
+      product: k.product,
+      units: k.units,
+      intervalS: raw.durationS / k.units,
+    }));
 
   const supply = servings.reduce(
     (s, r) => ({
@@ -236,8 +247,97 @@ function provision(
     need,
     servings,
     supply,
+    // La marge du §6 : on n'achète pas 7,3 gels, donc on en emporte 8, et on
+    // dit lequel est en trop plutôt que d'afficher un chiffre faussement juste.
+    marginG: Math.max(supply.carbsG - need.carbsG, 0),
+    intakes: rotate(
+      servings.filter((r) => r.product.fluidMl === 0),
+      raw.durationS,
+    ),
     plainWaterMl: Math.max(need.fluidMl - supply.fluidMl, 0),
   };
+}
+
+/**
+ * Comble un besoin en glucides avec des unités entières, sans jamais passer
+ * dessous.
+ *
+ * Arrondir au supérieur produit par produit cumulerait les excès — 225 g visés
+ * devenaient 300 g apportés. On part du plancher et on ne rajoute que le
+ * nécessaire, en servant à chaque tour celui qui est le plus loin de sa part.
+ *
+ * @param floors Point de départ, quand des unités sont déjà décidées ailleurs.
+ */
+function allocate<T extends { product: Product; weight: number }>(
+  items: T[],
+  needG: number,
+  floors?: number[],
+): (T & { units: number })[] {
+  if (items.length === 0) return [];
+
+  // Des parts toutes nulles ne veulent pas dire « rien à personne » : c'est
+  // l'absence de consigne, donc le partage à parts égales.
+  const totalWeight = items.reduce((s, k) => s + k.weight, 0);
+  const ideal = items.map((k) =>
+    totalWeight > 0 ? (needG * k.weight) / totalWeight : needG / items.length,
+  );
+
+  const units =
+    floors ?? items.map((k, i) => Math.floor(ideal[i] / k.product.carbsG));
+  const supplied = () =>
+    items.reduce((s, k, i) => s + units[i] * k.product.carbsG, 0);
+
+  while (supplied() < needG) {
+    let chosen = 0;
+    let worst = Number.NEGATIVE_INFINITY;
+    for (let i = 0; i < items.length; i++) {
+      const gap = ideal[i] - units[i] * items[i].product.carbsG;
+      if (gap > worst) {
+        worst = gap;
+        chosen = i;
+      }
+    }
+    units[chosen]++;
+  }
+
+  return items.map((k, i) => ({ ...k, units: units[i] }));
+}
+
+/**
+ * L'ordre des prises solides — la règle qui sépare un plan crédible d'un
+ * tableur. Six gels d'affilée, personne ne tient : l'écœurement est un motif
+ * d'abandon réel. On force donc la rotation des formats, en servant à chaque
+ * tour celui qui a le plus d'unités à placer **parmi ceux dont le format
+ * diffère du précédent**, et on ne retombe sur le format précédent que s'il ne
+ * reste que lui.
+ *
+ * Les prises sont centrées dans des créneaux égaux : jamais sur la ligne de
+ * départ, jamais sur celle d'arrivée.
+ */
+function rotate(servings: Serving[], durationS: number): Intake[] {
+  const left = servings.map((r) => ({ product: r.product, units: r.units }));
+  const total = left.reduce((s, x) => s + x.units, 0);
+  if (total === 0) return [];
+
+  const order: Product[] = [];
+  let previous: ProductType | null = null;
+
+  for (let k = 0; k < total; k++) {
+    const others = left.filter(
+      (x) => x.units > 0 && x.product.type !== previous,
+    );
+    const pool = others.length > 0 ? others : left.filter((x) => x.units > 0);
+    const chosen = pool.reduce((best, x) => (x.units > best.units ? x : best));
+
+    chosen.units--;
+    order.push(chosen.product);
+    previous = chosen.product.type;
+  }
+
+  return order.map((product, k) => ({
+    atS: ((k + 0.5) * durationS) / total,
+    product,
+  }));
 }
 
 /**

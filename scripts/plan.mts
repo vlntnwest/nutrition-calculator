@@ -19,6 +19,7 @@ import { splitBySlope } from "../src/core/split.ts";
 import type {
   AidStation,
   Leg,
+  ProductType,
   SegmentType,
   Warning,
 } from "../src/core/type.ts";
@@ -93,6 +94,12 @@ const typeName: Record<SegmentType, string> = {
   descent: "descente",
   flat: "plat",
 };
+const formatName: Record<ProductType, string> = {
+  gel: "gel",
+  bar: "barre",
+  puree: "purée",
+  drink: "boisson",
+};
 
 function phrase(w: Warning): string {
   switch (w.code) {
@@ -144,8 +151,9 @@ for (const s of plan.legs) {
       `${hoursMinutes(s.durationS)} (arrivée ${hoursMinutes(s.arrivalS)})`,
   );
   console.log(
-    `   à emporter : ${Math.round(s.need.carbsG)} g de glucides, ` +
-      `${Math.round(s.need.fluidMl)} mL, ${Math.round(s.need.sodiumMg)} mg de sodium ` +
+    `   à emporter : ${Math.round(s.need.carbsG)} g de glucides` +
+      (s.marginG >= 1 ? ` (+${Math.round(s.marginG)} g de marge)` : "") +
+      `, ${Math.round(s.need.fluidMl)} mL, ${Math.round(s.need.sodiumMg)} mg de sodium ` +
       `· ${Math.round(s.expenditureKcal)} kcal dépensées`,
   );
 
@@ -158,6 +166,16 @@ for (const s of plan.legs) {
   if (s.plainWaterMl > 0) {
     console.log(
       `         + ${Math.round(s.plainWaterMl)} mL d'eau claire`.padEnd(44),
+    );
+  }
+  if (s.intakes.length > 0) {
+    console.log(
+      `     prises : ${s.intakes
+        .map(
+          (t) =>
+            `${hoursMinutes(s.startS + t.atS)} ${formatName[t.product.type]}`,
+        )
+        .join(" · ")}`,
     );
   }
 }
