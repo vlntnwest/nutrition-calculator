@@ -161,7 +161,10 @@ export type Serving = {
 
 /** Ce qu'il y a entre deux ravitos — l'unité du plan, et du sac. */
 export type Leg = {
-  name: string;
+  /** Le ravito d'où l'on part. `null` au départ de la course. */
+  from: string | null;
+  /** Le ravito où l'on arrive. `null` à l'arrivée de la course. */
+  to: string | null;
   startM: number;
   endM: number;
   lengthM: number;
@@ -182,6 +185,34 @@ export type Leg = {
 /** Un secteur avant qu'on ne l'ait ravitaillé : géométrie et durée seules. */
 export type RawLeg = Omit<Leg, "need" | "servings" | "supply" | "plainWaterMl">;
 
+/**
+ * Une remarque du noyau, en données. La formulation est l'affaire de la couche
+ * qui affiche : le noyau dit ce qu'il a constaté et avec quels chiffres, il
+ * n'écrit pas de phrases. L'union discriminée oblige l'appelant à traiter tous
+ * les cas, et interdit un `code` inventé.
+ *
+ * Les parts (`multiShare`, `share`) sont des fractions de 0 à 1, jamais des
+ * pourcentages : l'arrondi appartient à l'affichage.
+ */
+export type Warning =
+  | { code: "no-carb-product" }
+  | { code: "carbs-above-guide"; carbsGH: number; guideGH: number }
+  | {
+      code: "carbs-single-source";
+      carbsGH: number;
+      maxGH: number;
+      multiShare: number;
+    }
+  | { code: "fluid-above-guide"; fluidMlH: number; guideMlH: number }
+  | { code: "sodium-below-target"; share: number }
+  | {
+      code: "leg-fluid-above-target";
+      /** Position du secteur dans `NutritionPlan.legs`. */
+      legIndex: number;
+      supplyMl: number;
+      needMl: number;
+    };
+
 export type NutritionPlan = {
   legs: Leg[];
   total: {
@@ -193,5 +224,5 @@ export type NutritionPlan = {
     /** Le sac complet, tous secteurs confondus. */
     units: Map<string, number>;
   };
-  warnings: string[];
+  warnings: Warning[];
 };

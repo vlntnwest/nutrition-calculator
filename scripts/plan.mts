@@ -16,7 +16,7 @@ import { SETTINGS } from "../src/core/pipeline.ts";
 import { CATALOG, productById } from "../src/core/products.ts";
 import { resample } from "../src/core/resample.ts";
 import { smooth } from "../src/core/smooth.ts";
-import type { AidStation } from "../src/core/type.ts";
+import type { AidStation, Leg, Warning } from "../src/core/type.ts";
 
 const args = process.argv.slice(2);
 const option = (name: string) => {
@@ -36,7 +36,7 @@ const products = (option("products") ?? "naak-gel-ultra,naak-drink-ultra")
     const p = productById(id);
     if (!p) {
       throw new Error(
-        `Product inconnu : ${id}\nConnus : ${CATALOG.map((x) => x.id).join(", ")}`,
+        `Produit inconnu : ${id}\nConnus : ${CATALOG.map((x) => x.id).join(", ")}`,
       );
     }
 
@@ -51,7 +51,7 @@ const aidStations: AidStation[] = (option("aidStations") ?? "")
     const [a, b] = raw.split("@");
 
     return b === undefined
-      ? { name: `AidStation ${i + 1}`, distanceM: Number(a) * 1000 }
+      ? { name: `Ravito ${i + 1}`, distanceM: Number(a) * 1000 }
       : { name: a, distanceM: Number(b) * 1000 };
   });
 
@@ -82,6 +82,44 @@ const hoursMinutes = (s: number) =>
     .toString()
     .padStart(2, "0")}`;
 
+// Le noyau rend des données ; les mots sont ici, et nulle part ailleurs.
+const legName = (s: Leg) => `${s.from ?? "Départ"} → ${s.to ?? "Arrivée"}`;
+const percent = (share: number) => `${Math.round(share * 100)} %`;
+
+function phrase(w: Warning): string {
+  switch (w.code) {
+    case "no-carb-product":
+      return "Aucun produit sélectionné ne fournit de glucides.";
+    case "carbs-above-guide":
+      return (
+        `${w.carbsGH} g/h dépasse le repère de tolérance de ${w.guideGH} g/h. ` +
+        `La littérature ne montre pas d'avantage au-delà, et les troubles digestifs augmentent.`
+      );
+    case "carbs-single-source":
+      return (
+        `Au-delà de ${w.maxGH} g/h il faut du glucose-fructose : ` +
+        `seuls ${percent(w.multiShare)} des glucides choisis en apportent. ` +
+        `Le reste ne sera pas absorbé.`
+      );
+    case "fluid-above-guide":
+      return (
+        `${Math.round(w.fluidMlH)} mL/h dépasse ce que la plupart des coureurs ` +
+        `transpirent. Boire au-delà de sa sudation expose à l'hyponatrémie.`
+      );
+    case "sodium-below-target":
+      return (
+        `Sodium à ${percent(w.share)} de la cible : ` +
+        `prévoir des pastilles de sel ou une boisson plus salée.`
+      );
+    case "leg-fluid-above-target":
+      return (
+        `${legName(plan.legs[w.legIndex])} : la boisson seule dépasse la cible d'hydratation ` +
+        `(${Math.round(w.supplyMl)} contre ${Math.round(w.needMl)} mL). ` +
+        `Diluer moins, ou passer des glucides sur du solide.`
+      );
+  }
+}
+
 console.log(`\n${trace.name ?? file}`);
 console.log(
   `${(smoothed[smoothed.length - 1].d / 1000).toFixed(1)} km · ` +
@@ -90,7 +128,7 @@ console.log(
 );
 
 for (const s of plan.legs) {
-  console.log(`\n── ${s.name}`);
+  console.log(`\n── ${legName(s)}`);
   console.log(
     `   ${(s.startM / 1000).toFixed(1)} → ${(s.endM / 1000).toFixed(1)} km · ` +
       `${(s.lengthM / 1000).toFixed(1)} km · ` +
@@ -130,6 +168,6 @@ console.log(
 
 if (plan.warnings.length > 0) {
   console.log("");
-  for (const a of plan.warnings) console.log(`  ⚠  ${a}`);
+  for (const a of plan.warnings) console.log(`  ⚠  ${phrase(a)}`);
 }
 console.log("");
