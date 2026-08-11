@@ -1,7 +1,13 @@
 // Extensions .ts explicites : imports de valeurs, que `node` résout
 // nativement dans les scripts. Voir pipeline.ts.
 import { paceDrift, paceModel } from "./pace.ts";
-import type { PacingProfile, ResolvedPoint, TimedPoint } from "./type.ts";
+import type {
+  PacingProfile,
+  ResolvedPoint,
+  Segment,
+  TimedPoint,
+  TimedSegment,
+} from "./type.ts";
 
 /**
  * Répartit un temps visé sur la trace. `t` est le temps cumulé depuis le
@@ -71,4 +77,45 @@ export function distributeTime(
   result[result.length - 1].t = targetTimeS;
 
   return result;
+}
+
+/** Le temps cumulé à une distance donnée, par interpolation linéaire sur `d`. */
+export function timeAt(points: TimedPoint[], distanceM: number): number {
+  if (points.length === 0) return 0;
+
+  let i = 1;
+  while (i < points.length - 1 && points[i].d < distanceM) i++;
+
+  const a = points[i - 1];
+  const b = points[i];
+  if (b.d === a.d) return a.t;
+
+  return a.t + ((distanceM - a.d) / (b.d - a.d)) * (b.t - a.t);
+}
+
+/**
+ * Les temps de passage, tronçon par tronçon — le roadbook.
+ *
+ * Le calcul se réduit à deux soustractions, parce que `t` est cumulé : toute
+ * la difficulté était de le répartir, pas de le relire. La finesse du
+ * découpage n'entre donc pas en jeu, les temps venant du point par point.
+ */
+export function timeSegments(
+  points: TimedPoint[],
+  segments: Segment[],
+): TimedSegment[] {
+  return segments.map((segment) => {
+    const startS = timeAt(points, segment.startM);
+    const arrivalS = timeAt(points, segment.endM);
+    const durationS = arrivalS - startS;
+
+    return {
+      ...segment,
+      startS,
+      arrivalS,
+      durationS,
+      speedKmh: durationS > 0 ? (segment.lengthM / durationS) * 3.6 : 0,
+      vamMH: durationS > 0 ? (segment.ascentM / durationS) * 3600 : 0,
+    };
+  });
 }

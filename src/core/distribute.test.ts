@@ -1,7 +1,7 @@
 import fc from "fast-check";
 import { expect, test } from "vitest";
-import { distributeTime } from "./distribute";
-import type { PacingProfile, ResolvedPoint } from "./type";
+import { distributeTime, timeAt, timeSegments } from "./distribute";
+import type { PacingProfile, ResolvedPoint, Segment, TimedPoint } from "./type";
 
 const EVEN: PacingProfile = { climbIntensity: 0, split: 0 };
 
@@ -138,4 +138,94 @@ test("la géométrie traverse la fonction sans être touchée", () => {
     expect(p.d).toBe(points[i].d);
     expect(p.ele).toBe(points[i].ele);
   }
+});
+
+/** Une trace plate de `km` kilomètres, parcourue en `heures`. */
+function flatTrack(km: number, hours: number): TimedPoint[] {
+  const points: TimedPoint[] = [];
+  for (let i = 0; i <= km * 100; i++) {
+    points.push({
+      lat: 0,
+      lon: 0,
+      d: i * 10,
+      ele: 0,
+      t: (i / (km * 100)) * hours * 3600,
+    });
+  }
+
+  return points;
+}
+
+test("timeAt interpole entre deux points", () => {
+  const points = flatTrack(1, 1);
+
+  expect(timeAt(points, 0)).toBe(0);
+  expect(timeAt(points, 1000)).toBeCloseTo(3600, 6);
+  expect(timeAt(points, 505)).toBeCloseTo(0.505 * 3600, 3);
+});
+
+function segment(startM: number, endM: number, ascentM: number): Segment {
+  return {
+    startM,
+    endM,
+    lengthM: endM - startM,
+    ascentM,
+    descentM: 0,
+    meanSlope: ascentM / (endM - startM),
+    type: ascentM > 0 ? "climb" : "flat",
+  };
+}
+
+test("les tronçons se datent par soustraction", () => {
+  // 10 km en 2 h, allure constante : 5 km/h, donc 12 min par kilomètre.
+  const points = flatTrack(10, 2);
+  const [first, second] = timeSegments(points, [
+    segment(0, 3000, 300),
+    segment(3000, 10_000, 0),
+  ]);
+
+  expect(first.startS).toBe(0);
+  expect(first.arrivalS).toBeCloseTo(0.3 * 7200, 6);
+  expect(first.durationS).toBeCloseTo(2160, 6);
+  expect(first.speedKmh).toBeCloseTo(5, 9);
+  expect(first.vamMH).toBeCloseTo(500, 6);
+
+  // Les tronçons sont jointifs : l'arrivée de l'un est le départ du suivant.
+  expect(second.startS).toBe(first.arrivalS);
+  expect(second.vamMH).toBe(0);
+});
+
+test("les durées des tronçons se resomment à la durée totale", () => {
+  const points = flatTrack(10, 2);
+  const segments = [
+    segment(0, 2500, 0),
+    segment(2500, 6000, 120),
+    segment(6000, 10_000, 0),
+  ];
+  const timedSegments = timeSegments(points, segments);
+  const total = timedSegments.reduce((s, x) => s + x.durationS, 0);
+
+  expect(total).toBeCloseTo(7200, 6);
+});
+
+test("un tronçon de durée nulle ne divise pas par zéro", () => {
+  const points = flatTrack(10, 2);
+  const [s] = timeSegments(points, [segment(5000, 5000, 0)]);
+
+  expect(s.durationS).toBe(0);
+  expect(s.speedKmh).toBe(0);
+  expect(s.vamMH).toBe(0);
+});
+
+test("la géométrie du tronçon traverse sans être touchée", () => {
+  const points = flatTrack(10, 2);
+  const source = segment(1000, 4000, 200);
+  const [s] = timeSegments(points, [source]);
+
+  expect(s.startM).toBe(source.startM);
+  expect(s.endM).toBe(source.endM);
+  expect(s.lengthM).toBe(source.lengthM);
+  expect(s.ascentM).toBe(source.ascentM);
+  expect(s.meanSlope).toBe(source.meanSlope);
+  expect(s.type).toBe(source.type);
 });

@@ -4,19 +4,24 @@
  *   npm run plan -- saverne.gpx 3:45 70 --aidStations 9.8,20.8
  *   npm run plan -- uthk.gpx 15:30 70 --aidStations "Le Hohwald@23,Champ du Feu@48,Andlau@77"
  *                                     --products naak-gel-ultra,naak-drink-salted-soup
+ *
+ * `--segments` ajoute les temps de passage, tronçon de pente par tronçon de
+ * pente : c'est là qu'on confronte le modèle d'allure à ce qu'on fait vraiment.
  */
 
 import { readFileSync } from "node:fs";
-import { withCumulativeDistance } from "../src/core/distance.ts";
-import { distributeTime } from "../src/core/distribute.ts";
-import { fillMissingElevation } from "../src/core/elevation.ts";
+import { distributeTime, timeSegments } from "../src/core/distribute.ts";
 import { nutritionPlan, suggestedTargets } from "../src/core/nutrition.ts";
 import { parseGpx } from "../src/core/parseGpx.ts";
-import { SETTINGS } from "../src/core/pipeline.ts";
+import { prepareTrack, SETTINGS } from "../src/core/pipeline.ts";
 import { CATALOG, productById } from "../src/core/products.ts";
-import { resample } from "../src/core/resample.ts";
-import { smooth } from "../src/core/smooth.ts";
-import type { AidStation, Leg, Warning } from "../src/core/type.ts";
+import { splitBySlope } from "../src/core/split.ts";
+import type {
+  AidStation,
+  Leg,
+  SegmentType,
+  Warning,
+} from "../src/core/type.ts";
 
 const args = process.argv.slice(2);
 const option = (name: string) => {
@@ -60,14 +65,7 @@ const path = file.includes("/")
   : new URL(`../src/core/fixtures/references/${file}`, import.meta.url);
 
 const trace = parseGpx(readFileSync(path, "utf8"));
-const smoothed = smooth(
-  resample(
-    fillMissingElevation(withCumulativeDistance(trace.points)),
-    SETTINGS.stepM,
-  ),
-  SETTINGS.medianM,
-  SETTINGS.meanM,
-);
+const smoothed = prepareTrack(trace.points);
 const timed = distributeTime(smoothed, targetTimeS, {
   climbIntensity: 0.25,
   split: 0.05,
@@ -82,9 +80,19 @@ const hoursMinutes = (s: number) =>
     .toString()
     .padStart(2, "0")}`;
 
+const minutesSeconds = (s: number) =>
+  `${Math.floor(s / 60)}'${Math.round(s % 60)
+    .toString()
+    .padStart(2, "0")}`;
+
 // Le noyau rend des données ; les mots sont ici, et nulle part ailleurs.
 const legName = (s: Leg) => `${s.from ?? "Départ"} → ${s.to ?? "Arrivée"}`;
 const percent = (share: number) => `${Math.round(share * 100)} %`;
+const typeName: Record<SegmentType, string> = {
+  climb: "montée",
+  descent: "descente",
+  flat: "plat",
+};
 
 function phrase(w: Warning): string {
   switch (w.code) {
@@ -150,6 +158,33 @@ for (const s of plan.legs) {
   if (s.plainWaterMl > 0) {
     console.log(
       `         + ${Math.round(s.plainWaterMl)} mL d'eau claire`.padEnd(44),
+    );
+  }
+}
+
+if (args.includes("--segments")) {
+  const segments = timeSegments(
+    timed,
+    splitBySlope(
+      smoothed,
+      SETTINGS.splitToleranceM,
+      SETTINGS.splitMinLengthM,
+      SETTINGS.splitFlatMax,
+    ),
+  );
+
+  console.log(`\n── Les temps de passage · ${segments.length} tronçons`);
+  console.log(
+    `        km        longueur    pente   terrain     durée   vitesse       VAM   passage`,
+  );
+  for (const s of segments) {
+    console.log(
+      `   ${(s.startM / 1000).toFixed(1).padStart(5)} → ${(s.endM / 1000).toFixed(1).padEnd(5)} ` +
+        `${(s.lengthM / 1000).toFixed(2).padStart(6)} km ${(s.meanSlope * 100).toFixed(1).padStart(7)} %  ` +
+        `${typeName[s.type].padEnd(8)} ${minutesSeconds(s.durationS).padStart(7)} ` +
+        `${s.speedKmh.toFixed(1).padStart(6)} km/h ` +
+        `${s.type === "climb" ? `${Math.round(s.vamMH).toString().padStart(5)} m/h` : "         "}   ` +
+        `${hoursMinutes(s.arrivalS)}`,
     );
   }
 }

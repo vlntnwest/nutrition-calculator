@@ -9,7 +9,7 @@ import { resample } from "./resample.ts";
 import { simplifyPoints } from "./simplify.ts";
 import { smooth } from "./smooth.ts";
 import { splitBySlope } from "./split.ts";
-import type { TrackAnalysis } from "./type.ts";
+import type { RawPoint, ResolvedPoint, TrackAnalysis } from "./type.ts";
 
 /**
  * Les réglages du noyau, rassemblés ici pour qu'il n'existe qu'un seul endroit
@@ -39,6 +39,28 @@ export const SETTINGS = {
 } as const;
 
 /**
+ * Le chemin commun à tous les usages : des points bruts à la trace lissée, en
+ * pleine résolution.
+ *
+ * `analyzeTrack` la mesure, `distributeTime` y répartit le temps. Les deux
+ * partent d'ici : personne ne réenchaîne les quatre étapes à la main, sans
+ * quoi deux appelants finissent par ne plus lire le même parcours.
+ */
+export function prepareTrack(
+  points: RawPoint[],
+  settings: typeof SETTINGS = SETTINGS,
+): ResolvedPoint[] {
+  return smooth(
+    resample(
+      fillMissingElevation(withCumulativeDistance(points)),
+      settings.stepM,
+    ),
+    settings.medianM,
+    settings.meanM,
+  );
+}
+
+/**
  * Le chemin canonique : un GPX en entrée, une distance et un D+ en sortie.
  *
  * C'est la composition que mesure le test de caractérisation et qu'affiche
@@ -50,20 +72,19 @@ export function analyzeTrack(
   settings: typeof SETTINGS = SETTINGS,
 ): TrackAnalysis {
   const trace = parseGpx(xml);
-  const anchored = withCumulativeDistance(trace.points);
-  const filled = fillMissingElevation(anchored);
-  const resampled = resample(filled, settings.stepM);
-  const smoothed = smooth(resampled, settings.medianM, settings.meanM);
+  const smoothed = prepareTrack(trace.points, settings);
 
-  // Le pipeline se scinde ici. Le D+ se lit sur `lisses`, en pleine
+  // Le pipeline se scinde ici. Le D+ se lit sur `smoothed`, en pleine
   // résolution ; `simplifyPoints` ne produit que le dessin. Mesuré sur le
   // corpus, l'écart de D+ entre les deux vaut moins de 1,7 % — mais il ne
-  // sort jamais du noyau, puisque le chiffre affiché vient de `lisses`.
+  // sort jamais du noyau, puisque le chiffre affiché vient de `smoothed`.
   return {
     name: trace.name,
     rawPoints: trace.points.length,
     skipped: trace.skipped,
-    distanceM: filled[filled.length - 1].d,
+    // `resample` préserve le point d'arrivée d'origine et `smooth` ne touche
+    // pas à `d` : cette distance est bit-à-bit celle d'avant lissage.
+    distanceM: smoothed[smoothed.length - 1].d,
     ascentM: elevationGain(smoothed, settings.thresholdM),
     points: simplifyPoints(
       smoothed,
