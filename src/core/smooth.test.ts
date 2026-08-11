@@ -1,5 +1,37 @@
 import { expect, test } from "vitest";
+import { elevationGain } from "./elevation";
 import { meanFilter, medianFilter, smooth } from "./smooth";
+import type { ResolvedPoint } from "./type";
+
+/** Une trace à pas de 10 m, à partir d'une liste d'altitudes. */
+function trace(altitudes: number[]): ResolvedPoint[] {
+  return altitudes.map((ele, i) => ({ lat: 0, lon: 0, d: i * 10, ele }));
+}
+
+/**
+ * Le test qui définit ce qu'on attend du lissage : distinguer le décrochage
+ * d'altimètre du relief. Un pic isolé de 200 m n'existe pas sur le terrain —
+ * une côte de 50 m, si.
+ */
+test("un pic de 200 m disparaît, une côte de 50 m survit", () => {
+  // 2 km de plat, avec un décrochage d'un seul point à mi-parcours.
+  const flat = new Array(201).fill(0);
+  flat[100] = 200;
+
+  const smoothed = smooth(trace(flat), 30, 0);
+
+  expect(Math.max(...smoothed.map((p) => p.ele))).toBe(0);
+  expect(elevationGain(smoothed, 0)).toBe(0);
+
+  // La même trace, mais avec une vraie côte : 50 m sur 500, soit 10 %.
+  const climb = [
+    ...new Array(75).fill(0),
+    ...Array.from({ length: 51 }, (_, i) => i),
+    ...new Array(75).fill(50),
+  ];
+
+  expect(elevationGain(smooth(trace(climb), 30, 0), 0)).toBeCloseTo(50, 6);
+});
 
 test("rend les mediannes en fonction de la fenêtre en mètre", () => {
   expect(
