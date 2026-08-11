@@ -1,9 +1,9 @@
 /**
  * Le plan complet sur un GPX, secteur par secteur.
  *
- *   npm run plan -- saverne.gpx 3:45 70 --ravitos 9.8,20.8
- *   npm run plan -- uthk.gpx 15:30 70 --ravitos "Le Hohwald@23,Champ du Feu@48,Andlau@77"
- *                                     --produits naak-gel-ultra,naak-boisson-salted-soup
+ *   npm run plan -- saverne.gpx 3:45 70 --aidStations 9.8,20.8
+ *   npm run plan -- uthk.gpx 15:30 70 --aidStations "Le Hohwald@23,Champ du Feu@48,Andlau@77"
+ *                                     --products naak-gel-ultra,naak-drink-salted-soup
  */
 
 import { readFileSync } from "node:fs";

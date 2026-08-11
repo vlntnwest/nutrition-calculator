@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { splitBySlope } from "./decoupe";
+import { splitBySlope } from "./split";
 import type { ResolvedPoint } from "./type";
 
 /** Une rampe de `nombre` points espacés de 10 m, montant de `penteM` par point. */

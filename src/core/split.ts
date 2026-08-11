@@ -5,8 +5,8 @@ import type { Mark, ResolvedPoint, Segment, SegmentType } from "./type";
  * Découpe la trace en tronçons de pente homogène.
  *
  * @param toleranceM Écart maximal du profil à la corde du tronçon.
- * @param longueurMinM Plancher sous lequel un tronçon est fusionné.
- * @param penteRoulanteMax Pente en deçà de laquelle un tronçon est « roulant ».
+ * @param minLengthM Plancher sous lequel un tronçon est fusionné.
+ * @param flatMax Pente en deçà de laquelle un tronçon est « roulant ».
  */
 export function splitBySlope(
   points: ResolvedPoint[],

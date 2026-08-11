@@ -8,7 +8,7 @@ import type { PacingProfile, ResolvedPoint, TimedPoint } from "./type.ts";
  * départ, comme `d` est la distance cumulée : toute sortie — par tronçon, par
  * kilomètre, à un ravitaillement — s'en déduit par soustraction.
  *
- * @param tempsViseS Temps total visé, en secondes.
+ * @param targetTimeS Temps total visé, en secondes.
  */
 export function distributeTime(
   points: ResolvedPoint[],
@@ -34,9 +34,15 @@ export function distributeTime(
     }
 
     const slope = (points[i].ele - points[i - 1].ele) / length;
+
+    // L'origine est soustraite comme elle l'est dans `totalDistance` : sans
+    // ça, une trace qui ne part pas de `d = 0` — un secteur découpé au ravito —
+    // verrait toutes ses progressions dépasser 1. `paceDrift` les écrêterait à
+    // 1, le facteur deviendrait constant, et la normalisation l'annulerait :
+    // la dérive d'allure disparaîtrait sans le dire.
     const midpoint =
       totalDistance > 0
-        ? (points[i].d + points[i - 1].d) / 2 / totalDistance
+        ? ((points[i].d + points[i - 1].d) / 2 - points[0].d) / totalDistance
         : 0;
 
     weights[i] =

@@ -16,7 +16,8 @@ Le pipeline, dans l'ordre :
 | `elevationGain` | points → D+ |
 | `simplify` | points → ~2 000 points pour l'affichage |
 | `paceModel` | pente → coefficient de coût |
-| `distributeTime` | tronçons + temps visé → durées |
+| `splitBySlope` | points → tronçons de pente homogène |
+| `distributeTime` | points + temps visé → temps cumulé sur chaque point |
 | `nutritionPlan` | plan + produits → besoins et unités |
 
 ## Lecture du GPX

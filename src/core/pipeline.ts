@@ -1,13 +1,14 @@
 // Extensions .ts explicites : ce module est le seul du noyau à faire des
 // imports de valeurs, et `node scripts/analyze.mts` les résout nativement.
 // Les autres fichiers n'importent que des types, effacés à la compilation.
-import { splitBySlope } from "./decoupe.ts";
+
 import { withCumulativeDistance } from "./distance.ts";
 import { elevationGain, fillMissingElevation } from "./elevation.ts";
 import { parseGpx } from "./parseGpx.ts";
 import { resample } from "./resample.ts";
 import { simplifyPoints } from "./simplify.ts";
 import { smooth } from "./smooth.ts";
+import { splitBySlope } from "./split.ts";
 import type { TrackAnalysis } from "./type.ts";
 
 /**

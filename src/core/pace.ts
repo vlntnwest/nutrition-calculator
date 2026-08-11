@@ -7,8 +7,8 @@ const DESCENT_PENALTY_MAX = 2;
 /**
  * Le coût relatif d'un tronçon, 1 valant le plat.
  *
- * @param pente Fraction, écrêtée à ±45 %. Un `NaN` se propage.
- * @param intensiteMontee De 0 à 1 : plus elle monte, moins les côtes
+ * @param slope Fraction, écrêtée à ±45 %. Un `NaN` se propage.
+ * @param climbIntensity De 0 à 1 : plus elle monte, moins les côtes
  *   ralentissent. Sans effet sur la descente.
  */
 export function paceModel(slope: number, climbIntensity = 0): number {
@@ -44,7 +44,7 @@ export function energyCost(slope: number): number {
 /**
  * La dérive d'allure entre le départ et l'arrivée.
  *
- * @param progression Fraction de distance parcourue, de 0 à 1.
+ * @param progress Fraction de distance parcourue, de 0 à 1.
  * @param split Positif pour un positive split. `0,10` vaut ~10 % plus lent au
  *   dernier kilomètre qu'au premier.
  */
