@@ -178,6 +178,16 @@ export type Serving = {
   intervalS: number;
 };
 
+/**
+ * Une prise, à un instant du secteur. La boisson n'en est pas une : le bidon
+ * délivre un flux continu, on ne « prend » pas un bidon.
+ */
+export type Intake = {
+  /** Secondes depuis le départ du secteur. */
+  atS: number;
+  product: Product;
+};
+
 /** Ce qu'il y a entre deux ravitos — l'unité du plan, et du sac. */
 export type Leg = {
   /** Le ravito d'où l'on part. `null` au départ de la course. */
@@ -197,12 +207,22 @@ export type Leg = {
   need: { carbsG: number; fluidMl: number; sodiumMg: number };
   servings: Serving[];
   supply: { carbsG: number; sodiumMg: number; fluidMl: number };
+  /**
+   * Ce que l'apport dépasse le besoin, en grammes de glucides. On n'achète pas
+   * 7,3 gels : « 8 gels, dont 1 de marge » est plus utile qu'un chiffre juste.
+   */
+  marginG: number;
+  /** L'ordre des prises solides, formats alternés. */
+  intakes: Intake[];
   /** Eau claire à ajouter à la boisson pour atteindre la cible. */
   plainWaterMl: number;
 };
 
 /** Un secteur avant qu'on ne l'ait ravitaillé : géométrie et durée seules. */
-export type RawLeg = Omit<Leg, "need" | "servings" | "supply" | "plainWaterMl">;
+export type RawLeg = Omit<
+  Leg,
+  "need" | "servings" | "supply" | "marginG" | "intakes" | "plainWaterMl"
+>;
 
 /**
  * Une remarque du noyau, en données. La formulation est l'affaire de la couche

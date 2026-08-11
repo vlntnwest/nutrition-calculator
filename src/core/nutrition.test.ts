@@ -32,6 +32,7 @@ function flatTrack(km: number, hours: number): TimedPoint[] {
 const gel = productById("naak-gel-ultra") as Product;
 const drink = productById("naak-drink-ultra") as Product;
 const baouwGel = productById("baouw-gel") as Product;
+const baouwBar = productById("baouw-bar-extra") as Product;
 
 test("le catalogue est cohérent", () => {
   expect(new Set(CATALOG.map((p) => p.id)).size).toBe(CATALOG.length);
@@ -182,10 +183,16 @@ test("le sac total est la somme des secteurs", () => {
 
 /**
  * Arrondir au supérieur produit par produit cumulait les excès — 225 g visés
- * devenaient 300 g. On part du plancher, donc l'excès d'un secteur ne peut
- * jamais dépasser une unité : celle qui a fait franchir la cible.
+ * devenaient 300 g. On part du plancher, donc l'excès ne peut jamais dépasser
+ * une unité : celle qui a fait franchir la cible.
+ *
+ * Depuis le §6, la borne porte sur **ce qui a servi à combler**, pas sur le
+ * total. Le bidon est dimensionné par l'hydratation : ses glucides sont un
+ * effet de bord, ils peuvent dépasser la cible sans que rien ne soit arrondi.
+ * Ce sont les solides qui comblent — sauf s'il n'y en a aucun, auquel cas la
+ * boisson reprend ce rôle.
  */
-test("la couverture d'un secteur ne dépasse jamais d'une unité", () => {
+test("ce qui comble ne dépasse jamais d'une unité", () => {
   fc.assert(
     fc.property(
       fc.double({ min: 0.1, max: 20, noNaN: true }),
@@ -196,27 +203,118 @@ test("la couverture d'un secteur ne dépasse jamais d'une unité", () => {
         selector: (p) => p.id,
       }),
       (hours, carbsGH, products) => {
-        const plan = nutritionPlan(
+        const leg = nutritionPlan(
           flatTrack(10, hours),
           [],
           RUNNER,
           { ...TARGETS, carbsGH },
           products,
-        );
-        const leg = plan.legs[0];
-        const largest = Math.max(...products.map((p) => p.carbsG));
+        ).legs[0];
 
+        // On n'est jamais à court, quoi qu'il arrive.
         expect(leg.supply.carbsG).toBeGreaterThanOrEqual(
           leg.need.carbsG - 1e-9,
         );
+
+        // La borne ne vaut que là où il y a quelque chose à combler. Sans
+        // solide, c'est l'hydratation qui commande le bidon et ses glucides
+        // sont un effet de bord — cas couvert par le test suivant.
+        const solids = products.filter((p) => p.fluidMl === 0);
+        if (solids.length === 0) return;
+
+        const carbsOf = (fromDrink: boolean) =>
+          leg.servings
+            .filter((s) => s.product.fluidMl > 0 === fromDrink)
+            .reduce((s, r) => s + r.units * r.product.carbsG, 0);
+
         // Au plus une unité, et non strictement moins : la sommation
         // flottante peut faire tomber l'écart pile sur la taille de l'unité.
-        expect(leg.supply.carbsG - leg.need.carbsG).toBeLessThanOrEqual(
-          largest,
-        );
+        expect(
+          carbsOf(false) - Math.max(leg.need.carbsG - carbsOf(true), 0),
+        ).toBeLessThanOrEqual(Math.max(...solids.map((p) => p.carbsG)));
       },
     ),
   );
+});
+
+/**
+ * Sans solide, la boisson doit porter les glucides seule. On la complète alors
+ * au-delà de la cible d'hydratation plutôt que de laisser le coureur à court —
+ * et c'est l'avertissement qui le dit, pas un chiffre silencieusement faux.
+ */
+test("sans solide, la boisson est complétée et l'alerte le signale", () => {
+  // 5 h à 500 mL/h = 2500 mL, soit 5 doses et 275 g. La cible en demande 400.
+  const plan = nutritionPlan(
+    flatTrack(40, 5),
+    [],
+    RUNNER,
+    { ...TARGETS, carbsGH: 80 },
+    [drink],
+  );
+  const leg = plan.legs[0];
+
+  expect(leg.supply.carbsG).toBeGreaterThanOrEqual(leg.need.carbsG);
+  expect(leg.supply.fluidMl).toBeGreaterThan(leg.need.fluidMl);
+  expect(leg.plainWaterMl).toBe(0);
+  expect(plan.warnings.some((w) => w.code === "leg-fluid-above-target")).toBe(
+    true,
+  );
+});
+
+/**
+ * Le bidon délivre un flux continu : c'est l'hydratation qui le dimensionne,
+ * jamais les glucides. Doubler la cible de glucides ne doit donc rien changer
+ * au nombre de doses de boisson.
+ */
+test("la boisson est dimensionnée par l'hydratation, pas par les glucides", () => {
+  const points = flatTrack(40, 5);
+  const doses = (carbsGH: number) =>
+    nutritionPlan(points, [], RUNNER, { ...TARGETS, carbsGH }, [
+      gel,
+      drink,
+    ]).legs[0].servings.find((s) => s.product.id === drink.id)?.units ?? 0;
+
+  expect(doses(60)).toBe(doses(120));
+  // 500 mL/h sur 5 h, en doses de 500 mL.
+  expect(doses(60)).toBe(5);
+});
+
+/** Six gels d'affilée, personne ne tient — §6. */
+test("les prises alternent les formats", () => {
+  const leg = nutritionPlan(flatTrack(40, 5), [], RUNNER, TARGETS, [
+    gel,
+    baouwBar,
+  ]).legs[0];
+
+  expect(leg.intakes.length).toBeGreaterThan(4);
+  for (let i = 1; i < leg.intakes.length; i++) {
+    expect(leg.intakes[i].product.type).not.toBe(
+      leg.intakes[i - 1].product.type,
+    );
+  }
+
+  // Rangées dans le temps, à l'intérieur du secteur, jamais sur ses bornes.
+  for (const [i, take] of leg.intakes.entries()) {
+    expect(take.atS).toBeGreaterThan(0);
+    expect(take.atS).toBeLessThan(leg.durationS);
+    if (i > 0) expect(take.atS).toBeGreaterThan(leg.intakes[i - 1].atS);
+  }
+
+  // La boisson n'est pas une prise.
+  const withDrink = nutritionPlan(flatTrack(40, 5), [], RUNNER, TARGETS, [
+    gel,
+    drink,
+  ]).legs[0];
+  expect(withDrink.intakes.every((t) => t.product.fluidMl === 0)).toBe(true);
+});
+
+test("la marge est ce qui dépasse le besoin", () => {
+  const leg = nutritionPlan(flatTrack(40, 5), [], RUNNER, TARGETS, [gel])
+    .legs[0];
+
+  expect(leg.marginG).toBeCloseTo(leg.supply.carbsG - leg.need.carbsG, 9);
+  expect(leg.marginG).toBeGreaterThanOrEqual(0);
+  expect(leg.marginG).toBeLessThan(gel.carbsG);
 });
 
 test("le débit horaire est le même partout", () => {
@@ -323,20 +421,22 @@ test("un produit sans glucides ne décale pas les parts", () => {
     multiTransportable: false,
   };
 
+  // Deux solides : depuis le §6, les parts ne gouvernent plus le partage entre
+  // boisson et solide — c'est l'hydratation qui commande le bidon.
   const plan = nutritionPlan(
     flatTrack(40, 5),
     [],
     RUNNER,
     TARGETS,
-    [water, gel, drink],
+    [water, gel, baouwGel],
     [0, 0.9, 0.1],
   );
 
   const served = (id: string) =>
     plan.legs[0].servings.find((s) => s.product.id === id)?.units ?? 0;
 
-  // 90 % des glucides sur le gel : il doit en apporter bien plus que la boisson.
+  // 90 % des glucides sur le premier gel : il doit en apporter bien plus.
   expect(served(gel.id) * gel.carbsG).toBeGreaterThan(
-    served(drink.id) * drink.carbsG,
+    served(baouwGel.id) * baouwGel.carbsG,
   );
 });
