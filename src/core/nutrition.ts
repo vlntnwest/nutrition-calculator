@@ -9,6 +9,7 @@ import type {
   Serving,
   Targets,
   TimedPoint,
+  Warning,
 } from "./type.ts";
 
 const JOULES_PER_KCAL = 4184;
@@ -132,12 +133,14 @@ export function splitByAidStation(
 
   const legs: RawLeg[] = [];
   let startM = 0;
-  let from = "Départ";
+  // `null` aux deux bouts : « Départ » et « Arrivée » sont des mots, donc
+  // l'affaire de l'affichage. Le nom d'un ravito, lui, vient du roadbook.
+  let from: string | null = null;
   let i = 1;
 
   for (const [k, ravito] of [...bounds, null].entries()) {
     const boundM = ravito?.distanceM ?? endM;
-    const to = ravito?.name ?? "Arrivée";
+    const to = ravito?.name ?? null;
 
     let ascentM = 0;
     let descentM = 0;
@@ -160,7 +163,8 @@ export function splitByAidStation(
     const arrivalS = timeAt(points, boundM);
 
     legs.push({
-      name: `${from} → ${to}`,
+      from,
+      to,
       startM,
       endM: boundM,
       lengthM: boundM - startM,
@@ -252,25 +256,28 @@ function provision(
 /**
  * Des remarques, jamais des interdits. La valeur saisie est toujours
  * respectée : l'outil dit ce qu'il en pense et laisse décider.
+ *
+ * Ce sont des **données**, pas des phrases — voir `Warning`.
  */
 function warnings(
   legs: Leg[],
   targets: Targets,
   products: Product[],
-): string[] {
-  const messages: string[] = [];
+): Warning[] {
+  const messages: Warning[] = [];
 
   if (products.filter((p) => p.carbsG > 0).length === 0) {
-    messages.push("Aucun produit sélectionné ne fournit de glucides.");
+    messages.push({ code: "no-carb-product" });
 
     return messages;
   }
 
   if (targets.carbsGH > CARBS_GUIDE_G_H) {
-    messages.push(
-      `${targets.carbsGH} g/h dépasse le repère de tolérance de ${CARBS_GUIDE_G_H} g/h. ` +
-        `La littérature ne montre pas d'avantage au-delà, et les troubles digestifs augmentent.`,
-    );
+    messages.push({
+      code: "carbs-above-guide",
+      carbsGH: targets.carbsGH,
+      guideGH: CARBS_GUIDE_G_H,
+    });
   }
 
   // Le point le plus utile du lot : viser haut avec des produits mono-source
@@ -288,36 +295,39 @@ function warnings(
     multi < supplied * 0.8 &&
     supplied > 0
   ) {
-    messages.push(
-      `Au-delà de ${CARBS_SINGLE_SOURCE_MAX_G_H} g/h il faut du glucose-fructose : ` +
-        `seuls ${Math.round((multi / supplied) * 100)} % des glucides choisis en apportent. ` +
-        `Le reste ne sera pas absorbé.`,
-    );
+    messages.push({
+      code: "carbs-single-source",
+      carbsGH: targets.carbsGH,
+      maxGH: CARBS_SINGLE_SOURCE_MAX_G_H,
+      multiShare: multi / supplied,
+    });
   }
 
   if (targets.fluidMlH > FLUID_GUIDE_ML_H) {
-    messages.push(
-      `${Math.round(targets.fluidMlH)} mL/h dépasse ce que la plupart des coureurs ` +
-        `transpirent. Boire au-delà de sa sudation expose à l'hyponatrémie.`,
-    );
+    messages.push({
+      code: "fluid-above-guide",
+      fluidMlH: targets.fluidMlH,
+      guideMlH: FLUID_GUIDE_ML_H,
+    });
   }
 
   const sodiumNeed = sum(legs, (s) => s.need.sodiumMg);
   const sodiumSupply = sum(legs, (s) => s.supply.sodiumMg);
   if (sodiumNeed > 0 && sodiumSupply < sodiumNeed * 0.7) {
-    messages.push(
-      `Sodium à ${Math.round((sodiumSupply / sodiumNeed) * 100)} % de la cible : ` +
-        `prévoir des pastilles de sel ou une boisson plus salée.`,
-    );
+    messages.push({
+      code: "sodium-below-target",
+      share: sodiumSupply / sodiumNeed,
+    });
   }
 
-  for (const s of legs) {
+  for (const [legIndex, s] of legs.entries()) {
     if (s.durationS > 0 && s.supply.fluidMl > s.need.fluidMl) {
-      messages.push(
-        `${s.name} : la boisson seule dépasse la cible d'hydratation ` +
-          `(${Math.round(s.supply.fluidMl)} contre ${Math.round(s.need.fluidMl)} mL). ` +
-          `Diluer moins, ou passer des glucides sur du solide.`,
-      );
+      messages.push({
+        code: "leg-fluid-above-target",
+        legIndex,
+        supplyMl: s.supply.fluidMl,
+        needMl: s.need.fluidMl,
+      });
     }
   }
 

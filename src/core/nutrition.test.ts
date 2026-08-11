@@ -62,8 +62,16 @@ test("les suggestions ne sont que des suggestions", () => {
   );
 
   expect(plan.total.carbsG / 5).toBeGreaterThan(100);
-  expect(plan.warnings.some((a) => a.includes("120 g/h"))).toBe(true);
-  expect(plan.warnings.some((a) => a.includes("1400 mL/h"))).toBe(true);
+  expect(plan.warnings).toContainEqual({
+    code: "carbs-above-guide",
+    carbsGH: 120,
+    guideGH: 90,
+  });
+  expect(plan.warnings).toContainEqual({
+    code: "fluid-above-guide",
+    fluidMlH: 1400,
+    guideMlH: 800,
+  });
   expect(FLUID_GUIDE_ML_H).toBe(800);
 });
 
@@ -88,7 +96,9 @@ test("sans ravito, la course est un seul secteur", () => {
   const [leg, ...rest] = splitByAidStation(points, [], RUNNER);
 
   expect(rest).toEqual([]);
-  expect(leg.name).toBe("Départ → Arrivée");
+  // Les deux bouts de la course n'ont pas de nom : c'est l'UI qui les nomme.
+  expect(leg.from).toBeNull();
+  expect(leg.to).toBeNull();
   expect(leg.startM).toBe(0);
   expect(leg.endM).toBe(40_000);
   expect(leg.durationS).toBeCloseTo(5 * 3600, 6);
@@ -97,15 +107,15 @@ test("sans ravito, la course est un seul secteur", () => {
 test("les secteurs sont jointifs et couvrent la course", () => {
   const points = flatTrack(40, 5);
   const aidStations: AidStation[] = [
-    { name: "AidStation 2", distanceM: 25_000 },
-    { name: "AidStation 1", distanceM: 12_000 }, // volontairement désordonné
+    { name: "Ravito 2", distanceM: 25_000 },
+    { name: "Ravito 1", distanceM: 12_000 }, // volontairement désordonné
   ];
   const legs = splitByAidStation(points, aidStations, RUNNER);
 
-  expect(legs.map((s) => s.name)).toEqual([
-    "Départ → AidStation 1",
-    "AidStation 1 → AidStation 2",
-    "AidStation 2 → Arrivée",
+  expect(legs.map((s) => [s.from, s.to])).toEqual([
+    [null, "Ravito 1"],
+    ["Ravito 1", "Ravito 2"],
+    ["Ravito 2", null],
   ]);
   expect(legs[0].startM).toBe(0);
   expect(legs[legs.length - 1].endM).toBe(40_000);
@@ -264,9 +274,9 @@ test("alerte quand on vise haut sans glucose-fructose", () => {
   const multi = nutritionPlan(points, [], RUNNER, targets, [gel]);
 
   expect(
-    singleSource.warnings.some((a) => a.includes("glucose-fructose")),
+    singleSource.warnings.some((w) => w.code === "carbs-single-source"),
   ).toBe(true);
-  expect(multi.warnings.some((a) => a.includes("glucose-fructose"))).toBe(
+  expect(multi.warnings.some((w) => w.code === "carbs-single-source")).toBe(
     false,
   );
   expect(CARBS_SINGLE_SOURCE_MAX_G_H).toBe(60);
@@ -275,7 +285,9 @@ test("alerte quand on vise haut sans glucose-fructose", () => {
 test("alerte quand le sodium apporté est trop bas", () => {
   const plan = nutritionPlan(flatTrack(40, 5), [], RUNNER, TARGETS, [baouwGel]);
 
-  expect(plan.warnings.some((a) => a.includes("Sodium"))).toBe(true);
+  expect(plan.warnings.some((w) => w.code === "sodium-below-target")).toBe(
+    true,
+  );
 });
 
 test("l'eau claire complète la boisson", () => {
@@ -298,7 +310,7 @@ test("sans produit, le plan le dit au lieu de diviser par zéro", () => {
 
   expect(plan.legs[0].servings).toEqual([]);
   expect(plan.total.carbsG).toBe(0);
-  expect(plan.warnings[0]).toContain("Aucun produit");
+  expect(plan.warnings[0]).toEqual({ code: "no-carb-product" });
 });
 
 /**
