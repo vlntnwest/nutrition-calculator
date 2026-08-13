@@ -46,6 +46,20 @@ fabriquerait un tronçon fantôme entre l'arrivée de l'un et le départ de l'au
 soudure à qui la demande explicitement. Voir
 [ADR 008](adr/008-ne-pas-souder-deux-traces-independantes.md).
 
+Ce défaut est **celui de Garmin**, mesuré le 13 août 2026 sur un export Strava à
+deux `<trk>` : Garmin Connect ne lit que le premier et ignore le second. Le
+constat lève la dette que l'ADR 008 s'inscrivait — poser la question à
+l'utilisateur — au moins pour la V1 : suivre l'outil que les coureurs utilisent
+déjà vaut mieux qu'inventer un troisième comportement.
+
+Le fichier mesuré illustre au passage la limite de ce défaut, et pourquoi elle
+est acceptable. Ses deux traces sont contiguës — une seconde et dix mètres
+d'écart, un enregistrement scindé par une reprise — et la première ne fait que
+17 points pour 50 m contre 5,18 km à la seconde. Retenir la première perd donc
+l'essentiel du parcours, en silence. Garmin fait la même chose ; c'est le prix
+d'un comportement prévisible, et la probabilité qu'un fichier de course
+contienne plusieurs `<trk>` reste faible.
+
 `RawTrack.skipped` ne porte que sur la source retenue. Les points de celle qu'on
 abandonne ne sont pas « écartés », ils n'ont jamais été lus. Le nom suit la même
 règle : celui de la source retenue, puis `<metadata><name>`, jamais celui d'une
