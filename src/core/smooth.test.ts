@@ -92,3 +92,29 @@ test("applique un lissage médian puis une moyenne", () => {
     { d: 40, lat: 2, lon: 2, ele: 100 },
   ]);
 });
+
+/**
+ * ADR 006 : une fenêtre nulle ou négative saute le filtre, elle ne produit pas
+ * une fenêtre d'un point. Une fenêtre négative ou `NaN` rendait `half` invalide,
+ * la fenêtre glissante se vidait, et la médiane lisait un point inexistant.
+ */
+test("une fenêtre invalide saute le filtre au lieu de planter", () => {
+  const points: ResolvedPoint[] = [
+    { d: 0, lat: 0, lon: 0, ele: 100 },
+    { d: 10, lat: 0, lon: 0, ele: 300 }, // le pic que la médiane écraserait
+    { d: 20, lat: 0, lon: 0, ele: 100 },
+    { d: 30, lat: 0, lon: 0, ele: 100 },
+  ];
+
+  for (const windowM of [0, -1, Number.NaN]) {
+    expect(medianFilter(points, windowM)).toEqual(points);
+    expect(meanFilter(points, windowM)).toEqual(points);
+  }
+
+  // `Infinity` reste valide : la fenêtre couvre toute la trace.
+  expect(medianFilter(points, Number.POSITIVE_INFINITY)[1].ele).toBe(100);
+
+  // Et le pic disparaît bien dès que la fenêtre est réelle : le garde ne
+  // désactive pas le filtre par mégarde.
+  expect(medianFilter(points, 30)[1].ele).toBe(100);
+});

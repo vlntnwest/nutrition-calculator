@@ -81,7 +81,10 @@ export function distributeTime(
 
 /** Le temps cumulé à une distance donnée, par interpolation linéaire sur `d`. */
 export function timeAt(points: TimedPoint[], distanceM: number): number {
-  if (points.length === 0) return 0;
+  // Il faut deux points pour interpoler. Avec un seul, `points[1]` n'existe
+  // pas et la lecture de `b.d` lève. `distributeTime` protège ce cas chez
+  // elle, mais `timeAt` est exportée et `timeSegments` l'appelle directement.
+  if (points.length < 2) return points[0]?.t ?? 0;
 
   let i = 1;
   while (i < points.length - 1 && points[i].d < distanceM) i++;

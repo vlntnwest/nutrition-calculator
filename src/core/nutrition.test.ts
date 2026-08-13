@@ -641,6 +641,26 @@ test("l'eau claire complète la boisson", () => {
   );
 });
 
+/**
+ * `allocateSteps` comble par pas successifs tant que l'apport reste sous le
+ * besoin. Une cible non finie ne se comble jamais : la boucle tournait sans
+ * fin, et un gel se diagnostique plus mal qu'une exception.
+ */
+test("une cible non finie ne fait pas boucler le noyau", () => {
+  const plan = nutritionPlan(
+    flatTrack(10, 2),
+    [],
+    RUNNER,
+    { ...TARGETS, carbsGH: Number.POSITIVE_INFINITY },
+    [gel, drink],
+  );
+
+  expect(Number.isFinite(plan.total.carbsG)).toBe(true);
+  for (const r of plan.legs[0].servings) {
+    expect(Number.isFinite(r.units)).toBe(true);
+  }
+});
+
 test("sans produit, le plan le dit au lieu de diviser par zéro", () => {
   const plan = nutritionPlan(flatTrack(10, 2), [], RUNNER, TARGETS, []);
 

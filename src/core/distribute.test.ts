@@ -229,3 +229,19 @@ test("la géométrie du tronçon traverse sans être touchée", () => {
   expect(s.meanSlope).toBe(source.meanSlope);
   expect(s.type).toBe(source.type);
 });
+
+/**
+ * `distributeTime` protège la trace à un point chez elle, mais `timeAt` est
+ * exportée et `timeSegments` l'appelle. Il faut deux points pour interpoler ;
+ * avec un seul, la lecture de la borne haute levait une exception.
+ */
+test("timeAt survit à une trace d'un seul point", () => {
+  const alone: TimedPoint[] = [{ lat: 0, lon: 0, d: 0, ele: 100, t: 42 }];
+
+  expect(timeAt(alone, 0)).toBe(42);
+  expect(timeAt(alone, 5000)).toBe(42);
+  expect(timeAt([], 5000)).toBe(0);
+
+  const [s] = timeSegments(alone, [segment(0, 0, 0)]);
+  expect(s.durationS).toBe(0);
+});

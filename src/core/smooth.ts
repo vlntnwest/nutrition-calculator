@@ -1,10 +1,22 @@
 import type { ResolvedPoint } from "./type";
 
+/**
+ * Une fenêtre nulle, négative ou `NaN` saute le filtre — ADR 006, qui veut que
+ * le passage par un filtre soit explicite et non le résultat d'une arithmétique
+ * de bord. Sans ce garde, `half` devient négatif ou `NaN`, la fenêtre glissante
+ * se vide, et la médiane lit un point qui n'existe pas.
+ *
+ * `Infinity` passe : la fenêtre couvre alors toute la trace, ce qui a un sens.
+ */
+function skips(windowM: number): boolean {
+  return !(windowM > 0);
+}
+
 export function medianFilter(
   points: ResolvedPoint[],
   windowM = 30,
 ): ResolvedPoint[] {
-  if (points.length < 2) {
+  if (points.length < 2 || skips(windowM)) {
     return points.map((p) => ({ ...p }));
   }
 
@@ -39,7 +51,7 @@ export function meanFilter(
   points: ResolvedPoint[],
   windowM = 50,
 ): ResolvedPoint[] {
-  if (points.length < 2) {
+  if (points.length < 2 || skips(windowM)) {
     return points.map((p) => ({ ...p }));
   }
 
