@@ -3,7 +3,7 @@
  *
  *   npm run plan -- saverne.gpx 3:45 70 --aidStations 9.8,20.8
  *   npm run plan -- uthk.gpx 15:30 70 --aidStations "Château du Frankenbourg@22.6,Lièpvre@39.8,Refuge des Vosges Trotters@46.8,1er passage Hasenclever@63,2ème passage Hasenclever@73.1, Château du Reichenberg@82.2, Château Haut-Koenigsbourg@92.9"
- *                                     --products naak-gauffre-citron,naak-puree-apple,decathlon-iso-plus
+ *                                     --products naak-waffle-citron,naak-puree-apple,decathlon-iso-plus
  *
  * Positionnels : le fichier, l'objectif en `h:mm`, la masse en kg.
  *
