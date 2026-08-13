@@ -186,7 +186,7 @@ export type TrackAnalysis = {
 
 // ─────────────────────────────────────────────────────────────── Nutrition
 
-export type ProductType = "gel" | "bar" | "puree" | "drink";
+export type ProductType = "gel" | "bar" | "puree" | "drink" | "waffle";
 
 export type Product = {
   id: string;
