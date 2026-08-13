@@ -118,14 +118,13 @@ export function parseGpx(xml: string): RawTrack {
     throw new Error("No valid points found in GPX file");
   }
 
-  // Le nom suit la source retenue : baptiser la trace d'après un <trk> dont on
-  // n'a gardé aucun point serait mentir sur ce qu'on affiche.
-  const named = fromTrack ? [traces[0], routes[0]] : [routes[0], traces[0]];
+  // Le nom vient de la source retenue, puis des métadonnées du fichier —
+  // jamais de la source abandonnée. Baptiser une trace enregistrée du nom d'un
+  // itinéraire sans rapport tromperait sur ce qu'on affiche, et le fichier a
+  // déjà, dans ses métadonnées, un nom qui le désigne lui.
+  const source = fromTrack ? traces[0] : routes[0];
   const name =
-    named[0]?.name?.toString() ??
-    named[1]?.name?.toString() ??
-    parsed.gpx.metadata?.name?.toString() ??
-    null;
+    source?.name?.toString() ?? parsed.gpx.metadata?.name?.toString() ?? null;
 
   return {
     name,

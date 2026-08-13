@@ -30,12 +30,21 @@ s'il contient au moins un `<trkpt>` — valide ou non, la sélection se fait ava
 validation : donnée mesurée, plus dense, plus fidèle au relief. Elles ne sont
 jamais concaténées.
 
-Conséquence assumée : un fichier dont le `<trk>` est intégralement corrompu et dont
-le `<rte>` serait exploitable échoue à l'import. Choisir la source la plus riche
-plutôt que la première non vide supposerait un seuil qu'aucune donnée ne permet
-aujourd'hui de placer — le même argument que celui qui écarte le ratio de points
-dans l'[ADR 004](adr/004-ecarter-les-points-invalides-plutot-que-refuser-le-fichier.md).
-Les dix GPX de référence trancheront.
+La source se choisit sur ce qu'elle donne de **lisible**, pas sur ce qu'elle
+contient : un `<trk>` peuplé de points sans coordonnées est aussi inexploitable
+qu'un `<trkseg>` vide, et le tester par sa longueur condamnerait un `<rte>`
+parfaitement lisible du même fichier. On bascule donc sur le `<rte>` quand aucun
+`<trkpt>` n'est exploitable — mais jamais sur un simple point invalide : un
+décrochage GPS isolé ne doit pas faire changer de source.
+
+`RawTrack.skipped` ne porte que sur la source retenue. Les points de celle qu'on
+abandonne ne sont pas « écartés », ils n'ont jamais été lus. Le nom suit la même
+règle : celui de la source retenue, puis `<metadata><name>`, jamais celui de la
+source abandonnée.
+
+Ce qui reste écarté : choisir la source la plus **riche** plutôt que la première
+lisible supposerait un seuil qu'aucune donnée ne permet aujourd'hui de placer —
+le même argument que celui qui écarte le ratio de points dans l'[ADR 004](adr/004-ecarter-les-points-invalides-plutot-que-refuser-le-fichier.md).
 
 Un point aux coordonnées illisibles est écarté et compté dans `RawTrack.skipped`
 plutôt que de faire échouer l'import — voir

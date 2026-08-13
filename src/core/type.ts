@@ -56,7 +56,9 @@ export type ResolvedPoint = RoutePoint & { ele: number };
 export type TimedPoint = ResolvedPoint & { t: number };
 
 export type RawTrack = {
-  name: string | null; // <trk><name> ou <metadata><name> ou <rte><name>
+  // Le nom de la source retenue — <trk><name> ou <rte><name> selon celle qui
+  // a fourni les points — puis <metadata><name>. Jamais celui de l'autre.
+  name: string | null;
   points: RawPoint[];
   skipped: number; // <trkpt> ou <rtept> écartés faute de coordonnées exploitables
 };
