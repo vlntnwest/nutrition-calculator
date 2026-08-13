@@ -351,6 +351,12 @@ function allocateSteps(
 ): number[] {
   if (items.length === 0) return [];
 
+  // Un besoin non fini ne se comble pas : la boucle de complément ci-dessous
+  // ne s'arrêterait jamais, et un gel se diagnostique plus mal qu'une
+  // exception. `targets.carbsGH` vient de l'appelant et n'est validé nulle
+  // part — le noyau alerte sur les valeurs hors norme, il ne les écrête pas.
+  if (!Number.isFinite(needG)) return floors ? [...floors] : items.map(() => 0);
+
   const ideal = share(items, needG);
   const stepG = items.map((k) => k.product.carbsG / stepsOf(k.product));
   // Copié : `floors` appartient à l'appelant, qui s'en ressert.
