@@ -95,11 +95,18 @@ export function parseGpx(xml: string): RawTrack {
 
   const fromRte = routes.flatMap((route: GpxRte) => route.rtept ?? []);
 
-  const trkpts = fromTrk.length > 0 ? fromTrk : fromRte;
+  // La source se choisit sur ce qu'elle donne de **lisible**, pas sur ce
+  // qu'elle contient. Un <trk> peuplé de points sans coordonnées est aussi
+  // inexploitable qu'un <trkseg> vide : le tester par sa longueur condamnerait
+  // un <rte> parfaitement lisible du même fichier.
+  const trkCandidates = fromTrk.map(toRawPoint); // (RawPoint | null)[]
+  const fromTrack = trkCandidates.some((p) => p !== null);
 
   // `skipped` est déduit, jamais incrémenté : un compteur entretenu à la main
-  // peut se désynchroniser du tableau, une soustraction non.
-  const candidates = trkpts.map(toRawPoint); // (RawPoint | null)[]
+  // peut se désynchroniser du tableau, une soustraction non. Il porte sur la
+  // seule source retenue — les points de celle qu'on abandonne ne sont pas
+  // « écartés », ils n'ont jamais été lus.
+  const candidates = fromTrack ? trkCandidates : fromRte.map(toRawPoint);
   const points = candidates.filter((p) => p !== null); // RawPoint[]
   const skipped = candidates.length - points.length;
 
@@ -111,9 +118,12 @@ export function parseGpx(xml: string): RawTrack {
     throw new Error("No valid points found in GPX file");
   }
 
+  // Le nom suit la source retenue : baptiser la trace d'après un <trk> dont on
+  // n'a gardé aucun point serait mentir sur ce qu'on affiche.
+  const named = fromTrack ? [traces[0], routes[0]] : [routes[0], traces[0]];
   const name =
-    traces[0]?.name?.toString() ??
-    routes[0]?.name?.toString() ??
+    named[0]?.name?.toString() ??
+    named[1]?.name?.toString() ??
     parsed.gpx.metadata?.name?.toString() ??
     null;
 
