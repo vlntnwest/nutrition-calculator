@@ -3,6 +3,7 @@ import type {
   GpxPoint,
   GpxRoot,
   GpxRte,
+  GpxSource,
   GpxTrk,
   GpxTrkseg,
   RawPoint,
@@ -64,6 +65,24 @@ function toRawPoint(tp: GpxPoint): RawPoint | null {
   };
 }
 
+function toSource(
+  name: string | number | undefined,
+  kind: GpxSource["kind"],
+  raw: GpxPoint[],
+): GpxSource {
+  // `skipped` est déduit, jamais incrémenté : un compteur entretenu à la main
+  // peut se désynchroniser du tableau, une soustraction non.
+  const candidates = raw.map(toRawPoint); // (RawPoint | null)[]
+  const points = candidates.filter((p) => p !== null); // RawPoint[]
+
+  return {
+    name: name?.toString() ?? null,
+    kind,
+    points,
+    skipped: candidates.length - points.length,
+  };
+}
+
 export function parseGpx(xml: string): RawTrack {
   const parser = new XMLParser({
     ignoreAttributes: false,
@@ -89,46 +108,60 @@ export function parseGpx(xml: string): RawTrack {
   // dans la nature (perte de signal, pause). Ils contribuent zéro point.
   // Les segments d'une même trace se concatènent bout à bout : on veut une
   // seule ligne continue, la coupure sera traitée par resample().
-  const fromTrk = traces.flatMap((trace: GpxTrk) =>
-    (trace.trkseg ?? []).flatMap((seg: GpxTrkseg) => seg.trkpt ?? []),
+  const trackSources = traces.map((trace: GpxTrk) =>
+    toSource(
+      trace.name,
+      "track",
+      (trace.trkseg ?? []).flatMap((seg: GpxTrkseg) => seg.trkpt ?? []),
+    ),
   );
 
-  const fromRte = routes.flatMap((route: GpxRte) => route.rtept ?? []);
+  const routeSources = routes.map((route: GpxRte) =>
+    toSource(route.name, "route", route.rtept ?? []),
+  );
 
-  // La source se choisit sur ce qu'elle donne de **lisible**, pas sur ce
-  // qu'elle contient. Un <trk> peuplé de points sans coordonnées est aussi
-  // inexploitable qu'un <trkseg> vide : le tester par sa longueur condamnerait
-  // un <rte> parfaitement lisible du même fichier.
-  const trkCandidates = fromTrk.map(toRawPoint); // (RawPoint | null)[]
-  const fromTrack = trkCandidates.some((p) => p !== null);
+  // Une source se retient sur ce qu'elle donne de **lisible**, pas sur ce
+  // qu'elle contient : un <trk> peuplé de points sans coordonnées est aussi
+  // inexploitable qu'un <trkseg> vide, et le tester par sa longueur
+  // condamnerait un <rte> parfaitement lisible du même fichier.
+  const readable = (s: GpxSource) => s.points.length > 0;
+  const fromTracks = trackSources.filter(readable);
 
-  // `skipped` est déduit, jamais incrémenté : un compteur entretenu à la main
-  // peut se désynchroniser du tableau, une soustraction non. Il porte sur la
-  // seule source retenue — les points de celle qu'on abandonne ne sont pas
-  // « écartés », ils n'ont jamais été lus.
-  const candidates = fromTrack ? trkCandidates : fromRte.map(toRawPoint);
-  const points = candidates.filter((p) => p !== null); // RawPoint[]
-  const skipped = candidates.length - points.length;
+  // Les traces l'emportent sur les itinéraires — donnée mesurée, plus dense,
+  // plus fidèle au relief. Les deux ne se mélangent jamais.
+  const sources =
+    fromTracks.length > 0 ? fromTracks : routeSources.filter(readable);
 
   // Écarter quelques points est normal ; les écarter tous signifie qu'on n'a
   // pas su lire le fichier. Second et dernier refus du parseur, avec la racine
   // <gpx> manquante plus haut : tous deux portent sur le fichier entier, jamais
   // sur un point isolé.
-  if (points.length === 0) {
+  if (sources.length === 0) {
     throw new Error("No valid points found in GPX file");
   }
 
-  // Le nom vient de la source retenue, puis des métadonnées du fichier —
-  // jamais de la source abandonnée. Baptiser une trace enregistrée du nom d'un
-  // itinéraire sans rapport tromperait sur ce qu'on affiche, et le fichier a
-  // déjà, dans ses métadonnées, un nom qui le désigne lui.
-  const source = fromTrack ? traces[0] : routes[0];
-  const name =
-    source?.name?.toString() ?? parsed.gpx.metadata?.name?.toString() ?? null;
+  // La première source, et elle seule. Souder les suivantes fabriquerait un
+  // tronçon fantôme entre l'arrivée de l'une et le départ de l'autre — ADR 008.
+  // Le nom vient d'elle, puis des métadonnées du fichier ; jamais d'une source
+  // qu'on n'a pas retenue.
+  const [first] = sources;
 
   return {
-    name,
-    points,
-    skipped,
+    name: first.name ?? parsed.gpx.metadata?.name?.toString() ?? null,
+    points: first.points,
+    skipped: first.skipped,
+    sources,
   };
+}
+
+/**
+ * Soude toutes les sources en une seule trace — le choix « tout combiner »
+ * qu'on propose à l'utilisateur quand le fichier en contient plusieurs.
+ *
+ * À n'appeler que s'il l'a demandé. La ligne droite qui relie deux sources n'a
+ * jamais été parcourue : la distance et le D+ qu'elle porte sont une fiction,
+ * et `resample` l'interpolera comme n'importe quel autre intervalle.
+ */
+export function combineSources(sources: GpxSource[]): RawPoint[] {
+  return sources.flatMap((s) => s.points);
 }

@@ -55,12 +55,38 @@ export type ResolvedPoint = RoutePoint & { ele: number };
 /** `t` est le temps cumulé depuis le départ, comme `d` est la distance. */
 export type TimedPoint = ResolvedPoint & { t: number };
 
+/**
+ * Une source de points du fichier : **un** `<trk>` ou **un** `<rte>`, pris
+ * isolément.
+ *
+ * Les `<trkseg>` d'une même trace y sont concaténés — leur coupure est une
+ * pause ou une perte de signal dans un même effort, et `resample` la traite.
+ * Deux `<trk>` distincts, en revanche, peuvent être deux parcours sans rapport.
+ */
+export type GpxSource = {
+  name: string | null;
+  kind: "track" | "route";
+  points: RawPoint[];
+  /** Points de cette source écartés faute de coordonnées exploitables. */
+  skipped: number;
+};
+
 export type RawTrack = {
   // Le nom de la source retenue — <trk><name> ou <rte><name> selon celle qui
-  // a fourni les points — puis <metadata><name>. Jamais celui de l'autre.
+  // a fourni les points — puis <metadata><name>. Jamais celui d'une autre.
   name: string | null;
   points: RawPoint[];
   skipped: number; // <trkpt> ou <rtept> écartés faute de coordonnées exploitables
+  /**
+   * Toutes les sources lisibles du fichier, dans l'ordre où elles y figurent.
+   * Une seule dans le cas courant.
+   *
+   * Au-delà, `points` ne retient que la **première** : souder deux parcours
+   * indépendants fabriquerait un tronçon fantôme entre l'arrivée de l'un et le
+   * départ de l'autre. Le choix appartient à l'utilisateur — `sources.length`
+   * au-delà de 1 est le signal qu'il faut le lui poser. ADR 008.
+   */
+  sources: GpxSource[];
 };
 
 /** Un point porteur de son index d'origine, pour Douglas-Peucker. */

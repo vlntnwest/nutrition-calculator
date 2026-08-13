@@ -37,10 +37,19 @@ parfaitement lisible du même fichier. On bascule donc sur le `<rte>` quand aucu
 `<trkpt>` n'est exploitable — mais jamais sur un simple point invalide : un
 décrochage GPS isolé ne doit pas faire changer de source.
 
+Chaque `<trk>` et chaque `<rte>` est une **source** à part entière, exposée dans
+`RawTrack.sources`. Les `<trkseg>` d'une même trace, eux, se concatènent : leur
+coupure est une pause ou une perte de signal dans un même effort. Deux `<trk>`
+distincts peuvent en revanche être deux parcours sans rapport, et les souder
+fabriquerait un tronçon fantôme entre l'arrivée de l'un et le départ de l'autre.
+`points` ne retient donc que la **première** source ; `combineSources` offre la
+soudure à qui la demande explicitement. Voir
+[ADR 008](adr/008-ne-pas-souder-deux-traces-independantes.md).
+
 `RawTrack.skipped` ne porte que sur la source retenue. Les points de celle qu'on
 abandonne ne sont pas « écartés », ils n'ont jamais été lus. Le nom suit la même
-règle : celui de la source retenue, puis `<metadata><name>`, jamais celui de la
-source abandonnée.
+règle : celui de la source retenue, puis `<metadata><name>`, jamais celui d'une
+autre.
 
 Ce qui reste écarté : choisir la source la plus **riche** plutôt que la première
 lisible supposerait un seuil qu'aucune donnée ne permet aujourd'hui de placer —
