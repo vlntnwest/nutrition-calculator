@@ -2,11 +2,20 @@
  * Le plan complet sur un GPX, secteur par secteur.
  *
  *   npm run plan -- saverne.gpx 3:45 70 --aidStations 9.8,20.8
- *   npm run plan -- uthk.gpx 15:30 70 --aidStations "Le Hohwald@23,Champ du Feu@48,Andlau@77"
- *                                     --products naak-gel-ultra,naak-drink-salted-soup
+ *   npm run plan -- uthk.gpx 15:30 70 --aidStations "Château du Frankenbourg@22.6,Refuge des Vosges Trotters@46.8,1er passage Hasenclever@63,2ème passage Hasenclever@73.1, Château du Reichenberg@82.2, Château Haut-Koenigsbourg@92.9,Montagne des singes@99"
+ *                                     --products naak-gauffre-citron,naak-puree-apple,decathlon-iso-plus
  *
- * `--segments` ajoute les temps de passage, tronçon de pente par tronçon de
- * pente : c'est là qu'on confronte le modèle d'allure à ce qu'on fait vraiment.
+ * Positionnels : le fichier, l'objectif en `h:mm`, la masse en kg.
+ *
+ *   --products      identifiants séparés par des virgules
+ *   --aidStations   « nom@km » ou « km », séparés par des virgules
+ *   --flasks        volumes en mL, suffixe `w` pour une flasque réservée à
+ *                   l'eau claire — « 500,500w ». Omis, la contenance n'est pas
+ *                   déclarée et le noyau ne borne rien
+ *   --segments      ajoute les temps de passage, tronçon de pente par tronçon
+ *
+ * `--segments` est là où l'on confronte le modèle d'allure à ce qu'on fait
+ * vraiment.
  */
 
 import { readFileSync } from "node:fs";
@@ -31,15 +40,27 @@ const option = (name: string) => {
   return i >= 0 ? args[i + 1] : undefined;
 };
 
-const USAGE = "usage : npm run plan -- <fichier.gpx> <h:mm> <kg> [options]";
-
 // Les options à valeur consomment le jeton suivant : sans ça, « --products
 // naak-gel-ultra » verrait son argument pris pour un positionnel.
-const VALUED = new Set(["products", "aidStations", "flasks"]);
+const VALUED = ["products", "aidStations", "flasks"];
+const FLAGS = ["segments"];
+
+const USAGE =
+  "usage : npm run plan -- <fichier.gpx> <h:mm> <kg> [options]\n" +
+  `options : ${[...VALUED.map((o) => `--${o} <valeur>`), ...FLAGS.map((o) => `--${o}`)].join(" · ")}`;
+
 const positional: string[] = [];
 for (let i = 0; i < args.length; i++) {
   if (args[i].startsWith("--")) {
-    if (VALUED.has(args[i].slice(2))) i++;
+    const name = args[i].slice(2);
+
+    // Une option inconnue était ignorée sans un mot : « --flask 500 » au lieu
+    // de « --flasks » laissait le plan se calculer sans contenance déclarée,
+    // et rien ne disait pourquoi le résultat ne bougeait pas.
+    if (!VALUED.includes(name) && !FLAGS.includes(name)) {
+      throw new Error(`Option inconnue : ${args[i]}\n${USAGE}`);
+    }
+    if (VALUED.includes(name)) i++;
     continue;
   }
   positional.push(args[i]);
@@ -89,6 +110,23 @@ const aidStations: AidStation[] = (option("aidStations") ?? "")
       : { name: a, distanceM: Number(b) * 1000 };
   });
 
+// « 500,500w » : deux flasques de 500 mL, la seconde réservée à l'eau claire.
+// Vide = contenance non déclarée, le noyau ne borne rien.
+const flasks: Flask[] = (option("flasks") ?? "")
+  .split(",")
+  .filter(Boolean)
+  .map((raw) => {
+    const onlyWater = raw.trim().endsWith("w");
+
+    return {
+      volumeMl: number(
+        onlyWater ? raw.trim().slice(0, -1) : raw,
+        "Contenance de flasque",
+      ),
+      onlyWater,
+    };
+  });
+
 const path = file.includes("/")
   ? new URL(file, `file://${process.cwd()}/`)
   : new URL(`../src/core/fixtures/references/${file}`, import.meta.url);
@@ -99,16 +137,6 @@ const timed = distributeTime(smoothed, targetTimeS, {
   climbIntensity: 0.25,
   split: 0.05,
 });
-
-// « 500,500w » : deux flasques de 500 mL, la seconde réservée à l'eau claire.
-// Vide = contenance non déclarée, le noyau ne borne rien.
-const flasks: Flask[] = (option("flasks") ?? "")
-  .split(",")
-  .filter(Boolean)
-  .map((raw) => ({
-    volumeMl: Number.parseFloat(raw),
-    onlyWater: raw.trim().endsWith("w"),
-  }));
 
 const runner = { massKg, flasks };
 const targets = suggestedTargets(runner, targetTimeS);
