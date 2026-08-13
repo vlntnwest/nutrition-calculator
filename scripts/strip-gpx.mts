@@ -12,8 +12,19 @@
  * continuer à éprouver `parseGpx` sur de vrais fichiers Strava ou Garmin —
  * les régénérer depuis notre propre parseur rendrait le test tautologique.
  *
- * Aucune mesure ne doit bouger. Le test de caractérisation en est la preuve :
- * s'il reste vert après le passage, c'est que `lat`, `lon` et `ele` sont
+ * Les balises préfixées d'un namespace sont traitées : `parseGpx` lit avec
+ * `removeNSPrefix`, donc un export en `<ns3:time>` ou `<gpx:extensions>` est
+ * une entrée légitime du pipeline et arrivait ici intact.
+ *
+ * Ce que le nettoyage ne fait **pas** : un `<extensions>` imbriqué dans un
+ * autre `<extensions>`. Le motif s'arrête à la première fermeture et laisserait
+ * une balise orpheline. Le cas n'existe pas dans le corpus, et le GPX ne le
+ * prévoit pas — les extensions imbriquent des éléments *constructeur*, pas
+ * d'autres `<extensions>`.
+ *
+ * L'écriture se fait **en place**, sur des fixtures versionnées : git est le
+ * filet, et le test de caractérisation la preuve. Aucune mesure ne doit bouger
+ * — s'il reste vert après le passage, c'est que `lat`, `lon` et `ele` sont
  * intacts.
  */
 
@@ -35,11 +46,15 @@ for (const path of files) {
   const before = statSync(path).size;
 
   const cleaned = readFileSync(path, "utf8")
-    // <extensions> … </extensions>, y compris multilignes et imbriquées
-    .replace(/[ \t]*<extensions>[\s\S]*?<\/extensions>\s*\n?/g, "")
+    // <extensions> … </extensions>, multilignes, avec ou sans préfixe de
+    // namespace. Non imbriquées : voir l'en-tête.
+    .replace(
+      /[ \t]*<(?:[\w.-]+:)?extensions\b[\s\S]*?<\/(?:[\w.-]+:)?extensions>\s*\n?/g,
+      "",
+    )
     // <time>…</time>, et la variante auto-fermante
-    .replace(/[ \t]*<time>[^<]*<\/time>\s*\n?/g, "")
-    .replace(/[ \t]*<time\s*\/>\s*\n?/g, "");
+    .replace(/[ \t]*<(?:[\w.-]+:)?time>[^<]*<\/(?:[\w.-]+:)?time>\s*\n?/g, "")
+    .replace(/[ \t]*<(?:[\w.-]+:)?time\s*\/>\s*\n?/g, "");
 
   writeFileSync(path, cleaned);
   const after = statSync(path).size;

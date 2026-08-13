@@ -33,7 +33,8 @@ npm run analyze -- ./course.gpx  # n'importe quel GPX
 ```
 
 La sortie donne la distance, le D+ à plusieurs seuils d'hystérésis, avec et sans
-lissage, et marque d'un ✓ les valeurs qui tombent dans la fourchette.
+lissage. Les valeurs qui tombent dans la fourchette des outils sortent en vert,
+et celle qui approche le plus la référence Strava en vert gras.
 
 ## Le corpus
 
@@ -168,7 +169,7 @@ inaperçue jusqu'à ce que quelqu'un pense à relancer `npm run analyze`.
 délibéré : la friction est la fonctionnalité. Un test de caractérisation
 régénéré par réflexe n'enregistre plus les régressions, il les entérine.
 
-Les réglages qu'il verrouille sont rassemblés dans `REGLAGES`, en tête de
+Les réglages qu'il verrouille sont rassemblés dans `SETTINGS`, en tête de
 `src/core/pipeline.ts` — un seul endroit à lire, un seul à changer.
 
 C'est le test le plus lent du dépôt : ~3,5 s pour 88 Mo de GPX, contre 200 ms

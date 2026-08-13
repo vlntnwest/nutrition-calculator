@@ -31,10 +31,38 @@ const option = (name: string) => {
   return i >= 0 ? args[i + 1] : undefined;
 };
 
-const file = args[0] ?? "uthk.gpx";
-const [h, m] = (args[1] ?? "15:30").split(":").map(Number);
-const targetTimeS = h * 3600 + (m ?? 0) * 60;
-const massKg = Number(args[2] ?? 70);
+const USAGE = "usage : npm run plan -- <fichier.gpx> <h:mm> <kg> [options]";
+
+// Les options à valeur consomment le jeton suivant : sans ça, « --products
+// naak-gel-ultra » verrait son argument pris pour un positionnel.
+const VALUED = new Set(["products", "aidStations", "flasks"]);
+const positional: string[] = [];
+for (let i = 0; i < args.length; i++) {
+  if (args[i].startsWith("--")) {
+    if (VALUED.has(args[i].slice(2))) i++;
+    continue;
+  }
+  positional.push(args[i]);
+}
+
+// `Number` rend `NaN` sur n'importe quel jeton non numérique. Sans ce garde, un
+// positionnel oublié imprimait un plan entier rempli de `NaN` au lieu de dire
+// ce qui n'allait pas — le chemin du produit inconnu échoue déjà bruyamment.
+const number = (raw: string, what: string): number => {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) {
+    throw new Error(`${what} illisible : « ${raw} »\n${USAGE}`);
+  }
+
+  return n;
+};
+
+const file = positional[0] ?? "uthk.gpx";
+const [h, m = 0] = (positional[1] ?? "15:30")
+  .split(":")
+  .map((part) => number(part, "Objectif"));
+const targetTimeS = h * 3600 + m * 60;
+const massKg = number(positional[2] ?? "70", "Masse");
 
 const products = (option("products") ?? "naak-gel-ultra,naak-drink-ultra")
   .split(",")
