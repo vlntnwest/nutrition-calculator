@@ -2,7 +2,7 @@
  * Le plan complet sur un GPX, secteur par secteur.
  *
  *   npm run plan -- saverne.gpx 3:45 70 --aidStations 9.8,20.8
- *   npm run plan -- uthk.gpx 15:30 70 --aidStations "Château du Frankenbourg@22.6,Refuge des Vosges Trotters@46.8,1er passage Hasenclever@63,2ème passage Hasenclever@73.1, Château du Reichenberg@82.2, Château Haut-Koenigsbourg@92.9,Montagne des singes@99"
+ *   npm run plan -- uthk.gpx 15:30 70 --aidStations "Château du Frankenbourg@22.6,Lièpvre@39.8,Refuge des Vosges Trotters@46.8,1er passage Hasenclever@63,2ème passage Hasenclever@73.1, Château du Reichenberg@82.2, Château Haut-Koenigsbourg@92.9"
  *                                     --products naak-gauffre-citron,naak-puree-apple,decathlon-iso-plus
  *
  * Positionnels : le fichier, l'objectif en `h:mm`, la masse en kg.
@@ -12,6 +12,8 @@
  *   --flasks        volumes en mL, suffixe `w` pour une flasque réservée à
  *                   l'eau claire — « 500,500w ». Omis, la contenance n'est pas
  *                   déclarée et le noyau ne borne rien
+ *   --start         heure de départ en `h:mm`. Les passages sont alors donnés
+ *                   à l'heure de la montre plutôt qu'en temps écoulé
  *   --segments      ajoute les temps de passage, tronçon de pente par tronçon
  *
  * `--segments` est là où l'on confronte le modèle d'allure à ce qu'on fait
@@ -42,7 +44,7 @@ const option = (name: string) => {
 
 // Les options à valeur consomment le jeton suivant : sans ça, « --products
 // naak-gel-ultra » verrait son argument pris pour un positionnel.
-const VALUED = ["products", "aidStations", "flasks"];
+const VALUED = ["products", "aidStations", "flasks", "start"];
 const FLAGS = ["segments"];
 
 const USAGE =
@@ -152,6 +154,35 @@ const minutesSeconds = (s: number) =>
     .toString()
     .padStart(2, "0")}`;
 
+// Heure de départ, en secondes depuis minuit. `null` = non déclarée, et les
+// passages restent en temps écoulé.
+const startOfDayS = (() => {
+  const raw = option("start");
+  if (raw === undefined) return null;
+
+  const [h, m = 0] = raw
+    .split(":")
+    .map((part) => number(part, "Heure de départ"));
+
+  return h * 3600 + m * 60;
+})();
+
+/**
+ * Un passage : à l'heure de la montre si le départ est connu, en temps écoulé
+ * sinon. Sur un ultra qui franchit minuit, le jour est indiqué — « 2h14 +1j »
+ * se lit sans compter sur ses doigts.
+ */
+const passage = (elapsedS: number) => {
+  if (startOfDayS === null) return hoursMinutes(elapsedS);
+
+  const total = startOfDayS + elapsedS;
+  const days = Math.floor(total / 86_400);
+  const hh = Math.floor((total % 86_400) / 3600);
+  const mm = Math.floor((total % 3600) / 60);
+
+  return `${hh}h${mm.toString().padStart(2, "0")}${days > 0 ? ` +${days}j` : ""}`;
+};
+
 // Le noyau rend des données ; les mots sont ici, et nulle part ailleurs.
 const legName = (s: Leg) => `${s.from ?? "Départ"} → ${s.to ?? "Arrivée"}`;
 const percent = (share: number) => `${Math.round(share * 100)} %`;
@@ -233,6 +264,9 @@ if (trace.sources.length > 1) {
 console.log(
   `${(smoothed[smoothed.length - 1].d / 1000).toFixed(1)} km · ` +
     `objectif ${hoursMinutes(targetTimeS)} · ${massKg} kg · ` +
+    (startOfDayS === null
+      ? ""
+      : `départ ${passage(0)}, arrivée ${passage(targetTimeS)} · `) +
     `${targets.carbsGH} g/h, ${Math.round(targets.fluidMlH)} mL/h, ${targets.sodiumMgL} mg/L`,
 );
 
@@ -242,7 +276,7 @@ for (const s of plan.legs) {
     `   ${(s.startM / 1000).toFixed(1)} → ${(s.endM / 1000).toFixed(1)} km · ` +
       `${(s.lengthM / 1000).toFixed(1)} km · ` +
       `+${Math.round(s.ascentM)} / −${Math.round(s.descentM)} m · ` +
-      `${hoursMinutes(s.durationS)} (arrivée ${hoursMinutes(s.arrivalS)})`,
+      `${hoursMinutes(s.durationS)} (arrivée ${passage(s.arrivalS)})`,
   );
   console.log(
     `   besoin : ${Math.round(s.need.carbsG)} g de glucides, ` +
@@ -303,7 +337,7 @@ if (args.includes("--segments")) {
         `${typeName[s.type].padEnd(8)} ${minutesSeconds(s.durationS).padStart(7)} ` +
         `${s.speedKmh.toFixed(1).padStart(6)} km/h ` +
         `${s.type === "climb" ? `${Math.round(s.vamMH).toString().padStart(5)} m/h` : "         "}   ` +
-        `${hoursMinutes(s.arrivalS)}`,
+        `${passage(s.arrivalS)}`,
     );
   }
 }
