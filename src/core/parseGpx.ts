@@ -1,4 +1,7 @@
 import { XMLParser } from "fast-xml-parser";
+// Extension .ts explicite : import de **valeur**, que `node` résout nativement
+// dans les scripts là où vitest s'en passe. Voir pipeline.ts.
+import { haversine } from "./distance.ts";
 import type {
   GpxPoint,
   GpxRoot,
@@ -140,28 +143,24 @@ export function parseGpx(xml: string): RawTrack {
     throw new Error("No valid points found in GPX file");
   }
 
-  // La première source, et elle seule. Souder les suivantes fabriquerait un
-  // tronçon fantôme entre l'arrivée de l'une et le départ de l'autre — ADR 008.
-  // Le nom vient d'elle, puis des métadonnées du fichier ; jamais d'une source
-  // qu'on n'a pas retenue.
+  // Toutes les sources, bout à bout — ADR 009. Le cas dominant d'un fichier
+  // d'activité à plusieurs <trk> est un enregistrement scindé, et n'en retenir
+  // qu'une perdrait le reste du parcours en silence. Les jointures sont
+  // mesurées et rendues : c'est à elles qu'on reconnaît l'autre cas, celui de
+  // deux parcours sans rapport.
   const [first] = sources;
 
   return {
     name: first.name ?? parsed.gpx.metadata?.name?.toString() ?? null,
-    points: first.points,
-    skipped: first.skipped,
+    points: sources.flatMap((s) => s.points),
+    skipped: sources.reduce((n, s) => n + s.skipped, 0),
     sources,
+    joins: sources.slice(1).map((s, i) => ({
+      afterSource: i,
+      gapM: haversine(
+        sources[i].points[sources[i].points.length - 1],
+        s.points[0],
+      ),
+    })),
   };
-}
-
-/**
- * Soude toutes les sources en une seule trace — le choix « tout combiner »
- * qu'on propose à l'utilisateur quand le fichier en contient plusieurs.
- *
- * À n'appeler que s'il l'a demandé. La ligne droite qui relie deux sources n'a
- * jamais été parcourue : la distance et le D+ qu'elle porte sont une fiction,
- * et `resample` l'interpolera comme n'importe quel autre intervalle.
- */
-export function combineSources(sources: GpxSource[]): RawPoint[] {
-  return sources.flatMap((s) => s.points);
 }

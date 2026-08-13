@@ -12,7 +12,8 @@ déjà le *quoi*, et l'historique Git dit le *quand*.
 | [005](005-lisser-par-mediane-puis-moyenne.md) | Lisser par médiane puis moyenne | Remplacé par 006 |
 | [006](006-couper-la-moyenne-par-defaut.md) | Couper la moyenne par défaut | Accepté |
 | [007](007-le-plan-dit-ce-qu-on-emporte-pas-quand-on-mange.md) | Le plan dit ce qu'on emporte, pas quand on mange | Accepté |
-| [008](008-ne-pas-souder-deux-traces-independantes.md) | Ne pas souder deux traces indépendantes | Accepté |
+| [008](008-ne-pas-souder-deux-traces-independantes.md) | Ne pas souder deux traces indépendantes | Remplacé par 009 |
+| [009](009-combiner-les-traces-et-mesurer-la-jointure.md) | Combiner les traces, et mesurer la jointure | Accepté |
 
 ## Convention
 

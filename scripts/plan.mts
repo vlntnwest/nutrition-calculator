@@ -189,6 +189,19 @@ function phrase(w: Warning): string {
 }
 
 console.log(`\n${trace.name ?? file}`);
+
+// Plusieurs traces dans le fichier : on les a combinées, on dit lesquelles et
+// à quel point les raccords sont plausibles. ADR 009.
+if (trace.sources.length > 1) {
+  console.log(`   ${trace.sources.length} traces combinées :`);
+  for (const [i, s] of trace.sources.entries()) {
+    const join = trace.joins.find((j) => j.afterSource === i - 1);
+    console.log(
+      `     ${s.name ?? `Trace ${i + 1}`} · ${s.points.length} points` +
+        (join ? ` · raccord de ${Math.round(join.gapM)} m` : ""),
+    );
+  }
+}
 console.log(
   `${(smoothed[smoothed.length - 1].d / 1000).toFixed(1)} km · ` +
     `objectif ${hoursMinutes(targetTimeS)} · ${massKg} kg · ` +

@@ -38,27 +38,32 @@ parfaitement lisible du même fichier. On bascule donc sur le `<rte>` quand aucu
 décrochage GPS isolé ne doit pas faire changer de source.
 
 Chaque `<trk>` et chaque `<rte>` est une **source** à part entière, exposée dans
-`RawTrack.sources`. Les `<trkseg>` d'une même trace, eux, se concatènent : leur
-coupure est une pause ou une perte de signal dans un même effort. Deux `<trk>`
-distincts peuvent en revanche être deux parcours sans rapport, et les souder
-fabriquerait un tronçon fantôme entre l'arrivée de l'un et le départ de l'autre.
-`points` ne retient donc que la **première** source ; `combineSources` offre la
-soudure à qui la demande explicitement. Voir
-[ADR 008](adr/008-ne-pas-souder-deux-traces-independantes.md).
+`RawTrack.sources`. Les `<trkseg>` d'une même trace, eux, se concatènent sans
+compter comme des jointures : leur coupure est une pause ou une perte de signal
+dans un même effort.
 
-Ce défaut est **celui de Garmin**, mesuré le 13 août 2026 sur un export Strava à
-deux `<trk>` : Garmin Connect ne lit que le premier et ignore le second. Le
-constat lève la dette que l'ADR 008 s'inscrivait — poser la question à
-l'utilisateur — au moins pour la V1 : suivre l'outil que les coureurs utilisent
-déjà vaut mieux qu'inventer un troisième comportement.
+`points` contient **toutes** les sources lisibles, bout à bout, et chaque
+raccord est mesuré dans `RawTrack.joins`. Voir
+[ADR 009](adr/009-combiner-les-traces-et-mesurer-la-jointure.md).
 
-Le fichier mesuré illustre au passage la limite de ce défaut, et pourquoi elle
-est acceptable. Ses deux traces sont contiguës — une seconde et dix mètres
-d'écart, un enregistrement scindé par une reprise — et la première ne fait que
-17 points pour 50 m contre 5,18 km à la seconde. Retenir la première perd donc
-l'essentiel du parcours, en silence. Garmin fait la même chose ; c'est le prix
-d'un comportement prévisible, et la probabilité qu'un fichier de course
-contienne plusieurs `<trk>` reste faible.
+La jointure est ce qui distingue les deux familles de fichiers à plusieurs
+traces, sans qu'on ait à deviner :
+
+| Jointure | Ce que c'est | Combiner |
+| --- | --- | --- |
+| quelques mètres | enregistrement scindé — pause, batterie, transition | juste |
+| plusieurs kilomètres | export groupé — itinéraires sans rapport | faux |
+
+Le noyau rend la mesure et **n'applique aucun seuil** : la donnée pour le
+calibrer n'existe pas, et le projet s'est déjà brûlé sur un seuil posé sans
+mesure — voir l'ADR 006, qui a dû défaire le 005.
+
+Mesuré le 13 août 2026 sur un export Strava à deux `<trk>` : 17 points pour 50 m
+d'un côté, 1787 points pour 5,18 km de l'autre, une seconde et dix mètres entre
+les deux. Un enregistrement scindé, donc, où ne retenir que la première trace
+rendait 50 m au lieu de 5,24 km, en silence. Garmin Connect ne lit que le premier
+`<trk>` sur ce même fichier — c'est le comportement dont on s'écarte
+délibérément.
 
 `RawTrack.skipped` ne porte que sur la source retenue. Les points de celle qu'on
 abandonne ne sont pas « écartés », ils n'ont jamais été lus. Le nom suit la même

@@ -1,17 +1,17 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
-import { combineSources, parseGpx } from "./parseGpx";
+import { parseGpx } from "./parseGpx";
 
 const fixture = (name: string) =>
   readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8");
 
 /**
- * La trace retenue, sans l'inventaire des sources — celui-ci a ses propres
- * tests plus bas. Garde les assertions de forme strictes plutôt que de les
- * relâcher en `toMatchObject`.
+ * La trace, sans l'inventaire des sources ni des jointures — ceux-ci ont leurs
+ * propres tests plus bas. Garde les assertions de forme strictes plutôt que de
+ * les relâcher en `toMatchObject`.
  */
 const withoutSources = (xml: string) => {
-  const { sources: _, ...track } = parseGpx(xml);
+  const { sources: _s, joins: _j, ...track } = parseGpx(xml);
 
   return track;
 };
@@ -212,12 +212,13 @@ test("prends <metadata><name> si pas de <trk><name>", () => {
 });
 
 /**
- * Deux `<trk>` dans un fichier peuvent être deux parcours sans rapport. Les
- * souder fabriquerait un tronçon fantôme entre l'arrivée de l'un et le départ
- * de l'autre — ADR 008. Le fichier est accepté, le choix revient à l'appelant.
+ * Le cas dominant d'un fichier d'activité à plusieurs `<trk>` est un
+ * enregistrement scindé — pause, batterie, transition multisport. On combine
+ * donc, et la jointure est mesurée : c'est à elle qu'on reconnaît l'autre cas,
+ * deux parcours sans rapport dans un même fichier. ADR 009.
  */
-test("deux traces sont exposées séparément, sans être soudées", () => {
-  // Lyon puis Genève : une concaténation silencieuse se verrait au premier D+.
+test("les traces sont combinées, et la jointure est mesurée", () => {
+  // Lyon puis Genève : la jointure doit annoncer la centaine de kilomètres.
   const xml = `<gpx>
     <trk><name>Boucle du matin</name><trkseg>
       <trkpt lat="45.764" lon="4.8357"><ele>172</ele></trkpt>
@@ -230,18 +231,37 @@ test("deux traces sont exposées séparément, sans être soudées", () => {
 
   const track = parseGpx(xml);
 
-  expect(track.sources).toHaveLength(2);
   expect(track.sources.map((s) => [s.name, s.kind, s.points.length])).toEqual([
     ["Boucle du matin", "track", 2],
     ["Boucle du soir", "track", 1],
   ]);
 
-  // Par défaut, la première seule — jamais la soudure.
+  // Tout est là, dans l'ordre du fichier.
+  expect(track.points).toHaveLength(3);
   expect(track.name).toBe("Boucle du matin");
-  expect(track.points).toHaveLength(2);
 
-  // Et la combinaison reste offerte, à qui la demande.
-  expect(combineSources(track.sources)).toHaveLength(3);
+  // Une jointure pour deux sources, et elle ne passe pas inaperçue.
+  expect(track.joins).toHaveLength(1);
+  expect(track.joins[0].afterSource).toBe(0);
+  expect(track.joins[0].gapM).toBeGreaterThan(100_000);
+});
+
+test("un enregistrement scindé se recolle sans jointure suspecte", () => {
+  // Reprise après pause : quelques mètres, le parcours est continu.
+  const xml = `<gpx>
+    <trk><name>Avant la pause</name><trkseg>
+      <trkpt lat="48.5853" lon="7.6703"><ele>149</ele></trkpt>
+    </trkseg></trk>
+    <trk><name>Après la pause</name><trkseg>
+      <trkpt lat="48.58539" lon="7.67035"><ele>149</ele></trkpt>
+      <trkpt lat="48.5860" lon="7.6710"><ele>151</ele></trkpt>
+    </trkseg></trk>
+  </gpx>`;
+
+  const track = parseGpx(xml);
+
+  expect(track.points).toHaveLength(3);
+  expect(track.joins[0].gapM).toBeLessThan(50);
 });
 
 test("une trace illisible ne figure pas parmi les sources", () => {
@@ -260,14 +280,35 @@ test("une trace illisible ne figure pas parmi les sources", () => {
   expect(track.name).toBe("Lisible");
   // Le point illisible appartenait à une source écartée : il n'a jamais été lu.
   expect(track.skipped).toBe(0);
+  expect(track.joins).toEqual([]);
 });
 
-test("un fichier à source unique expose cette source", () => {
+test("`skipped` additionne les sources retenues", () => {
+  const xml = `<gpx>
+    <trk><name>Une</name><trkseg>
+      <trkpt lat="45.764" lon="4.8357"><ele>172</ele></trkpt>
+      <trkpt lat="N/A" lon="4.8359"><ele>173</ele></trkpt>
+    </trkseg></trk>
+    <trk><name>Deux</name><trkseg>
+      <trkpt lat="45.765" lon="4.8360"><ele>174</ele></trkpt>
+      <trkpt lat="" lon="4.8361"><ele>175</ele></trkpt>
+    </trkseg></trk>
+  </gpx>`;
+
+  const track = parseGpx(xml);
+
+  expect(track.points).toHaveLength(2);
+  expect(track.skipped).toBe(2);
+  expect(track.sources.map((s) => s.skipped)).toEqual([1, 1]);
+});
+
+test("un fichier à source unique expose cette source, sans jointure", () => {
   const track = parseGpx(fixture("minimal.gpx"));
 
   expect(track.sources).toHaveLength(1);
   expect(track.sources[0].kind).toBe("track");
   expect(track.sources[0].points).toEqual(track.points);
+  expect(track.joins).toEqual([]);
 
   const route = parseGpx(fixture("route.gpx"));
   expect(route.sources[0].kind).toBe("route");

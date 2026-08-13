@@ -71,22 +71,48 @@ export type GpxSource = {
   skipped: number;
 };
 
-export type RawTrack = {
-  // Le nom de la source retenue — <trk><name> ou <rte><name> selon celle qui
-  // a fourni les points — puis <metadata><name>. Jamais celui d'une autre.
-  name: string | null;
-  points: RawPoint[];
-  skipped: number; // <trkpt> ou <rtept> écartés faute de coordonnées exploitables
+/**
+ * Le saut entre deux sources consécutives, une fois combinées.
+ *
+ * C'est lui qui distingue les deux familles de fichiers à plusieurs traces,
+ * sans qu'on ait à deviner : quelques mètres trahissent un enregistrement
+ * scindé — pause, changement de batterie, transition multisport — et plusieurs
+ * kilomètres, deux parcours sans rapport réunis dans un même fichier. ADR 009.
+ */
+export type Join = {
+  /** Position, dans `sources`, de la source qui précède la jointure. */
+  afterSource: number;
   /**
-   * Toutes les sources lisibles du fichier, dans l'ordre où elles y figurent.
-   * Une seule dans le cas courant.
-   *
-   * Au-delà, `points` ne retient que la **première** : souder deux parcours
-   * indépendants fabriquerait un tronçon fantôme entre l'arrivée de l'un et le
-   * départ de l'autre. Le choix appartient à l'utilisateur — `sources.length`
-   * au-delà de 1 est le signal qu'il faut le lui poser. ADR 008.
+   * Distance à vol d'oiseau entre le dernier point de l'une et le premier de
+   * la suivante. Aucun seuil n'est appliqué : le noyau rend la mesure, il ne
+   * décide pas à partir de quand elle est suspecte.
+   */
+  gapM: number;
+};
+
+export type RawTrack = {
+  // Le nom de la première source — <trk><name> ou <rte><name> selon celle qui
+  // ouvre le fichier — puis <metadata><name>.
+  name: string | null;
+  /**
+   * Toutes les sources lisibles, bout à bout. Combiner est le défaut parce que
+   * le cas dominant d'un fichier d'activité à plusieurs `<trk>` est un
+   * enregistrement scindé, et que l'erreur inverse — n'en retenir qu'une — est
+   * silencieuse là où celle-ci se voit dans la distance. ADR 009.
+   */
+  points: RawPoint[];
+  /** <trkpt> ou <rtept> écartés faute de coordonnées exploitables, toutes
+   * sources retenues confondues. */
+  skipped: number;
+  /**
+   * Les sources lisibles du fichier, dans l'ordre où elles y figurent. Une
+   * seule dans le cas courant. Elles restent exposées pour qui voudrait n'en
+   * retenir qu'une : `sources[i].points` suffit.
    */
   sources: GpxSource[];
+  /** Une entrée par jointure, donc `sources.length - 1`. Vide sur une source
+   * unique. */
+  joins: Join[];
 };
 
 /** Un point porteur de son index d'origine, pour Douglas-Peucker. */
