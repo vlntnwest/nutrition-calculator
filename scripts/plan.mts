@@ -14,7 +14,14 @@
  *                   déclarée et le noyau ne borne rien
  *   --start         heure de départ en `h:mm`. Les passages sont alors donnés
  *                   à l'heure de la montre plutôt qu'en temps écoulé
+ *   --carbs         glucides en g/h — 45, 60, 90… Aucune valeur n'est imposée
+ *   --fluid         hydratation en mL/h
+ *   --sodium        sodium en mg par litre de boisson
  *   --segments      ajoute les temps de passage, tronçon de pente par tronçon
+ *
+ * `--carbs`, `--fluid` et `--sodium` remplacent chacun la suggestion calculée
+ * pour la durée et le gabarit. Rien n'est écrêté : une valeur hors norme passe
+ * et déclenche une remarque.
  *
  * `--segments` est là où l'on confronte le modèle d'allure à ce qu'on fait
  * vraiment.
@@ -32,6 +39,7 @@ import type {
   Flask,
   Leg,
   SegmentType,
+  Targets,
   Warning,
 } from "../src/core/type.ts";
 
@@ -44,7 +52,15 @@ const option = (name: string) => {
 
 // Les options à valeur consomment le jeton suivant : sans ça, « --products
 // naak-gel-ultra » verrait son argument pris pour un positionnel.
-const VALUED = ["products", "aidStations", "flasks", "start"];
+const VALUED = [
+  "products",
+  "aidStations",
+  "flasks",
+  "start",
+  "carbs",
+  "fluid",
+  "sodium",
+];
 const FLAGS = ["segments"];
 
 const USAGE =
@@ -141,7 +157,22 @@ const timed = distributeTime(smoothed, targetTimeS, {
 });
 
 const runner = { massKg, flasks };
-const targets = suggestedTargets(runner, targetTimeS);
+
+// Les cibles sont des suggestions, jamais des consignes : chacune se remplace
+// sans que rien ne soit écrêté — c'est `warnings` qui dit ce qu'il en pense.
+const suggested = suggestedTargets(runner, targetTimeS);
+const override = (name: string, what: string, fallback: number) => {
+  const raw = option(name);
+
+  return raw === undefined ? fallback : number(raw, what);
+};
+
+const targets: Targets = {
+  carbsGH: override("carbs", "Glucides", suggested.carbsGH),
+  fluidMlH: override("fluid", "Hydratation", suggested.fluidMlH),
+  sodiumMgL: override("sodium", "Sodium", suggested.sodiumMgL),
+};
+
 const plan = nutritionPlan(timed, aidStations, runner, targets, products);
 
 const hoursMinutes = (s: number) =>
