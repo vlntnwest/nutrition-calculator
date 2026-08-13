@@ -3,6 +3,14 @@
 ## Statut
 
 Accepté — 2026-08-13
+**Remplacé par [009](009-combiner-les-traces-et-mesurer-la-jointure.md) — 2026-08-13**
+
+Le constat reste juste : deux `<trk>` ne sont pas forcément un seul parcours, et
+les souder peut fabriquer un tronçon fantôme. C'est le **défaut** retenu ici —
+ne garder que la première source — que le premier fichier réel a démenti le jour
+même. Il s'agissait d'un enregistrement scindé, et la première trace ne portait
+que 50 des 5 240 mètres du parcours. Cet ADR listait pourtant ce risque dans ses
+conséquences ; il l'a sous-estimé.
 
 Précise l'[ADR 004](004-ecarter-les-points-invalides-plutot-que-refuser-le-fichier.md),
 dont la politique — accepter le fichier plutôt que le refuser — reste entière.
