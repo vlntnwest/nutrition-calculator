@@ -3,6 +3,10 @@ import type { Product } from "./type.ts";
 /**
  * Relevé sur les sites des marques et sur Nutri-Bay en août 2026. Les valeurs
  * varient d'un parfum à l'autre : ce sont des références, pas un contrat.
+ *
+ * `divisibleBy` suit le contenant, pas le format déclaré : une poudre se dose
+ * à la demi-mesure, une barre se casse, un gel et une dosette de purée se
+ * finissent — on ne referme pas un sachet entamé pendant 3 h de course.
  */
 export const CATALOG: Product[] = [
   {
@@ -16,6 +20,7 @@ export const CATALOG: Product[] = [
     sodiumMg: 190,
     fluidMl: 0,
     multiTransportable: true, // glucose:fructose 3:1 annoncé
+    divisibleBy: 1,
   },
   {
     id: "naak-bar-ultra",
@@ -28,6 +33,7 @@ export const CATALOG: Product[] = [
     sodiumMg: 190,
     fluidMl: 0,
     multiTransportable: true,
+    divisibleBy: 2,
   },
   {
     id: "naak-drink-ultra",
@@ -40,6 +46,7 @@ export const CATALOG: Product[] = [
     sodiumMg: 400,
     fluidMl: 500,
     multiTransportable: true,
+    divisibleBy: 2,
   },
   {
     id: "naak-drink-salted-soup",
@@ -52,6 +59,7 @@ export const CATALOG: Product[] = [
     sodiumMg: 850,
     fluidMl: 500,
     multiTransportable: true,
+    divisibleBy: 2,
   },
   {
     id: "baouw-gel",
@@ -64,6 +72,7 @@ export const CATALOG: Product[] = [
     sodiumMg: 4, // 0,01 g de sel — autant dire rien
     fluidMl: 0,
     multiTransportable: false,
+    divisibleBy: 1,
   },
   {
     id: "baouw-bar-extra",
@@ -76,6 +85,7 @@ export const CATALOG: Product[] = [
     sodiumMg: 333,
     fluidMl: 0,
     multiTransportable: false,
+    divisibleBy: 2,
   },
   {
     id: "baouw-puree",
@@ -88,6 +98,7 @@ export const CATALOG: Product[] = [
     sodiumMg: 0,
     fluidMl: 0,
     multiTransportable: false,
+    divisibleBy: 1,
   },
   {
     id: "decathlon-gel-plus",
@@ -100,6 +111,7 @@ export const CATALOG: Product[] = [
     sodiumMg: 70,
     fluidMl: 0,
     multiTransportable: false,
+    divisibleBy: 1,
   },
   {
     id: "decathlon-iso-plus",
@@ -112,6 +124,7 @@ export const CATALOG: Product[] = [
     sodiumMg: 285,
     fluidMl: 500,
     multiTransportable: false,
+    divisibleBy: 2,
   },
 ];
 
