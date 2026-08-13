@@ -130,6 +130,48 @@ test("retombe sur le <rte> quand le <trk> est présent mais vide", () => {
   });
 });
 
+test("retombe sur le <rte> quand aucun <trkpt> n'est exploitable", () => {
+  // Le <trk> est peuplé — le tester par sa longueur suffirait à le retenir —
+  // mais aucun de ses points n'a de coordonnées. Le fichier reste lisible.
+  const xml = `<gpx>
+    <trk><name>Trace enregistrée</name><trkseg>
+      <trkpt><ele>172.4</ele></trkpt>
+      <trkpt lat="abc" lon="4.8357"><ele>180</ele></trkpt>
+    </trkseg></trk>
+    <rte><name>Itinéraire planifié</name>
+      <rtept lat="45.764" lon="4.8357"><ele>172.4</ele></rtept>
+    </rte>
+  </gpx>`;
+
+  expect(parseGpx(xml)).toEqual({
+    // Le nom suit la source retenue, pas le <trk> qu'on a abandonné.
+    name: "Itinéraire planifié",
+    points: [{ lat: 45.764, lon: 4.8357, ele: 172.4 }],
+    // Les <trkpt> illisibles n'ont pas été « écartés » : on ne les a pas lus.
+    skipped: 0,
+  });
+});
+
+test("un <trk> partiellement lisible reste la source", () => {
+  // Un point invalide sur deux ne disqualifie pas la trace : il est écarté et
+  // compté, et le <rte> n'est pas consulté.
+  const xml = `<gpx>
+    <trk><name>Trace enregistrée</name><trkseg>
+      <trkpt><ele>172.4</ele></trkpt>
+      <trkpt lat="45.764" lon="4.8357"><ele>180</ele></trkpt>
+    </trkseg></trk>
+    <rte><name>Itinéraire planifié</name>
+      <rtept lat="46.2044" lon="6.1432"><ele>375</ele></rtept>
+    </rte>
+  </gpx>`;
+
+  expect(parseGpx(xml)).toEqual({
+    name: "Trace enregistrée",
+    points: [{ lat: 45.764, lon: 4.8357, ele: 180 }],
+    skipped: 1,
+  });
+});
+
 test("prends <metadata><name> si pas de <trk><name>", () => {
   const xml = `<gpx><metadata><name>UTDP 2026</name></metadata><trk><trkseg>
     <trkpt lat="45.764" lon="4.8357"><ele>172.4</ele></trkpt>
