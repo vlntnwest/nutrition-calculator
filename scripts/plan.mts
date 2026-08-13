@@ -18,8 +18,8 @@ import { CATALOG, productById } from "../src/core/products.ts";
 import { splitBySlope } from "../src/core/split.ts";
 import type {
   AidStation,
+  Flask,
   Leg,
-  ProductType,
   SegmentType,
   Warning,
 } from "../src/core/type.ts";
@@ -72,7 +72,17 @@ const timed = distributeTime(smoothed, targetTimeS, {
   split: 0.05,
 });
 
-const runner = { massKg };
+// « 500,500w » : deux flasques de 500 mL, la seconde réservée à l'eau claire.
+// Vide = contenance non déclarée, le noyau ne borne rien.
+const flasks: Flask[] = (option("flasks") ?? "")
+  .split(",")
+  .filter(Boolean)
+  .map((raw) => ({
+    volumeMl: Number.parseFloat(raw),
+    onlyWater: raw.trim().endsWith("w"),
+  }));
+
+const runner = { massKg, flasks };
 const targets = suggestedTargets(runner, targetTimeS);
 const plan = nutritionPlan(timed, aidStations, runner, targets, products);
 
@@ -94,12 +104,9 @@ const typeName: Record<SegmentType, string> = {
   descent: "descente",
   flat: "plat",
 };
-const formatName: Record<ProductType, string> = {
-  gel: "gel",
-  bar: "barre",
-  puree: "purée",
-  drink: "boisson",
-};
+/** Les demies existent depuis `divisibleBy` : « 2,5 × barre ». */
+const amount = (n: number) =>
+  (n % 1 === 0 ? String(n) : n.toFixed(1).replace(".", ",")).padStart(4);
 
 function phrase(w: Warning): string {
   switch (w.code) {
@@ -132,6 +139,24 @@ function phrase(w: Warning): string {
         `(${Math.round(w.supplyMl)} contre ${Math.round(w.needMl)} mL). ` +
         `Diluer moins, ou passer des glucides sur du solide.`
       );
+    case "leg-fluid-above-carry":
+      return (
+        `${legName(plan.legs[w.legIndex])} : ${Math.round(w.requiredMl)} mL à porter ` +
+        `pour ${Math.round(w.carryMl)} mL de contenance. ` +
+        `Il faudra boire au ravito ou puiser en route.`
+      );
+    case "leg-drink-above-flasks":
+      return (
+        `${legName(plan.legs[w.legIndex])} : ${Math.round(w.drinkMl)} mL de boisson préparée ` +
+        `pour ${Math.round(w.capacityMl)} mL de flasques qui l'acceptent. ` +
+        `Le reste des contenants est réservé à l'eau claire.`
+      );
+    case "leg-drink-unused":
+      return (
+        `${legName(plan.legs[w.legIndex])} : aucune dose de boisson n'entre dans ce secteur, ` +
+        `les ${Math.round(w.plainWaterMl)} mL partent en eau claire. ` +
+        `Secteur trop court pour la dose, ou contenance trop faible.`
+      );
   }
 }
 
@@ -151,33 +176,40 @@ for (const s of plan.legs) {
       `${hoursMinutes(s.durationS)} (arrivée ${hoursMinutes(s.arrivalS)})`,
   );
   console.log(
-    `   à emporter : ${Math.round(s.need.carbsG)} g de glucides` +
-      (s.marginG >= 1 ? ` (+${Math.round(s.marginG)} g de marge)` : "") +
-      `, ${Math.round(s.need.fluidMl)} mL, ${Math.round(s.need.sodiumMg)} mg de sodium ` +
-      `· ${Math.round(s.expenditureKcal)} kcal dépensées`,
+    `   besoin : ${Math.round(s.need.carbsG)} g de glucides, ` +
+      `${Math.round(s.need.fluidMl)} mL, ${Math.round(s.need.sodiumMg)} mg de sodium`,
   );
 
   for (const r of s.servings) {
     console.log(
-      `     ${r.units.toString().padStart(3)} × ${`${r.product.brand} ${r.product.name}`.padEnd(36)}` +
-        ` un toutes les ${Math.round(r.intervalS / 60)} min`,
+      `     ${amount(r.units)} × ${`${r.product.brand} ${r.product.name}`}`,
     );
   }
-  if (s.plainWaterMl > 0) {
-    console.log(
-      `         + ${Math.round(s.plainWaterMl)} mL d'eau claire`.padEnd(44),
-    );
+  if (s.fills.length > 0) {
+    for (const f of s.fills) {
+      console.log(
+        `          flasque ${f.flaskIndex + 1} : ${Math.round(f.volumeMl)} mL ` +
+          `${f.product ? f.product.name : "d'eau claire"}`,
+      );
+    }
+    if (s.refillMl > 0) {
+      console.log(
+        `          + ${Math.round(s.refillMl)} mL à boire au ravito ou à refaire en route`,
+      );
+    }
+  } else if (s.plainWaterMl > 0) {
+    console.log(`          + ${Math.round(s.plainWaterMl)} mL d'eau claire`);
   }
-  if (s.intakes.length > 0) {
-    console.log(
-      `     prises : ${s.intakes
-        .map(
-          (t) =>
-            `${hoursMinutes(s.startS + t.atS)} ${formatName[t.product.type]}`,
-        )
-        .join(" · ")}`,
-    );
-  }
+  console.log(
+    `   apport : ${Math.round(s.supply.carbsG)} g` +
+      // Signé : depuis l'ADR 007 un secteur peut être sous son besoin propre.
+      (Math.abs(s.marginG) >= 1
+        ? ` (${s.marginG > 0 ? "+" : "−"}${Math.round(Math.abs(s.marginG))} g)`
+        : "") +
+      `, ${Math.round(s.supply.energyKcal)} kcal, ` +
+      `${Math.round(s.supply.sodiumMg)} mg de sodium, ` +
+      `${Math.round(s.supply.fluidMl)} mL de boisson`,
+  );
 }
 
 if (args.includes("--segments")) {
@@ -210,13 +242,14 @@ if (args.includes("--segments")) {
 console.log(`\n── Le sac complet`);
 for (const [id, units] of plan.total.units) {
   const p = productById(id);
-  console.log(`   ${units.toString().padStart(3)} × ${p?.brand} ${p?.name}`);
+  console.log(`   ${amount(units)} × ${p?.brand} ${p?.name}`);
 }
 console.log(
-  `   ${Math.round(plan.total.carbsG)} g de glucides · ` +
+  `   ${Math.round(plan.total.carbsG)} g de glucides ` +
+    `(+${Math.round(plan.total.marginG)} g de marge) · ` +
+    `${Math.round(plan.total.energyKcal).toLocaleString("fr")} kcal · ` +
     `${Math.round(plan.total.sodiumMg)} mg de sodium · ` +
-    `${Math.round(plan.total.fluidMl)} mL de boisson · ` +
-    `${Math.round(plan.total.expenditureKcal).toLocaleString("fr")} kcal dépensées`,
+    `${Math.round(plan.total.fluidMl)} mL de boisson`,
 );
 
 if (plan.warnings.length > 0) {

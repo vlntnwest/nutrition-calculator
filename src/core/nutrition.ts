@@ -2,11 +2,11 @@ import { timeAt } from "./distribute.ts";
 import { energyCost } from "./pace.ts";
 import type {
   AidStation,
-  Intake,
+  Fill,
+  Flask,
   Leg,
   NutritionPlan,
   Product,
-  ProductType,
   RawLeg,
   Runner,
   Serving,
@@ -56,11 +56,7 @@ export function suggestedTargets(runner: Runner, durationS: number): Targets {
 }
 
 /**
- * Le plan complet, secteur par secteur.
- *
- * Chaque secteur est traité **séparément** : c'est ce qu'on charge dans le sac
- * à un ravito pour tenir jusqu'au suivant. Arrondir par secteur n'est pas une
- * approximation, c'est la réalité — on n'emporte pas un tiers de gel.
+ * Le plan complet — ce qu'on emporte, pas quand on mange. ADR 007.
  *
  * Le débit de glucides est **constant** : un secteur de montagne ne reçoit pas
  * plus par heure qu'un secteur roulant, il reçoit plus parce qu'il dure plus
@@ -77,8 +73,12 @@ export function nutritionPlan(
   products: Product[],
   parts?: number[],
 ): NutritionPlan {
-  const legs = splitByAidStation(points, aidStations, runner).map((raw) =>
-    provision(raw, targets, products, parts),
+  const legs = provision(
+    splitByAidStation(points, aidStations, runner),
+    targets,
+    products,
+    runner,
+    parts,
   );
 
   const units = new Map<string, number>();
@@ -88,16 +88,19 @@ export function nutritionPlan(
     }
   }
 
+  const carbsG = sum(legs, (s) => s.supply.carbsG);
   const total = {
     durationS: sum(legs, (s) => s.durationS),
     expenditureKcal: sum(legs, (s) => s.expenditureKcal),
-    carbsG: sum(legs, (s) => s.supply.carbsG),
+    carbsG,
+    energyKcal: sum(legs, (s) => s.supply.energyKcal),
     sodiumMg: sum(legs, (s) => s.supply.sodiumMg),
     fluidMl: sum(legs, (s) => s.supply.fluidMl),
+    marginG: carbsG - sum(legs, (s) => s.need.carbsG),
     units,
   };
 
-  return { legs, total, warnings: warnings(legs, targets, products) };
+  return { legs, total, warnings: warnings(legs, targets, products, runner) };
 }
 
 function sum<T>(items: T[], read: (item: T) => number): number {
@@ -173,171 +176,336 @@ export function splitByAidStation(
   return legs;
 }
 
-function provision(
-  raw: RawLeg,
-  targets: Targets,
-  products: Product[],
-  parts?: number[],
-): Leg {
+type Weighted = { product: Product; weight: number };
+
+/** Une charge, avant conversion en unités : voir `Product.divisibleBy`. */
+type Loaded = { product: Product; steps: number };
+
+/**
+ * En combien de pas se compte une unité. Tout le calcul travaille en pas
+ * entiers et ne divise qu'à la toute fin : c'est ce qui permet à la méthode du
+ * plus fort reste de s'appliquer telle quelle à un produit sécable.
+ */
+function stepsOf(product: Product): number {
+  const n = Math.floor(product.divisibleBy);
+
+  return Number.isFinite(n) && n >= 1 ? n : 1;
+}
+
+/** Ce que le coureur porte en tout. `null` si rien n'a été déclaré. */
+function carryCapacityMl(runner: Runner): number | null {
+  if (runner.flasks.length === 0) return null;
+
+  return runner.flasks.reduce((s, f) => s + f.volumeMl, 0);
+}
+
+/** Ce qu'il peut préparer en boisson : les flasques non réservées à l'eau. */
+function drinkCapacityMl(runner: Runner): number | null {
+  if (runner.flasks.length === 0) return null;
+
+  return runner.flasks
+    .filter((f) => !f.onlyWater)
+    .reduce((s, f) => s + f.volumeMl, 0);
+}
+
+function needOf(raw: RawLeg, targets: Targets): Leg["need"] {
   const hours = raw.durationS / 3600;
   const fluidMl = targets.fluidMlH * hours;
-  const need = {
+
+  return {
     carbsG: targets.carbsGH * hours,
     fluidMl,
     sodiumMg: (fluidMl / 1000) * targets.sodiumMgL,
   };
+}
 
+/**
+ * Le partage d'une quantité entre des produits, selon leurs parts.
+ *
+ * Des parts toutes nulles ne veulent pas dire « rien à personne » : c'est
+ * l'absence de consigne, donc le partage à parts égales.
+ */
+function share(items: Weighted[], amount: number): number[] {
+  const totalWeight = items.reduce((s, k) => s + k.weight, 0);
+
+  return items.map((k) =>
+    totalWeight > 0 ? (amount * k.weight) / totalWeight : amount / items.length,
+  );
+}
+
+/**
+ * Les trois passes de l'ADR 007.
+ *
+ * 1. **Le liquide, secteur par secteur.** La contenance d'une flasque est une
+ *    contrainte entre deux points d'eau, pas sur la course : on remplit à
+ *    chaque passage, rechargement ou pas.
+ * 2. **Les solides, une seule fois sur la course.** Un seul arrondi de
+ *    quantité, là où trois secteurs en cumulaient trois — 81 g au lieu de 54
+ *    sur un semi, mesuré.
+ * 3. **Le placement.** Les unités existent déjà ; on ne décide plus que du
+ *    secteur où chacune tombe. Répartir ne peut donc rien ajouter au total.
+ */
+function provision(
+  raws: RawLeg[],
+  targets: Targets,
+  products: Product[],
+  runner: Runner,
+  parts?: number[],
+): Leg[] {
   // La part est lue sur la position d'origine, avant le filtrage : sinon un
   // produit sans glucides décale en silence toutes les parts qui le suivent.
   const kept = products
     .map((product, i) => ({ product, weight: parts?.[i] ?? 1 }))
     .filter(({ product }) => product.carbsG > 0);
 
-  // Le bidon délivre un flux continu commandé par l'hydratation : ce n'est pas
-  // une prise, et ce ne sont pas les glucides qui fixent sa quantité. On le
-  // dimensionne donc sur le liquide, en arrondissant vers le bas pour ne
-  // jamais dépasser la cible — le reste se boit en eau claire.
   const drinks = kept.filter((k) => k.product.fluidMl > 0);
   const solids = kept.filter((k) => k.product.fluidMl === 0);
-  const drinkWeight = drinks.reduce((s, k) => s + k.weight, 0);
-  const drinkUnits = drinks.map((k) => {
-    const shareMl =
-      drinkWeight > 0
-        ? (need.fluidMl * k.weight) / drinkWeight
-        : need.fluidMl / drinks.length;
+  const needs = raws.map((raw) => needOf(raw, targets));
+  const loaded: Loaded[][] = raws.map(() => []);
 
-    return Math.floor(shareMl / k.product.fluidMl);
+  // Passe 1. Le bidon délivre un flux continu commandé par l'hydratation : ce
+  // n'est pas une prise, et ce ne sont pas les glucides qui fixent sa
+  // quantité. On arrondit vers le bas pour ne jamais dépasser la cible — le
+  // reste se boit en eau claire.
+  const capacityMl = drinkCapacityMl(runner);
+  const drinkSteps = needs.map((need) => {
+    const availableMl =
+      capacityMl === null ? need.fluidMl : Math.min(need.fluidMl, capacityMl);
+
+    return share(drinks, availableMl).map((shareMl, i) =>
+      Math.floor(
+        shareMl / (drinks[i].product.fluidMl / stepsOf(drinks[i].product)),
+      ),
+    );
   });
-  const drinkCarbsG = drinks.reduce(
-    (s, k, i) => s + drinkUnits[i] * k.product.carbsG,
-    0,
+
+  if (solids.length === 0) {
+    // Sans solide, la boisson doit porter les glucides seule : on la complète
+    // au-delà de la cible d'hydratation, **secteur par secteur** puisque c'est
+    // le liquide qui la contraint, et `warnings` le signale plutôt que de
+    // laisser le coureur à court.
+    for (const [l, steps] of drinkSteps.entries()) {
+      const filled = allocateSteps(drinks, needs[l].carbsG, steps);
+      for (const [i, k] of drinks.entries()) {
+        loaded[l].push({ product: k.product, steps: filled[i] });
+      }
+    }
+
+    return raws.map((raw, l) =>
+      assemble(raw, needs[l], loaded[l], runner.flasks),
+    );
+  }
+
+  const drinkCarbs = drinkSteps.map((steps) =>
+    drinks.reduce(
+      (s, k, i) => s + (steps[i] * k.product.carbsG) / stepsOf(k.product),
+      0,
+    ),
   );
 
-  // Les solides comblent ce que la boisson n'a pas couvert. Sans solide, la
-  // boisson doit porter les glucides seule : on la complète au-delà de la
-  // cible d'hydratation, et `warnings` le signale plutôt que de laisser le
-  // coureur à court.
-  const filled =
-    solids.length > 0
-      ? [
-          ...drinks.map((k, i) => ({ ...k, units: drinkUnits[i] })),
-          ...allocate(solids, Math.max(need.carbsG - drinkCarbsG, 0)),
-        ]
-      : allocate(drinks, need.carbsG, drinkUnits);
+  for (const [l, steps] of drinkSteps.entries()) {
+    for (const [i, k] of drinks.entries()) {
+      loaded[l].push({ product: k.product, steps: steps[i] });
+    }
+  }
 
-  const servings: Serving[] = filled
-    .filter((k) => k.units > 0)
-    .map((k) => ({
-      product: k.product,
-      units: k.units,
-      intervalS: raw.durationS / k.units,
-    }));
+  // Passe 2. Le seul arrondi de quantité du plan.
+  const solidSteps = allocateSteps(
+    solids,
+    Math.max(
+      sum(needs, (n) => n.carbsG) - drinkCarbs.reduce((s, x) => s + x, 0),
+      0,
+    ),
+  );
+
+  // Passe 3. Le poids d'un secteur est son **déficit**, pas sa durée : la
+  // durée est déjà dans le besoin, et le déficit corrige en plus les secteurs
+  // que la boisson couvre déjà — l'arrondi à la dose entière fait qu'elle ne
+  // les couvre pas proportionnellement.
+  const deficits = needs.map((n, l) => Math.max(n.carbsG - drinkCarbs[l], 0));
+  for (const [i, k] of solids.entries()) {
+    for (const [l, steps] of apportion(solidSteps[i], deficits).entries()) {
+      loaded[l].push({ product: k.product, steps });
+    }
+  }
+
+  return raws.map((raw, l) =>
+    assemble(raw, needs[l], loaded[l], runner.flasks),
+  );
+}
+
+/**
+ * Comble un besoin en glucides avec des pas entiers, sans jamais passer
+ * dessous. Rend un nombre de **pas** par produit.
+ *
+ * Arrondir au supérieur produit par produit cumulerait les excès — 225 g visés
+ * devenaient 300 g apportés. On part du plancher et on ne rajoute que le
+ * nécessaire, en servant à chaque tour celui qui est le plus loin de sa part.
+ *
+ * @param floors Point de départ, quand des pas sont déjà décidés ailleurs.
+ */
+function allocateSteps(
+  items: Weighted[],
+  needG: number,
+  floors?: number[],
+): number[] {
+  if (items.length === 0) return [];
+
+  const ideal = share(items, needG);
+  const stepG = items.map((k) => k.product.carbsG / stepsOf(k.product));
+  // Copié : `floors` appartient à l'appelant, qui s'en ressert.
+  const steps = floors
+    ? [...floors]
+    : items.map((_, i) => Math.floor(ideal[i] / stepG[i]));
+  const supplied = () => steps.reduce((s, n, i) => s + n * stepG[i], 0);
+
+  while (supplied() < needG) {
+    let chosen = 0;
+    let worst = Number.NEGATIVE_INFINITY;
+    for (let i = 0; i < items.length; i++) {
+      const gap = ideal[i] - steps[i] * stepG[i];
+      if (gap > worst) {
+        worst = gap;
+        chosen = i;
+      }
+    }
+    steps[chosen]++;
+  }
+
+  return steps;
+}
+
+/**
+ * Répartit des pas entiers sur les secteurs, au prorata de leurs poids — la
+ * méthode du plus fort reste.
+ *
+ * C'est `allocateSteps` un cran plus haut, sur un autre axe : on n'arrondit
+ * plus une quantité mais un **placement**, et la somme est donc conservée par
+ * construction. Répartir ne peut rien créer.
+ *
+ * À fraction égale, le secteur **le plus tardif** l'emporte — on ne mange pas
+ * dans la première demi-heure, le glycogène hépatique couvre. C'est ce
+ * départage que verrouille l'invariant des secteurs jumeaux.
+ */
+function apportion(total: number, weights: number[]): number[] {
+  const placed = weights.map(() => 0);
+  if (total <= 0 || weights.length === 0) return placed;
+
+  const totalWeight = weights.reduce((s, w) => s + w, 0);
+
+  // Plus rien à combler nulle part — la boisson couvre tout, ou la course est
+  // de durée nulle. Il faut bien poser ces unités : au dernier secteur, pour
+  // la même raison que le départage ci-dessus.
+  if (totalWeight <= 0) {
+    placed[placed.length - 1] = total;
+
+    return placed;
+  }
+
+  const ideal = weights.map((w) => (total * w) / totalWeight);
+  for (const [l, x] of ideal.entries()) placed[l] = Math.floor(x);
+
+  const order = ideal
+    .map((x, l) => ({ l, fraction: x - Math.floor(x) }))
+    .sort((a, b) => b.fraction - a.fraction || b.l - a.l);
+
+  let left = total - placed.reduce((s, n) => s + n, 0);
+  for (const { l } of order) {
+    if (left <= 0) break;
+    placed[l]++;
+    left--;
+  }
+
+  return placed;
+}
+
+/**
+ * Le remplissage des contenants au départ du secteur.
+ *
+ * La boisson préparée va d'abord dans les flasques qui l'acceptent, l'eau
+ * claire occupe ensuite celles qui restent vides — `onlyWater` comprises. Une
+ * flasque déjà servie n'est jamais complétée : y ajouter de l'eau diluerait la
+ * boisson, y ajouter une seconde poudre en changerait la composition.
+ *
+ * Ce qui ne tient nulle part n'est pas perdu de vue : il ressort en `refillMl`,
+ * et le surplus de boisson déclenche en plus une remarque.
+ */
+function fill(
+  flasks: Flask[],
+  drinks: Serving[],
+  totalMl: number,
+): { fills: Fill[]; refillMl: number } {
+  if (flasks.length === 0) return { fills: [], refillMl: 0 };
+
+  const fills: Fill[] = [];
+  const free = flasks.map((_, i) => i);
+
+  for (const r of drinks) {
+    let leftMl = r.units * r.product.fluidMl;
+    while (leftMl > 0) {
+      const at = free.findIndex((i) => !flasks[i].onlyWater);
+      if (at < 0) break;
+
+      const [i] = free.splice(at, 1);
+      const volumeMl = Math.min(leftMl, flasks[i].volumeMl);
+      fills.push({ flaskIndex: i, product: r.product, volumeMl });
+      leftMl -= volumeMl;
+    }
+  }
+
+  let waterMl = Math.max(totalMl - sum(fills, (f) => f.volumeMl), 0);
+  while (waterMl > 0 && free.length > 0) {
+    const i = free.shift() as number;
+    const volumeMl = Math.min(waterMl, flasks[i].volumeMl);
+    fills.push({ flaskIndex: i, product: null, volumeMl });
+    waterMl -= volumeMl;
+  }
+
+  return {
+    fills: fills.sort((a, b) => a.flaskIndex - b.flaskIndex),
+    refillMl: Math.max(totalMl - sum(fills, (f) => f.volumeMl), 0),
+  };
+}
+
+/** Un secteur chargé : les pas deviennent des unités, et on somme. */
+function assemble(
+  raw: RawLeg,
+  need: Leg["need"],
+  loaded: Loaded[],
+  flasks: Flask[],
+): Leg {
+  const servings: Serving[] = loaded
+    .filter((x) => x.steps > 0)
+    .map((x) => ({ product: x.product, units: x.steps / stepsOf(x.product) }));
 
   const supply = servings.reduce(
     (s, r) => ({
       carbsG: s.carbsG + r.units * r.product.carbsG,
+      energyKcal: s.energyKcal + r.units * r.product.energyKcal,
       sodiumMg: s.sodiumMg + r.units * r.product.sodiumMg,
       fluidMl: s.fluidMl + r.units * r.product.fluidMl,
     }),
-    { carbsG: 0, sodiumMg: 0, fluidMl: 0 },
+    { carbsG: 0, energyKcal: 0, sodiumMg: 0, fluidMl: 0 },
   );
+
+  // Tout le liquide qui doit passer sur ce secteur. La boisson peut dépasser
+  // la cible d'hydratation quand elle porte les glucides seule : c'est alors
+  // elle qui commande, pas le besoin.
+  const totalMl = Math.max(need.fluidMl, supply.fluidMl);
 
   return {
     ...raw,
     need,
     servings,
     supply,
-    // La marge du §6 : on n'achète pas 7,3 gels, donc on en emporte 8, et on
-    // dit lequel est en trop plutôt que d'afficher un chiffre faussement juste.
-    marginG: Math.max(supply.carbsG - need.carbsG, 0),
-    intakes: rotate(
-      servings.filter((r) => r.product.fluidMl === 0),
-      raw.durationS,
-    ),
+    marginG: supply.carbsG - need.carbsG,
     plainWaterMl: Math.max(need.fluidMl - supply.fluidMl, 0),
+    ...fill(
+      flasks,
+      servings.filter((r) => r.product.fluidMl > 0),
+      totalMl,
+    ),
   };
-}
-
-/**
- * Comble un besoin en glucides avec des unités entières, sans jamais passer
- * dessous.
- *
- * Arrondir au supérieur produit par produit cumulerait les excès — 225 g visés
- * devenaient 300 g apportés. On part du plancher et on ne rajoute que le
- * nécessaire, en servant à chaque tour celui qui est le plus loin de sa part.
- *
- * @param floors Point de départ, quand des unités sont déjà décidées ailleurs.
- */
-function allocate<T extends { product: Product; weight: number }>(
-  items: T[],
-  needG: number,
-  floors?: number[],
-): (T & { units: number })[] {
-  if (items.length === 0) return [];
-
-  // Des parts toutes nulles ne veulent pas dire « rien à personne » : c'est
-  // l'absence de consigne, donc le partage à parts égales.
-  const totalWeight = items.reduce((s, k) => s + k.weight, 0);
-  const ideal = items.map((k) =>
-    totalWeight > 0 ? (needG * k.weight) / totalWeight : needG / items.length,
-  );
-
-  const units =
-    floors ?? items.map((k, i) => Math.floor(ideal[i] / k.product.carbsG));
-  const supplied = () =>
-    items.reduce((s, k, i) => s + units[i] * k.product.carbsG, 0);
-
-  while (supplied() < needG) {
-    let chosen = 0;
-    let worst = Number.NEGATIVE_INFINITY;
-    for (let i = 0; i < items.length; i++) {
-      const gap = ideal[i] - units[i] * items[i].product.carbsG;
-      if (gap > worst) {
-        worst = gap;
-        chosen = i;
-      }
-    }
-    units[chosen]++;
-  }
-
-  return items.map((k, i) => ({ ...k, units: units[i] }));
-}
-
-/**
- * L'ordre des prises solides — la règle qui sépare un plan crédible d'un
- * tableur. Six gels d'affilée, personne ne tient : l'écœurement est un motif
- * d'abandon réel. On force donc la rotation des formats, en servant à chaque
- * tour celui qui a le plus d'unités à placer **parmi ceux dont le format
- * diffère du précédent**, et on ne retombe sur le format précédent que s'il ne
- * reste que lui.
- *
- * Les prises sont centrées dans des créneaux égaux : jamais sur la ligne de
- * départ, jamais sur celle d'arrivée.
- */
-function rotate(servings: Serving[], durationS: number): Intake[] {
-  const left = servings.map((r) => ({ product: r.product, units: r.units }));
-  const total = left.reduce((s, x) => s + x.units, 0);
-  if (total === 0) return [];
-
-  const order: Product[] = [];
-  let previous: ProductType | null = null;
-
-  for (let k = 0; k < total; k++) {
-    const others = left.filter(
-      (x) => x.units > 0 && x.product.type !== previous,
-    );
-    const pool = others.length > 0 ? others : left.filter((x) => x.units > 0);
-    const chosen = pool.reduce((best, x) => (x.units > best.units ? x : best));
-
-    chosen.units--;
-    order.push(chosen.product);
-    previous = chosen.product.type;
-  }
-
-  return order.map((product, k) => ({
-    atS: ((k + 0.5) * durationS) / total,
-    product,
-  }));
 }
 
 /**
@@ -350,6 +518,7 @@ function warnings(
   legs: Leg[],
   targets: Targets,
   products: Product[],
+  runner: Runner,
 ): Warning[] {
   const messages: Warning[] = [];
 
@@ -407,6 +576,9 @@ function warnings(
     });
   }
 
+  const carryMl = carryCapacityMl(runner);
+  const hasCarbDrink = products.some((p) => p.carbsG > 0 && p.fluidMl > 0);
+
   for (const [legIndex, s] of legs.entries()) {
     if (s.durationS > 0 && s.supply.fluidMl > s.need.fluidMl) {
       messages.push({
@@ -414,6 +586,40 @@ function warnings(
         legIndex,
         supplyMl: s.supply.fluidMl,
         needMl: s.need.fluidMl,
+      });
+    }
+
+    // Ce qu'il faut réellement porter : le plus contraignant de ce qu'on doit
+    // boire et de ce que la boisson préparée occupe.
+    const requiredMl = Math.max(s.need.fluidMl, s.supply.fluidMl);
+    if (carryMl !== null && requiredMl > carryMl) {
+      messages.push({
+        code: "leg-fluid-above-carry",
+        legIndex,
+        requiredMl,
+        carryMl,
+      });
+    }
+
+    // Le cas silencieux d'avant l'ADR 007 : une boisson glucidique était
+    // cochée, aucune dose n'entre dans ce secteur, tout part en eau claire.
+    if (hasCarbDrink && s.supply.fluidMl === 0 && s.plainWaterMl > 0) {
+      messages.push({
+        code: "leg-drink-unused",
+        legIndex,
+        plainWaterMl: s.plainWaterMl,
+      });
+    }
+
+    // La boisson préparée ne tient pas dans les flasques qui l'acceptent. Sans
+    // ça, la ventilation laisserait le surplus disparaître de la liste.
+    const drinkCap = drinkCapacityMl(runner);
+    if (drinkCap !== null && s.supply.fluidMl > drinkCap) {
+      messages.push({
+        code: "leg-drink-above-flasks",
+        legIndex,
+        drinkMl: s.supply.fluidMl,
+        capacityMl: drinkCap,
       });
     }
   }

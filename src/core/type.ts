@@ -152,6 +152,13 @@ export type Product = {
    * son transporteur intestinal et le reste n'est pas absorbé.
    */
   multiTransportable: boolean;
+  /**
+   * En combien de parts égales une unité se coupe. 1 pour ce qui est
+   * insécable — un gel, une dosette. 2 pour ce qui se partage — une dose de
+   * poudre, une barre. C'est une propriété **physique** du produit, pas une
+   * souplesse qu'on accorde à l'algorithme quand le compte ne tombe pas juste.
+   */
+  divisibleBy: number;
 };
 
 export type Targets = {
@@ -161,8 +168,24 @@ export type Targets = {
   sodiumMgL: number;
 };
 
+/**
+ * Un contenant, tel qu'on le porte. `onlyWater` le réserve à l'eau claire :
+ * on n'y prépare aucune boisson glucidique, et sa contenance ne compte donc
+ * pas dans ce que la poudre peut occuper.
+ */
+export type Flask = {
+  volumeMl: number;
+  onlyWater: boolean;
+};
+
 export type Runner = {
   massKg: number;
+  /**
+   * Ce qu'on porte entre deux points d'eau. Une liste **vide** vaut
+   * « contenance non déclarée » : le noyau ne borne alors rien et n'alerte sur
+   * rien, plutôt que de supposer un matériel qu'on ne lui a pas donné.
+   */
+  flasks: Flask[];
 };
 
 /** Un point de ravitaillement, tel qu'il figure au roadbook. */
@@ -173,22 +196,37 @@ export type AidStation = {
 
 export type Serving = {
   product: Product;
+  /**
+   * Fractionnaire pour ce qui se coupe — 1,5 barre, ½ dose de poudre. Toujours
+   * un multiple de `1 / product.divisibleBy`.
+   */
   units: number;
-  /** Un toutes les combien de secondes, sur la durée du secteur. */
-  intervalS: number;
 };
 
 /**
- * Une prise, à un instant du secteur. La boisson n'en est pas une : le bidon
- * délivre un flux continu, on ne « prend » pas un bidon.
+ * Ce qu'on met dans un contenant au départ du secteur — `product` à `null`
+ * pour de l'eau claire.
+ *
+ * **Un contenant ne porte qu'une chose.** Mélanger deux poudres ou compléter
+ * une boisson à l'eau dans la même flasque en changerait la concentration :
+ * c'est une règle physique, pas une simplification. Une flasque peut en
+ * revanche n'être remplie qu'à moitié, quand il ne reste pas de quoi la finir.
  */
-export type Intake = {
-  /** Secondes depuis le départ du secteur. */
-  atS: number;
-  product: Product;
+export type Fill = {
+  /** Position dans `Runner.flasks`. */
+  flaskIndex: number;
+  product: Product | null;
+  volumeMl: number;
 };
 
-/** Ce qu'il y a entre deux ravitos — l'unité du plan, et du sac. */
+/**
+ * Ce qu'il y a entre deux ravitos — l'unité d'**affichage** du plan.
+ *
+ * Ce n'est plus l'unité de calcul : depuis l'ADR 007, les glucides solides se
+ * comptent sur la course entière puis se placent ici. Un secteur peut donc
+ * recevoir un peu moins que son besoin propre, l'unité qui lui manque étant
+ * allée à un autre.
+ */
 export type Leg = {
   /** Le ravito d'où l'on part. `null` au départ de la course. */
   from: string | null;
@@ -206,22 +244,44 @@ export type Leg = {
   /** Ce qu'il faut emporter. */
   need: { carbsG: number; fluidMl: number; sodiumMg: number };
   servings: Serving[];
-  supply: { carbsG: number; sodiumMg: number; fluidMl: number };
+  supply: {
+    carbsG: number;
+    energyKcal: number;
+    sodiumMg: number;
+    fluidMl: number;
+  };
   /**
-   * Ce que l'apport dépasse le besoin, en grammes de glucides. On n'achète pas
-   * 7,3 gels : « 8 gels, dont 1 de marge » est plus utile qu'un chiffre juste.
+   * L'écart à la cible, en grammes de glucides. **Signé**, et c'est nouveau :
+   * un secteur peut être en dessous de son besoin propre depuis que la
+   * répartition se fait sur la course. Seul `NutritionPlan.total.marginG` est
+   * positif par construction.
    */
   marginG: number;
-  /** L'ordre des prises solides, formats alternés. */
-  intakes: Intake[];
   /** Eau claire à ajouter à la boisson pour atteindre la cible. */
   plainWaterMl: number;
+  /**
+   * Le remplissage des contenants au départ du secteur — quelle flasque porte
+   * quoi. Vide tant qu'aucune contenance n'est déclarée : le noyau ne suppose
+   * pas un matériel qu'on ne lui a pas donné.
+   */
+  fills: Fill[];
+  /**
+   * Le liquide qui ne tient dans aucun contenant : à boire au ravito, ou à
+   * refaire en route. Nul quand tout rentre, ou quand rien n'est déclaré.
+   */
+  refillMl: number;
 };
 
 /** Un secteur avant qu'on ne l'ait ravitaillé : géométrie et durée seules. */
 export type RawLeg = Omit<
   Leg,
-  "need" | "servings" | "supply" | "marginG" | "intakes" | "plainWaterMl"
+  | "need"
+  | "servings"
+  | "supply"
+  | "marginG"
+  | "plainWaterMl"
+  | "fills"
+  | "refillMl"
 >;
 
 /**
@@ -250,6 +310,40 @@ export type Warning =
       legIndex: number;
       supplyMl: number;
       needMl: number;
+    }
+  | {
+      /**
+       * Le besoin en liquide dépasse ce que le coureur peut porter. Ce n'est
+       * pas une erreur de calcul : c'est un secteur où il faudra boire au
+       * ravito ou puiser en route, et le taire serait proposer l'impossible.
+       */
+      code: "leg-fluid-above-carry";
+      legIndex: number;
+      /** Le plus contraignant de ce qu'il faut boire et de ce qu'occupe la
+       * boisson préparée. */
+      requiredMl: number;
+      carryMl: number;
+    }
+  | {
+      /**
+       * Une boisson glucidique était sélectionnée, mais aucune dose n'entre
+       * dans ce secteur — tout le liquide part en eau claire. Le cas se
+       * produisait en silence avant l'ADR 007.
+       */
+      code: "leg-drink-unused";
+      legIndex: number;
+      plainWaterMl: number;
+    }
+  | {
+      /**
+       * La boisson préparée ne tient pas dans les flasques qui l'acceptent,
+       * les autres étant réservées à l'eau claire. Sans cette remarque, la
+       * ventilation laisserait le surplus disparaître de la liste.
+       */
+      code: "leg-drink-above-flasks";
+      legIndex: number;
+      drinkMl: number;
+      capacityMl: number;
     };
 
 export type NutritionPlan = {
@@ -258,8 +352,15 @@ export type NutritionPlan = {
     durationS: number;
     expenditureKcal: number;
     carbsG: number;
+    energyKcal: number;
     sodiumMg: number;
     fluidMl: number;
+    /**
+     * Ce que l'apport dépasse le besoin sur la course. Positif par
+     * construction : on n'achète pas 7,3 gels, donc on en emporte 8 et on dit
+     * lequel est en trop. C'est le **seul** arrondi de quantité du plan.
+     */
+    marginG: number;
     /** Le sac complet, tous secteurs confondus. */
     units: Map<string, number>;
   };

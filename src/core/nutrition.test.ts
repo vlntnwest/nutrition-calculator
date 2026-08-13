@@ -8,9 +8,17 @@ import {
   suggestedTargets,
 } from "./nutrition";
 import { CATALOG, productById } from "./products";
-import type { AidStation, Product, Targets, TimedPoint } from "./type";
+import type {
+  AidStation,
+  Leg,
+  Product,
+  Runner,
+  Targets,
+  TimedPoint,
+} from "./type";
 
-const RUNNER = { massKg: 70 };
+/** Contenance non déclarée : le noyau ne borne rien et n'alerte sur rien. */
+const RUNNER: Runner = { massKg: 70, flasks: [] };
 const TARGETS: Targets = { carbsGH: 60, fluidMlH: 500, sodiumMgL: 600 };
 
 /** Une trace plate de `km` kilomètres, parcourue en `heures`. */
@@ -76,8 +84,8 @@ test("les suggestions ne sont que des suggestions", () => {
 });
 
 test("les glucides ignorent la masse, l'hydratation non", () => {
-  const light = suggestedTargets({ massKg: 55 }, 4 * 3600);
-  const heavy = suggestedTargets({ massKg: 95 }, 4 * 3600);
+  const light = suggestedTargets({ massKg: 55, flasks: [] }, 4 * 3600);
+  const heavy = suggestedTargets({ massKg: 95, flasks: [] }, 4 * 3600);
 
   expect(light.carbsGH).toBe(heavy.carbsGH);
   expect(heavy.fluidMlH).toBeGreaterThan(light.fluidMlH);
@@ -131,9 +139,11 @@ test("un ravito hors parcours est ignoré", () => {
   expect(legs).toHaveLength(1);
 });
 
-// C'est le cœur de l'outil : « entre ces deux ravitos tu mettras 2 h, à
-// 60 g/h ça fait 120 g, donc emporte ça ».
-test("chaque secteur reçoit de quoi tenir jusqu'au suivant", () => {
+// C'est le cœur de l'outil : « sur cette course, à 60 g/h, emporte ça ».
+// Depuis l'ADR 007 la garantie porte sur la **course**, plus sur le secteur :
+// un secteur peut être en dessous de son besoin propre, l'unité qui lui manque
+// étant allée à un autre.
+test("la course entière reçoit de quoi tenir", () => {
   const points = flatTrack(40, 6);
   const plan = nutritionPlan(
     points,
@@ -145,16 +155,90 @@ test("chaque secteur reçoit de quoi tenir jusqu'au suivant", () => {
 
   expect(plan.legs).toHaveLength(2);
 
+  const needCarbsG = plan.legs.reduce((s, x) => s + x.need.carbsG, 0);
+  expect(needCarbsG).toBeCloseTo(360, 6);
+  expect(plan.total.carbsG).toBeGreaterThanOrEqual(needCarbsG - 1e-9);
+  expect(plan.total.marginG).toBeGreaterThanOrEqual(-1e-9);
+
   for (const s of plan.legs) {
     expect(s.durationS).toBeCloseTo(3 * 3600, 6);
     expect(s.need.carbsG).toBeCloseTo(180, 6);
-    expect(s.supply.carbsG).toBeGreaterThanOrEqual(s.need.carbsG);
     expect(s.servings.length).toBeGreaterThan(0);
-    for (const r of s.servings) {
-      expect(r.units).toBeGreaterThan(0);
-      expect(r.intervalS).toBeCloseTo(s.durationS / r.units, 6);
-    }
+    for (const r of s.servings) expect(r.units).toBeGreaterThan(0);
   }
+});
+
+/**
+ * La mesure qui a motivé l'ADR 007. Chaque secteur arrondissait dans son coin
+ * et les marges s'additionnaient : le même semi-marathon donnait 54 g sans
+ * ravito et 81 g avec deux. Même course, même coureur, même produit.
+ */
+test("déclarer des ravitos ne change plus le total", () => {
+  const points = flatTrack(21.1, 1.75);
+  const targets: Targets = { ...TARGETS, carbsGH: 30 };
+  const totalOf = (aidStations: AidStation[]) =>
+    nutritionPlan(points, aidStations, RUNNER, targets, [gel]).total.carbsG;
+
+  // 52,5 g de besoin, des gels de 27 g : deux gels, et pas trois.
+  expect(totalOf([])).toBeCloseTo(54, 6);
+  expect(
+    totalOf([
+      { name: "R1", distanceM: 7000 },
+      { name: "R2", distanceM: 14_000 },
+    ]),
+  ).toBeCloseTo(54, 6);
+});
+
+/** Le placement répartit ce qui existe déjà : il ne peut rien créer. */
+test("le placement conserve le sac, quel que soit le découpage", () => {
+  const points = flatTrack(60, 8);
+  const bag = (aidStations: AidStation[]) =>
+    nutritionPlan(points, aidStations, RUNNER, TARGETS, [gel, baouwBar]).total
+      .units;
+
+  const alone = bag([]);
+  const split = bag([
+    { name: "R1", distanceM: 15_000 },
+    { name: "R2", distanceM: 33_000 },
+    { name: "R3", distanceM: 48_000 },
+  ]);
+
+  expect([...split.keys()].sort()).toEqual([...alone.keys()].sort());
+  for (const [id, units] of alone) {
+    expect(split.get(id)).toBeCloseTo(units, 9);
+  }
+});
+
+/**
+ * L'invariant des secteurs jumeaux. Deux secteurs de même durée ont le même
+ * besoin, le même déficit et le même plancher — mais l'étape du reste ne peut
+ * donner l'unité supplémentaire qu'à un seul. Un gel ne se coupe pas en deux
+ * pour être partagé entre deux secteurs.
+ *
+ * Le départage se joue sur le sens d'une inégalité, qu'un refactoring distrait
+ * inverserait sans rien casser d'autre. C'est ce que ce test verrouille.
+ */
+test("deux secteurs jumeaux ne diffèrent que d'une unité, en faveur du plus tardif", () => {
+  // 4 h à 60 g/h = 240 g, des gels de 27 g : 9 gels pour 2 secteurs égaux.
+  const plan = nutritionPlan(
+    flatTrack(40, 4),
+    [{ name: "Mi-course", distanceM: 20_000 }],
+    RUNNER,
+    TARGETS,
+    [gel],
+  );
+  const [first, second] = plan.legs;
+  const served = (leg: Leg) =>
+    leg.servings.find((r) => r.product.id === gel.id)?.units ?? 0;
+
+  expect(first.durationS).toBeCloseTo(second.durationS, 6);
+  expect(first.need.carbsG).toBeCloseTo(second.need.carbsG, 6);
+  expect(served(first) + served(second)).toBe(9);
+  expect(served(second) - served(first)).toBe(1);
+
+  // Le secteur qui a l'unité en trop est donc en marge, l'autre en déficit.
+  expect(first.marginG).toBeLessThan(0);
+  expect(second.marginG).toBeGreaterThan(0);
 });
 
 test("le sac total est la somme des secteurs", () => {
@@ -176,7 +260,7 @@ test("le sac total est la somme des secteurs", () => {
         s + (sec.servings.find((r) => r.product.id === id)?.units ?? 0),
       0,
     );
-    expect(units).toBe(perLeg);
+    expect(units).toBeCloseTo(perLeg, 9);
   }
   expect(plan.total.durationS).toBeCloseTo(8 * 3600, 6);
 });
@@ -229,9 +313,13 @@ test("ce qui comble ne dépasse jamais d'une unité", () => {
 
         // Au plus une unité, et non strictement moins : la sommation
         // flottante peut faire tomber l'écart pile sur la taille de l'unité.
+        // La borne est le **pas**, pas l'unité : un produit sécable comble
+        // plus finement, et c'est tout l'intérêt de `divisibleBy`.
         expect(
           carbsOf(false) - Math.max(leg.need.carbsG - carbsOf(true), 0),
-        ).toBeLessThanOrEqual(Math.max(...solids.map((p) => p.carbsG)));
+        ).toBeLessThanOrEqual(
+          Math.max(...solids.map((p) => p.carbsG / p.divisibleBy)),
+        );
       },
     ),
   );
@@ -279,33 +367,192 @@ test("la boisson est dimensionnée par l'hydratation, pas par les glucides", () 
   expect(doses(60)).toBe(5);
 });
 
-/** Six gels d'affilée, personne ne tient — §6. */
-test("les prises alternent les formats", () => {
-  const leg = nutritionPlan(flatTrack(40, 5), [], RUNNER, TARGETS, [
-    gel,
+/**
+ * Le poids du placement est le **déficit**, pas la durée. Un secteur que la
+ * boisson couvre déjà ne doit recevoir aucun solide — pondéré à la durée, il
+ * réclamerait quand même sa part.
+ */
+test("un secteur que la boisson couvre déjà ne reçoit pas de solide", () => {
+  // 2 h à 500 mL/h = 1 000 mL, soit 2 doses et 110 g. La cible en veut 60.
+  const plan = nutritionPlan(
+    flatTrack(20, 2),
+    [],
+    RUNNER,
+    { ...TARGETS, carbsGH: 30 },
+    [drink, gel],
+  );
+  const leg = plan.legs[0];
+
+  expect(leg.servings.find((r) => r.product.id === drink.id)?.units).toBe(2);
+  expect(leg.servings.some((r) => r.product.id === gel.id)).toBe(false);
+});
+
+/** Ce qui se coupe comble plus finement. §7, `Product.divisibleBy`. */
+test("ce qui se coupe se compte en demies, le reste en entiers", () => {
+  const halves = nutritionPlan(flatTrack(40, 5), [], RUNNER, TARGETS, [
     baouwBar,
-  ]).legs[0];
+  ]);
+  const units = halves.legs[0].servings[0].units;
 
-  expect(leg.intakes.length).toBeGreaterThan(4);
-  for (let i = 1; i < leg.intakes.length; i++) {
-    expect(leg.intakes[i].product.type).not.toBe(
-      leg.intakes[i - 1].product.type,
-    );
-  }
+  expect(baouwBar.divisibleBy).toBe(2);
+  expect(units % 0.5).toBe(0);
+  expect(units % 1).not.toBe(0);
+  // La demie étant atteignable, la marge tombe sous la demi-barre.
+  expect(halves.total.marginG).toBeLessThan(baouwBar.carbsG / 2);
 
-  // Rangées dans le temps, à l'intérieur du secteur, jamais sur ses bornes.
-  for (const [i, take] of leg.intakes.entries()) {
-    expect(take.atS).toBeGreaterThan(0);
-    expect(take.atS).toBeLessThan(leg.durationS);
-    if (i > 0) expect(take.atS).toBeGreaterThan(leg.intakes[i - 1].atS);
-  }
+  const wholes = nutritionPlan(flatTrack(40, 5), [], RUNNER, TARGETS, [gel]);
+  expect(gel.divisibleBy).toBe(1);
+  expect(wholes.legs[0].servings[0].units % 1).toBe(0);
+});
 
-  // La boisson n'est pas une prise.
-  const withDrink = nutritionPlan(flatTrack(40, 5), [], RUNNER, TARGETS, [
+/**
+ * La contenance est une contrainte **par secteur** : on remplit à chaque point
+ * d'eau. Le noyau proposait jusqu'ici 2 500 mL à qui porte deux flasques.
+ */
+test("un secteur qui demande plus que ce qu'on porte le dit", () => {
+  const runner: Runner = {
+    massKg: 70,
+    flasks: [
+      { volumeMl: 500, onlyWater: false },
+      { volumeMl: 500, onlyWater: true },
+    ],
+  };
+  const plan = nutritionPlan(flatTrack(40, 5), [], runner, TARGETS, [
+    gel,
+    drink,
+  ]);
+
+  // 5 h à 500 mL/h : 2 500 mL réclamés pour 1 000 mL portés.
+  expect(plan.warnings).toContainEqual({
+    code: "leg-fluid-above-carry",
+    legIndex: 0,
+    requiredMl: 2500,
+    carryMl: 1000,
+  });
+
+  // La flasque réservée à l'eau ne reçoit pas de poudre : une dose, pas deux.
+  expect(
+    plan.legs[0].servings.find((r) => r.product.id === drink.id)?.units,
+  ).toBe(1);
+});
+
+/**
+ * La ventilation par contenant. Un contenant ne porte qu'une chose : compléter
+ * une boisson à l'eau en changerait la concentration, c'est une règle physique
+ * et pas une simplification.
+ */
+test("chaque flasque porte une seule chose", () => {
+  const runner: Runner = {
+    massKg: 70,
+    flasks: [
+      { volumeMl: 500, onlyWater: false },
+      { volumeMl: 500, onlyWater: true },
+    ],
+  };
+  // 5 h à 500 mL/h : 2 500 mL réclamés pour 1 000 mL portés.
+  const leg = nutritionPlan(flatTrack(40, 5), [], runner, TARGETS, [gel, drink])
+    .legs[0];
+
+  expect(leg.fills).toEqual([
+    { flaskIndex: 0, product: drink, volumeMl: 500 },
+    { flaskIndex: 1, product: null, volumeMl: 500 },
+  ]);
+  expect(leg.refillMl).toBeCloseTo(1500, 6);
+  expect(new Set(leg.fills.map((f) => f.flaskIndex)).size).toBe(
+    leg.fills.length,
+  );
+
+  // Contenance non déclarée : le noyau ne ventile rien plutôt que de supposer
+  // un matériel qu'on ne lui a pas donné.
+  const bare = nutritionPlan(flatTrack(40, 5), [], RUNNER, TARGETS, [
     gel,
     drink,
   ]).legs[0];
-  expect(withDrink.intakes.every((t) => t.product.fluidMl === 0)).toBe(true);
+  expect(bare.fills).toEqual([]);
+  expect(bare.refillMl).toBe(0);
+});
+
+test("la dernière flasque n'est remplie que de ce qu'il reste", () => {
+  const runner: Runner = {
+    massKg: 70,
+    flasks: [
+      { volumeMl: 500, onlyWater: false },
+      { volumeMl: 500, onlyWater: true },
+      { volumeMl: 500, onlyWater: true },
+    ],
+  };
+  // 1 h 30 à 500 mL/h = 750 mL : une flasque de boisson, un fond d'eau, et la
+  // troisième reste au sac.
+  const leg = nutritionPlan(flatTrack(12, 1.5), [], runner, TARGETS, [
+    gel,
+    drink,
+  ]).legs[0];
+
+  expect(leg.fills).toEqual([
+    { flaskIndex: 0, product: drink, volumeMl: 500 },
+    { flaskIndex: 1, product: null, volumeMl: 250 },
+  ]);
+  expect(leg.refillMl).toBe(0);
+});
+
+/**
+ * Le piège de la ventilation : la contenance totale suffit, mais pas celle qui
+ * accepte de la poudre. Sans cette remarque le surplus disparaîtrait de la
+ * liste des flasques sans que rien ne le dise.
+ */
+test("une boisson qui déborde des flasques autorisées le dit", () => {
+  const runner: Runner = {
+    massKg: 70,
+    flasks: [
+      { volumeMl: 500, onlyWater: false },
+      { volumeMl: 2000, onlyWater: true },
+    ],
+  };
+  // Sans solide, la boisson porte les glucides seule : 7,5 doses, 3 750 mL.
+  const plan = nutritionPlan(
+    flatTrack(40, 5),
+    [],
+    runner,
+    { ...TARGETS, carbsGH: 80 },
+    [drink],
+  );
+
+  expect(plan.warnings).toContainEqual({
+    code: "leg-drink-above-flasks",
+    legIndex: 0,
+    drinkMl: 3750,
+    capacityMl: 500,
+  });
+});
+
+/** Le cas qui passait en silence : tout le liquide bascule en eau claire. */
+test("une boisson qui n'entre nulle part ne disparaît plus en silence", () => {
+  // 15 min à 500 mL/h = 125 mL, moins que la demi-dose de 250.
+  const plan = nutritionPlan(
+    flatTrack(2, 0.25),
+    [],
+    RUNNER,
+    { ...TARGETS, carbsGH: 30 },
+    [gel, drink],
+  );
+  const leg = plan.legs[0];
+
+  expect(leg.supply.fluidMl).toBe(0);
+  expect(leg.plainWaterMl).toBeCloseTo(125, 6);
+  expect(plan.warnings).toContainEqual({
+    code: "leg-drink-unused",
+    legIndex: 0,
+    plainWaterMl: 125,
+  });
+});
+
+test("l'énergie apportée est comptée, et n'est pas la dépense", () => {
+  const plan = nutritionPlan(flatTrack(40, 5), [], RUNNER, TARGETS, [gel]);
+  const units = plan.legs[0].servings[0].units;
+
+  expect(plan.total.energyKcal).toBeCloseTo(units * gel.energyKcal, 6);
+  // On ne mange jamais sa dépense : le reste vient des graisses.
+  expect(plan.total.energyKcal).toBeLessThan(plan.total.expenditureKcal);
 });
 
 test("la marge est ce qui dépasse le besoin", () => {
@@ -419,6 +666,7 @@ test("un produit sans glucides ne décale pas les parts", () => {
     sodiumMg: 0,
     fluidMl: 500,
     multiTransportable: false,
+    divisibleBy: 2,
   };
 
   // Deux solides : depuis le §6, les parts ne gouvernent plus le partage entre
