@@ -1,12 +1,23 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
-import { parseGpx } from "./parseGpx";
+import { combineSources, parseGpx } from "./parseGpx";
 
 const fixture = (name: string) =>
   readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8");
 
+/**
+ * La trace retenue, sans l'inventaire des sources — celui-ci a ses propres
+ * tests plus bas. Garde les assertions de forme strictes plutôt que de les
+ * relâcher en `toMatchObject`.
+ */
+const withoutSources = (xml: string) => {
+  const { sources: _, ...track } = parseGpx(xml);
+
+  return track;
+};
+
 test("extrait lat/lon/ele d'un trk mono-segment", () => {
-  expect(parseGpx(fixture("minimal.gpx"))).toEqual({
+  expect(withoutSources(fixture("minimal.gpx"))).toEqual({
     name: "SaintéLyon 2025",
     points: [
       { lat: 45.764, lon: 4.8357, ele: 172.4 },
@@ -18,7 +29,7 @@ test("extrait lat/lon/ele d'un trk mono-segment", () => {
 });
 
 test("concatène les segments dans l'ordre", () => {
-  expect(parseGpx(fixture("multi-segment.gpx"))).toEqual({
+  expect(withoutSources(fixture("multi-segment.gpx"))).toEqual({
     name: "UTDP 2026",
     points: [
       { lat: 45.764, lon: 4.8357, ele: 172.4 },
@@ -31,7 +42,7 @@ test("concatène les segments dans l'ordre", () => {
 });
 
 test("distingue une altitude absente (null) d'une altitude nulle (0)", () => {
-  expect(parseGpx(fixture("no-ele.gpx"))).toEqual({
+  expect(withoutSources(fixture("no-ele.gpx"))).toEqual({
     name: "SaintéLyon 2025",
     points: [
       { lat: 45.764, lon: 4.8357, ele: 172.4 },
@@ -60,7 +71,7 @@ test.each([
     <trkpt lat="${lat}" lon="${lon}"><ele>173.1</ele></trkpt>
   </trkseg></trk></gpx>`;
 
-  expect(parseGpx(xml)).toEqual({
+  expect(withoutSources(xml)).toEqual({
     name: null,
     points: [{ lat: 45.764, lon: 4.8357, ele: 172.4 }],
     skipped: 1,
@@ -82,7 +93,7 @@ test("rejette un GPX dont tous les points sont écartés", () => {
 });
 
 test("extrait les points d'un <rte> quand il n'y a pas de <trk>", () => {
-  expect(parseGpx(fixture("route.gpx"))).toEqual({
+  expect(withoutSources(fixture("route.gpx"))).toEqual({
     // <rte><name> l'emporte sur <metadata><name>
     name: "SaintéLyon 2025",
     points: [
@@ -106,7 +117,7 @@ test("préfère le <trk> quand le fichier contient les deux", () => {
     </rte>
   </gpx>`;
 
-  expect(parseGpx(xml)).toEqual({
+  expect(withoutSources(xml)).toEqual({
     name: "Trace enregistrée",
     points: [{ lat: 45.764, lon: 4.8357, ele: 172.4 }],
     skipped: 0,
@@ -123,7 +134,7 @@ test("retombe sur le <rte> quand le <trk> est présent mais vide", () => {
     </rte>
   </gpx>`;
 
-  expect(parseGpx(xml)).toEqual({
+  expect(withoutSources(xml)).toEqual({
     name: "Itinéraire planifié",
     points: [{ lat: 45.764, lon: 4.8357, ele: 172.4 }],
     skipped: 0,
@@ -143,7 +154,7 @@ test("retombe sur le <rte> quand aucun <trkpt> n'est exploitable", () => {
     </rte>
   </gpx>`;
 
-  expect(parseGpx(xml)).toEqual({
+  expect(withoutSources(xml)).toEqual({
     // Le nom suit la source retenue, pas le <trk> qu'on a abandonné.
     name: "Itinéraire planifié",
     points: [{ lat: 45.764, lon: 4.8357, ele: 172.4 }],
@@ -165,7 +176,7 @@ test("un <trk> partiellement lisible reste la source", () => {
     </rte>
   </gpx>`;
 
-  expect(parseGpx(xml)).toEqual({
+  expect(withoutSources(xml)).toEqual({
     name: "Trace enregistrée",
     points: [{ lat: 45.764, lon: 4.8357, ele: 180 }],
     skipped: 1,
@@ -193,9 +204,71 @@ test("prends <metadata><name> si pas de <trk><name>", () => {
   const xml = `<gpx><metadata><name>UTDP 2026</name></metadata><trk><trkseg>
     <trkpt lat="45.764" lon="4.8357"><ele>172.4</ele></trkpt>
   </trkseg></trk></gpx>`;
-  expect(parseGpx(xml)).toEqual({
+  expect(withoutSources(xml)).toEqual({
     name: "UTDP 2026",
     points: [{ lat: 45.764, lon: 4.8357, ele: 172.4 }],
     skipped: 0,
   });
+});
+
+/**
+ * Deux `<trk>` dans un fichier peuvent être deux parcours sans rapport. Les
+ * souder fabriquerait un tronçon fantôme entre l'arrivée de l'un et le départ
+ * de l'autre — ADR 008. Le fichier est accepté, le choix revient à l'appelant.
+ */
+test("deux traces sont exposées séparément, sans être soudées", () => {
+  // Lyon puis Genève : une concaténation silencieuse se verrait au premier D+.
+  const xml = `<gpx>
+    <trk><name>Boucle du matin</name><trkseg>
+      <trkpt lat="45.764" lon="4.8357"><ele>172</ele></trkpt>
+      <trkpt lat="45.7641" lon="4.8359"><ele>173</ele></trkpt>
+    </trkseg></trk>
+    <trk><name>Boucle du soir</name><trkseg>
+      <trkpt lat="46.2044" lon="6.1432"><ele>375</ele></trkpt>
+    </trkseg></trk>
+  </gpx>`;
+
+  const track = parseGpx(xml);
+
+  expect(track.sources).toHaveLength(2);
+  expect(track.sources.map((s) => [s.name, s.kind, s.points.length])).toEqual([
+    ["Boucle du matin", "track", 2],
+    ["Boucle du soir", "track", 1],
+  ]);
+
+  // Par défaut, la première seule — jamais la soudure.
+  expect(track.name).toBe("Boucle du matin");
+  expect(track.points).toHaveLength(2);
+
+  // Et la combinaison reste offerte, à qui la demande.
+  expect(combineSources(track.sources)).toHaveLength(3);
+});
+
+test("une trace illisible ne figure pas parmi les sources", () => {
+  const xml = `<gpx>
+    <trk><name>Vide</name><trkseg>
+      <trkpt><ele>172</ele></trkpt>
+    </trkseg></trk>
+    <trk><name>Lisible</name><trkseg>
+      <trkpt lat="45.764" lon="4.8357"><ele>172</ele></trkpt>
+    </trkseg></trk>
+  </gpx>`;
+
+  const track = parseGpx(xml);
+
+  expect(track.sources.map((s) => s.name)).toEqual(["Lisible"]);
+  expect(track.name).toBe("Lisible");
+  // Le point illisible appartenait à une source écartée : il n'a jamais été lu.
+  expect(track.skipped).toBe(0);
+});
+
+test("un fichier à source unique expose cette source", () => {
+  const track = parseGpx(fixture("minimal.gpx"));
+
+  expect(track.sources).toHaveLength(1);
+  expect(track.sources[0].kind).toBe("track");
+  expect(track.sources[0].points).toEqual(track.points);
+
+  const route = parseGpx(fixture("route.gpx"));
+  expect(route.sources[0].kind).toBe("route");
 });
