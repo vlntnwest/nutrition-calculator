@@ -14,7 +14,7 @@ Le pipeline, dans l'ordre :
 | `resample` | points → pas de distance constant |
 | `smooth` | points → altitudes filtrées |
 | `elevationGain` | points → D+ |
-| `simplify` | points → ~2 000 points pour l'affichage |
+| `simplifyPoints` | points → ~2 000 points pour l'affichage |
 | `paceModel` | pente → coefficient de coût |
 | `splitBySlope` | points → tronçons de pente homogène |
 | `distributeTime` | points + temps visé → temps cumulé sur chaque point |
@@ -67,15 +67,22 @@ le départ, par la formule de haversine. Deux conventions y sont figées :
 
 ## Lissage
 
-`smooth` enchaîne deux filtres, parce que le bruit d'altitude n'est pas d'une
-seule espèce : `medianFilter` sur 30 m supprime les pics isolés — décrochages GPS,
-tunnels — puis `meanFilter` sur 50 m réduit l'oscillation permanente de
-l'altimètre.
+`smooth` peut enchaîner deux filtres, parce que le bruit d'altitude n'est pas
+d'une seule espèce. `medianFilter` sur 30 m supprime les pics isolés —
+décrochages GPS, tunnels — et **c'est le seul appliqué par défaut**.
+`meanFilter`, qui réduit l'oscillation permanente de l'altimètre, se demande
+explicitement : `meanM` vaut `0`, et une fenêtre nulle, négative ou `NaN` saute
+le filtre au lieu de produire une fenêtre d'un point.
 
-L'ordre n'est pas interchangeable : une moyenne ne supprime pas un pic, elle
-l'étale sur ses voisins, et la médiane ne saurait plus l'en distinguer. Voir
-[ADR 005](adr/005-lisser-par-mediane-puis-moyenne.md), qui détaille pourquoi ce
-choix s'écarte de la moyenne glissante seule prévue à l'origine.
+Ce défaut vient de la mesure sur le corpus — voir
+[ADR 006](adr/006-couper-la-moyenne-par-defaut.md), qui remplace l'
+[ADR 005](adr/005-lisser-par-mediane-puis-moyenne.md) : l'oscillation que la
+moyenne devait traiter est l'apanage de l'altitude GPS, que les appareils à
+altimètre barométrique n'utilisent plus. `meanFilter` reste exportée et testée
+pour ce cas, qu'aucun fichier du corpus ne contient encore.
+
+L'ordre, lui, n'est pas interchangeable : une moyenne ne supprime pas un pic,
+elle l'étale sur ses voisins, et la médiane ne saurait plus l'en distinguer.
 
 Les deux fenêtres sont des ordres de grandeur, pas des valeurs mesurées. Les dix
 GPX de référence les trancheront.

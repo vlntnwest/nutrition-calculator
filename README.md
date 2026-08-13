@@ -6,10 +6,11 @@ et l'outil produit les temps de passage par tronçon et la quantité de glucides
 d'eau et de sodium à emporter entre chaque. Sans compte, sans installation, et
 sans être enfermé dans le catalogue d'une marque.
 
-> **État : phase 1.** Le socle d'ingénierie est en place, et le noyau de calcul est
-> en cours d'écriture — lecture du GPX et distance cumulée sont faites, le reste
-> suit. Voir [Feuille de route](#feuille-de-route). Une capture sera ajoutée dès
-> qu'il y aura une interface à montrer.
+> **État : phase 1.** Le socle d'ingénierie est en place et le noyau de calcul
+> est complet, du fichier GPX au plan nutritionnel — `npm run plan` produit déjà
+> un roadbook en ligne de commande. Restent l'interface, la persistance et la
+> mise en ligne. Voir [Feuille de route](#feuille-de-route). Une capture sera
+> ajoutée dès qu'il y aura une interface à montrer.
 
 ## Pourquoi il existe
 
@@ -83,8 +84,8 @@ soit de `app/`, c'est qu'elle est au mauvais endroit.**
 
 Le calcul y est découpé en fonctions pures enchaînées, du XML au plan : lecture du
 GPX, ancrage sur la distance cumulée, interpolation des altitudes manquantes,
-rééchantillonnage, lissage, D+, simplification, modèle d'allure, répartition du
-temps, répartition nutritionnelle.
+rééchantillonnage, lissage, D+, simplification, découpage en tronçons de pente
+homogène, modèle d'allure, répartition du temps, répartition nutritionnelle.
 Chacune est documentée avec ses hypothèses et ses seuils dans
 **[`docs/noyau-de-calcul.md`](docs/noyau-de-calcul.md)** — pourquoi le
 rééchantillonnage se fait à pas de distance et non à nombre de points, pourquoi le

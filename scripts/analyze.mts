@@ -159,7 +159,7 @@ function analyzeFile(path: string, entry?: Entry): void {
   }
   if (reference !== null) {
     console.log(
-      "\n    vert = dans la fourchette des outils, gras = le plus proche de la moyenne",
+      "\n    vert = dans la fourchette des outils, gras = le plus proche de la référence Strava",
     );
   }
 }
