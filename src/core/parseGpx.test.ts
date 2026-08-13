@@ -172,6 +172,23 @@ test("un <trk> partiellement lisible reste la source", () => {
   });
 });
 
+test("le nom ne vient jamais de la source abandonnée", () => {
+  // Le <trk> fournit les points mais n'a pas de nom. Prendre celui du <rte>
+  // baptiserait une trace enregistrée d'après un itinéraire sans rapport ; les
+  // métadonnées, elles, désignent bien ce fichier.
+  const xml = `<gpx>
+    <metadata><name>Sortie du dimanche</name></metadata>
+    <trk><trkseg>
+      <trkpt lat="45.764" lon="4.8357"><ele>172.4</ele></trkpt>
+    </trkseg></trk>
+    <rte><name>Itinéraire planifié</name>
+      <rtept lat="46.2044" lon="6.1432"><ele>375</ele></rtept>
+    </rte>
+  </gpx>`;
+
+  expect(parseGpx(xml).name).toBe("Sortie du dimanche");
+});
+
 test("prends <metadata><name> si pas de <trk><name>", () => {
   const xml = `<gpx><metadata><name>UTDP 2026</name></metadata><trk><trkseg>
     <trkpt lat="45.764" lon="4.8357"><ele>172.4</ele></trkpt>
