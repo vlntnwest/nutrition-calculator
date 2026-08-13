@@ -1,0 +1,156 @@
+[
+  {
+    "file": "saintelyon.gpx",
+    "course": "SaintéLyon 82 km",
+    "type": "itineraire-planifie",
+    "creator": "Openrunner",
+    "official": {
+      "ascentM": 2300
+    },
+    "strava": null,
+    "garmin": null
+  },
+  {
+    "file": "saintelyon-benj.gpx",
+    "course": "SaintéLyon",
+    "type": "trace-montre",
+    "creator": "StravaGPX",
+    "official": null,
+    "strava": {
+      "distanceKm": 78.84,
+      "ascentM": 2139
+    },
+    "garmin": {
+      "distanceKm": 79.2,
+      "ascentM": 2208
+    }
+  },
+  {
+    "file": "saverne.gpx",
+    "course": "Saverne",
+    "type": "trace-montre",
+    "official": null,
+    "strava": {
+      "distanceKm": 28.76,
+      "ascentM": 1450
+    },
+    "garmin": {
+      "distanceKm": 28.38,
+      "ascentM": 1318
+    }
+  },
+  {
+    "file": "andlau.gpx",
+    "course": "Andlau",
+    "type": "trace-montre",
+    "official": null,
+    "strava": {
+      "distanceKm": 25.53,
+      "ascentM": 959
+    },
+    "garmin": {
+      "distanceKm": 25.4,
+      "ascentM": 1005
+    }
+  },
+  {
+    "file": "uthk.gpx",
+    "course": "UTHK",
+    "type": "trace-montre",
+    "official": null,
+    "strava": {
+      "distanceKm": 104.39,
+      "ascentM": 4449
+    },
+    "garmin": {
+      "distanceKm": 103.46,
+      "ascentM": 4434
+    }
+  },
+  {
+    "file": "utdc.gpx",
+    "course": "UTDC",
+    "type": "trace-montre",
+    "official": null,
+    "strava": {
+      "distanceKm": 160.63,
+      "ascentM": 6373
+    },
+    "garmin": null
+  },
+  {
+    "file": "velo-hugo-iphone.gpx",
+    "course": "Sortie vélo (iPhone)",
+    "type": "trace-telephone",
+    "official": null,
+    "strava": {
+      "distanceKm": 70.59,
+      "ascentM": 319
+    },
+    "garmin": {
+      "distanceKm": 72.17,
+      "ascentM": 468
+    }
+  },
+  {
+    "file": "course-hugo-iphone.gpx",
+    "course": "Course sur route (iPhone)",
+    "type": "trace-telephone",
+    "official": null,
+    "strava": {
+      "distanceKm": 22.8,
+      "ascentM": 30
+    },
+    "garmin": {
+      "distanceKm": 22.34,
+      "ascentM": 291
+    }
+  },
+  {
+    "file": "utdc-karim.gpx",
+    "course": "UTDC (montre Garmin)",
+    "type": "trace-montre",
+    "official": {
+      "distanceKm": 160,
+      "ascentM": 5200
+    },
+    "strava": {
+      "distanceKm": 159.41,
+      "ascentM": 5450
+    },
+    "garmin": {
+      "distanceKm": 162.19,
+      "ascentM": 5381
+    }
+  },
+  {
+    "file": "strasparis.gpx",
+    "course": "Strasbourg-Paris (appareil A)",
+    "type": "trace-velo",
+    "official": null,
+    "strava": {
+      "distanceKm": 518.44,
+      "ascentM": 2914
+    },
+    "garmin": {
+      "distanceKm": 519.48,
+      "ascentM": 2222
+    },
+    "pair": "strasparis"
+  },
+  {
+    "file": "strasparis-karim.gpx",
+    "course": "Strasbourg-Paris (appareil B)",
+    "type": "trace-velo",
+    "official": null,
+    "strava": {
+      "distanceKm": 511.08,
+      "ascentM": 2569
+    },
+    "garmin": {
+      "distanceKm": 516.72,
+      "ascentM": 1757
+    },
+    "pair": "strasparis"
+  }
+]

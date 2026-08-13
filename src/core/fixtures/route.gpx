@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Openrunner"
+     xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>Export Openrunner</name>
+  </metadata>
+  <rte>
+    <name>SaintéLyon 2025</name>
+    <rtept lat="45.7640" lon="4.8357">
+      <ele>172.4</ele>
+    </rtept>
+    <rtept lat="45.7641" lon="4.8359">
+      <ele>173.1</ele>
+    </rtept>
+    <rtept lat="45.7642" lon="4.8360">
+      <ele>174.0</ele>
+    </rtept>
+  </rte>
+</gpx>

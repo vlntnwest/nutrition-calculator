@@ -8,6 +8,12 @@ déjà le *quoi*, et l'historique Git dit le *quand*.
 | [001](001-ne-pas-stocker-le-fichier-gpx.md) | Ne pas stocker le fichier GPX | Accepté |
 | [002](002-ancrer-les-points-sur-la-distance-cumulee.md) | Ancrer les points sur la distance cumulée | Accepté |
 | [003](003-pas-d-authentification-uuid-dans-l-url.md) | Pas d'authentification, un UUID dans l'URL | Accepté |
+| [004](004-ecarter-les-points-invalides-plutot-que-refuser-le-fichier.md) | Écarter les points invalides plutôt que refuser le fichier | Accepté |
+| [005](005-lisser-par-mediane-puis-moyenne.md) | Lisser par médiane puis moyenne | Remplacé par 006 |
+| [006](006-couper-la-moyenne-par-defaut.md) | Couper la moyenne par défaut | Accepté |
+| [007](007-le-plan-dit-ce-qu-on-emporte-pas-quand-on-mange.md) | Le plan dit ce qu'on emporte, pas quand on mange | Accepté |
+| [008](008-ne-pas-souder-deux-traces-independantes.md) | Ne pas souder deux traces indépendantes | Remplacé par 009 |
+| [009](009-combiner-les-traces-et-mesurer-la-jointure.md) | Combiner les traces, et mesurer la jointure | Accepté |
 
 ## Convention
 

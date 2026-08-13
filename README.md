@@ -6,9 +6,11 @@ et l'outil produit les temps de passage par tronçon et la quantité de glucides
 d'eau et de sodium à emporter entre chaque. Sans compte, sans installation, et
 sans être enfermé dans le catalogue d'une marque.
 
-> **État : phase 0.** Le socle d'ingénierie est en place ; le moteur de calcul
-> n'est pas encore écrit. Voir [Feuille de route](#feuille-de-route). Une capture
-> sera ajoutée dès qu'il y aura une interface à montrer.
+> **État : phase 1.** Le socle d'ingénierie est en place et le noyau de calcul
+> est complet, du fichier GPX au plan nutritionnel — `npm run plan` produit déjà
+> un roadbook en ligne de commande. Restent l'interface, la persistance et la
+> mise en ligne. Voir [Feuille de route](#feuille-de-route). Une capture sera
+> ajoutée dès qu'il y aura une interface à montrer.
 
 ## Pourquoi il existe
 
@@ -80,75 +82,23 @@ et c'est pour cette raison qu'elle est tenue à l'écart du framework.
 La règle pratique : **si une fonction de `core/` a besoin d'importer quoi que ce
 soit de `app/`, c'est qu'elle est au mauvais endroit.**
 
-## Le noyau de calcul
-
-> Non implémenté à ce stade. Cette section décrit le contrat visé ; chaque fonction
-> y sera documentée avec ses hypothèses et ses seuils au fur et à mesure.
-
-Huit fonctions, dans l'ordre du pipeline :
-
-| Fonction | Entrée → sortie |
-| --- | --- |
-| `parseGpx` | XML → points bruts |
-| `resample` | points → pas de distance constant |
-| `smooth` | points → altitudes filtrées |
-| `elevationGain` | points → D+ |
-| `simplify` | points → ~2 000 points pour l'affichage |
-| `paceModel` | pente → coefficient de coût |
-| `distributeTime` | tronçons + temps visé → durées |
-| `nutritionPlan` | plan + produits → besoins et unités |
-
-Quelques seuils déjà arrêtés, et la raison de chacun :
-
-- **Rééchantillonnage à pas de distance constant (~10 m), avant tout filtrage.**
-  L'espacement natif d'un GPX va de 2 m à 40 m selon l'activité et le mode
-  d'enregistrement. Un filtre exprimé en nombre de points représente donc une
-  distance physique différente sur chaque fichier — c'est un bug déguisé en
-  paramètre. Voir [ADR 002](docs/adr/002-ancrer-les-points-sur-la-distance-cumulee.md).
-- **Lissage sur une fenêtre en mètres (50–100 m)**, pour la même raison.
-- **Seuil à hystérésis sur l'accumulation du D+** : une montée n'est comptée
-  qu'au-delà d'un gain net de ~3–5 m depuis le dernier minimum local sur une trace
-  issue d'un modèle numérique de terrain, ~10 m sur une trace GPS brute. Sans ce
-  seuil, le bruit d'altitude seul produit plusieurs centaines de mètres de D+
-  fictif sur un ultra. L'abaisser gonfle le chiffre, l'augmenter écrase les
-  reliefs courts.
-- **Écrêtage de la pente à ±45 %**, qui est le domaine de validité du modèle de
-  coût énergétique utilisé.
-- **Paliers de 30, 60 et 90 g de glucides par heure, défaut à 60.** Chacun
-  correspond à un seuil publié. 90 g/h est un **plafond de tolérance, jamais une
-  recommandation de performance** — la littérature ne montre pas d'avantage à
-  dépasser 90, et les symptômes digestifs augmentent.
-- **Le poids de corps ne pilote pas la cible en glucides**, seulement
-  l'hydratation et le sodium. L'oxydation des glucides exogènes dépend de
-  l'absorption intestinale, pas de la masse corporelle.
-
-Le D+ affiché est traité comme un chiffre **défendable et explicable**, pas comme
-une vérité : les outils du marché divergent entre eux, et un champ « corriger le
-D+ » permet à l'utilisateur de saisir la valeur officielle de sa course.
+Le calcul y est découpé en fonctions pures enchaînées, du XML au plan : lecture du
+GPX, ancrage sur la distance cumulée, interpolation des altitudes manquantes,
+rééchantillonnage, lissage, D+, simplification, découpage en tronçons de pente
+homogène, modèle d'allure, répartition du temps, répartition nutritionnelle.
+Chacune est documentée avec ses hypothèses et ses seuils dans
+**[`docs/noyau-de-calcul.md`](docs/noyau-de-calcul.md)** — pourquoi le
+rééchantillonnage se fait à pas de distance et non à nombre de points, pourquoi le
+seuil d'accumulation du D+ est à trois mètres, et ce qui change si on le déplace.
 
 ## Sources scientifiques
 
-Les seuils nutritionnels s'appuient sur des positions officielles et des articles à
-comité de lecture, majoritairement en accès libre. Les principales :
-
-- **Thomas, Erdman & Burke 2016** — position conjointe Academy of Nutrition and
-  Dietetics / Dietitians of Canada / ACSM, *Med Sci Sports Exerc* 48(3):543-568.
-  L'échelle glucides/heure par durée.
-- **Jeukendrup 2014** — *Sports Med* 44(S1):S25-33. Le mécanisme de saturation des
-  transporteurs intestinaux, et l'argument pour raisonner en valeur absolue plutôt
-  qu'en g/kg.
-- **Tiller et al. 2019** — position stand ISSN sur l'ultra-marathon, *JISSN* 16:50.
-  La seule qui traite spécifiquement de l'ultra-trail.
-- **Sawka et al. 2007** — position stand ACSM sur le remplacement hydrique,
-  *MSSE* 39(2):377-390.
-- **3ᵉ conférence de consensus internationale sur l'hyponatrémie d'effort, 2015.**
+Les seuils nutritionnels viennent de positions officielles et d'articles à comité
+de lecture, jamais des documents commerciaux d'un fabricant. La liste, avec ce que
+chaque référence établit et la tension non résolue entre l'ACSM et l'ISSN sur les
+glucides en ultra, est dans **[`docs/sources.md`](docs/sources.md)**.
 
 Une page « sources » consultable dans l'application est prévue en phase 6.
-
-À noter : ACSM et ISSN ne disent pas la même chose — jusqu'à 90 g/h pour l'un,
-30 à 50 g/h pour l'autre en ultra. Les deux sont défendables et ne parlent pas du
-même effort. L'outil doit trancher explicitement en fonction de la durée, et non
-faire comme si la tension n'existait pas.
 
 ## Tests
 
@@ -168,14 +118,28 @@ La suite visée, par ordre de valeur :
 | --- | --- |
 | Caractérisation | 10 GPX de courses françaises confrontés à leur D+ officiel publié |
 | Propriété | L'invariant de somme : `Σ durées des tronçons === temps total`, quels que soient le profil, le temps visé et les durées imposées |
-| Unitaire | Les huit fonctions du noyau |
+| Unitaire | Les fonctions du noyau |
 | Intégration | Écriture puis relecture d'un plan, expiration |
 | Bout en bout | Un seul parcours nominal, plus le cas « zéro ravito » |
 
 Les fixtures GPX sont le test qui porte le plus de valeur du projet : c'est ce qui
 rend le calcul de D+ défendable, et le seul garde-fou de non-régression sur la
-partie réellement difficile. *La procédure d'ajout d'une fixture sera documentée
-ici lorsqu'elles seront en place, en phase 1.*
+partie réellement difficile.
+
+### Ajouter une fixture
+
+Les fichiers vivent dans `src/core/fixtures/` et se chargent par le helper
+`fixture("nom.gpx")`. Un fichier sur disque quand le XML est réaliste et qu'on le
+relira ; une chaîne écrite dans le test quand l'entrée est une anomalie fabriquée.
+
+Deux principes pour toute valeur attendue :
+
+- **Elle vient d'une source indépendante de l'implémentation** — un calcul à la
+  main, une formule connue, un D+ publié par l'organisateur. Une valeur obtenue en
+  lançant le code puis recopiée ne vérifie rien : elle constate.
+- **Les données choisies rendent l'échec lisible.** Placer les points d'un cas
+  limite à 150 km l'un de l'autre plutôt qu'à trois mètres transforme un « il y a
+  un point de trop » en une cause évidente à la lecture.
 
 ## Décisions
 
@@ -186,8 +150,8 @@ page par décision, avec les alternatives écartées et ce qu'elles coûtent.
 
 | Phase | Contenu | État |
 | --- | --- | --- |
-| 0 | Socle : TypeScript strict, Biome, Vitest, CI, ADR | En cours |
-| 1 | Le noyau de calcul, en ligne de commande, sans interface | À venir |
+| 0 | Socle : TypeScript strict, Biome, Vitest, CI, ADR | Terminé |
+| 1 | Le noyau de calcul, en ligne de commande, sans interface | En cours |
 | 2 | Persistance : Drizzle, migrations versionnées, Postgres | À venir |
 | 3 | Écrans upload et paramètres, profil SVG | À venir |
 | 4 | Placement des ravitos : champ, profil, carte | À venir |
