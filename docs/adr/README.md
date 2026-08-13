@@ -11,6 +11,7 @@ déjà le *quoi*, et l'historique Git dit le *quand*.
 | [004](004-ecarter-les-points-invalides-plutot-que-refuser-le-fichier.md) | Écarter les points invalides plutôt que refuser le fichier | Accepté |
 | [005](005-lisser-par-mediane-puis-moyenne.md) | Lisser par médiane puis moyenne | Remplacé par 006 |
 | [006](006-couper-la-moyenne-par-defaut.md) | Couper la moyenne par défaut | Accepté |
+| [007](007-le-plan-dit-ce-qu-on-emporte-pas-quand-on-mange.md) | Le plan dit ce qu'on emporte, pas quand on mange | Accepté |
 
 ## Convention
 
