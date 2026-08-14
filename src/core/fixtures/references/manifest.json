@@ -79,22 +79,8 @@
     "garmin": null
   },
   {
-    "file": "velo-hugo-iphone.gpx",
-    "course": "Sortie vélo (iPhone)",
-    "type": "trace-telephone",
-    "official": null,
-    "strava": {
-      "distanceKm": 70.59,
-      "ascentM": 319
-    },
-    "garmin": {
-      "distanceKm": 72.17,
-      "ascentM": 468
-    }
-  },
-  {
     "file": "course-hugo-iphone.gpx",
-    "course": "Course sur route (iPhone)",
+    "course": "Semi-marathon de Strasbourg (iPhone)",
     "type": "trace-telephone",
     "official": null,
     "strava": {

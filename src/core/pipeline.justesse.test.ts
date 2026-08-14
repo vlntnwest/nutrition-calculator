@@ -32,9 +32,9 @@ const TOLERANCE = 0.1;
 
 /**
  * Seules les traces de course à pied enregistrées à la montre entrent dans le
- * test. Les deux fichiers téléphone sont exclus faute de référence utilisable
- * — Strava annonce 30 m sur la course sur route, Garmin 291 sur le même
- * fichier — et le vélo l'est parce qu'il est hors périmètre V1 : 2 500 m de D+
+ * test. Le fichier téléphone est exclu faute de référence utilisable — Strava
+ * annonce 30 m sur le semi-marathon, Garmin 291 sur le même fichier — et les
+ * traces de vélo le sont parce qu'elles sont hors périmètre V1 : 2 500 m de D+
  * sur 518 km, c'est un rapport signal/bruit qui appelle un autre seuil.
  */
 const running = manifest.filter(

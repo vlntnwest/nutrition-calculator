@@ -50,7 +50,6 @@ lisent le script et, à terme, le test de caractérisation.
 | `andlau.gpx` | trace montre | 25,53 / 25,40 | 959 / 1005 |
 | `uthk.gpx` | trace montre | 104,39 / 103,46 | 4449 / 4434 |
 | `utdc.gpx` | trace montre | 160,63 / — | 6373 / — |
-| `velo-hugo-iphone.gpx` | trace téléphone | 70,59 / 72,17 | 319 / 468 |
 | `course-hugo-iphone.gpx` | trace téléphone | 22,80 / 22,34 | 30 / 291 |
 | `utdc-karim.gpx` | trace montre | 159,41 / 162,19 | 5450 / 5381 |
 | `strasparis.gpx` | vélo, appareil A | 518,44 / 519,48 | 2914 / 2222 |
@@ -76,9 +75,9 @@ pas été mesuré.
 pas de référence de calibrage — 2500 m de D+ sur 518 km, c'est un rapport
 signal/bruit où le seuil optimal remonte à 2, contre 0 sur les trails.)*
 
-**Les deux fichiers téléphone ne valent que pour la distance.** Leurs D+ de
-référence sont inexploitables : Strava annonce 30 m sur la course, Garmin 291 m,
-sur le même fichier. Et 291 est impossible à extraire d'un fichier dont la somme
+**Le fichier téléphone ne vaut que pour la distance.** Son D+ de référence est
+inexploitable : Strava annonce 30 m sur la course, Garmin 291 m, sur le même
+fichier. Et 291 est impossible à extraire d'un fichier dont la somme
 des variations positives vaut 59 — aucun lissage n'ajoute du dénivelé. Garmin
 **remplace** donc les altitudes par une lecture dans son propre modèle de terrain.
 Ce ne sont pas deux mesures du même parcours, ce sont deux algorithmes répondant
@@ -181,12 +180,12 @@ c'est ici que la rectification a sa place.
 ## Le test de caractérisation
 
 `src/core/pipeline.caracterisation.test.ts` fige les valeurs que le noyau produit
-aujourd'hui sur les onze fichiers. Il n'affirme pas qu'elles sont justes — ce
+aujourd'hui sur les dix fichiers. Il n'affirme pas qu'elles sont justes — ce
 document explique pourquoi personne ne peut l'affirmer — il affirme qu'elles
 **n'ont pas changé**.
 
 Sa valeur est dans le diff : déplacer un seuil ou une fenêtre le fait virer au
-rouge sur les onze lignes à la fois, et le rapport d'échec devient un rapport
+rouge sur les dix lignes à la fois, et le rapport d'échec devient un rapport
 d'impact lisible dans la PR. Sans lui, une modification de paramètre passe
 inaperçue jusqu'à ce que quelqu'un pense à relancer `npm run analyze`.
 
