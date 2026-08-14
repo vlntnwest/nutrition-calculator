@@ -32,6 +32,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# sauf le gabarit, qui ne porte aucune valeur — l'exception doit suivre la
+# règle qu'elle annule, git applique le dernier motif qui correspond
+!.env.example
 
 # vercel
 .vercel
