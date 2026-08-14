@@ -152,32 +152,6 @@ intermédiaire, chaque cran de lissage supplémentaire éloigne du but. Voir
 l'[ADR 006](adr/006-couper-la-moyenne-par-defaut.md), qui remplace le 005 et
 détaille pourquoi la médiane est malgré tout conservée.
 
-### Les dénominateurs de l'ADR 006
-
-L'ADR compte tantôt en huit fichiers, tantôt en cinq, sans dire lesquels. Il est
-daté et ne se modifie pas ; voici donc de quoi le relire.
-
-Au 7 août 2026, jour de sa rédaction, le corpus comptait **huit** fichiers :
-
-| Catégorie | Nombre | Rôle dans l'ADR |
-| --- | --- | --- |
-| `trace-montre` | 5 | le balayage des fenêtres — « un seul fichier sur cinq » |
-| `trace-telephone` | 2 | vérifier que le baromètre est bien la norme |
-| `itineraire-planifie` | 1 | sans référence Strava, hors mesure |
-
-Le balayage ne porte que sur les cinq traces de montre : ce sont les seules à
-réunir un altimètre barométrique et une lecture Strava sur le **même** fichier.
-Les deux traces de téléphone servent l'argument sur la nature du bruit, pas le
-réglage ; `saintelyon.gpx` est un itinéraire planifié, dont la référence porte
-sur un autre tracé que le fichier.
-
-Une coquille subsiste, et elle reste : la conclusion de l'ADR annonce « les six
-traces de montre » là où il n'y en avait que **cinq** ce jour-là. La sixième,
-`utdc-karim.gpx`, n'a été versée que le 9 août avec les deux traces de vélo —
-le corpus est passé de huit à onze fichiers. Le chiffre de ±1,7 % vaut donc pour
-cinq traces, pas six. Corriger l'ADR effacerait ce qu'on savait ce jour-là ;
-c'est ici que la rectification a sa place.
-
 ## Le test de caractérisation
 
 `src/core/pipeline.caracterisation.test.ts` fige les valeurs que le noyau produit
