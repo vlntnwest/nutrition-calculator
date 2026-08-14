@@ -25,6 +25,9 @@
  *
  * `--segments` est là où l'on confronte le modèle d'allure à ce qu'on fait
  * vraiment.
+ *
+ * Exemple :
+ * npm run plan -- uthk.gpx 12:45 77 --aidStations "Château du Frankenbourg@22.6,Lièpvre@39.8,Refuge des Vosges Trotters@46.8,1er passage Hasenclever@63,2ème passage Hasenclever@73.1, Château du Reichenberg@82.2, Château Haut-Koenigsbourg@92.9" --products naak-waffle-citron,naak-puree-apple,decathlon-iso-plus --flasks "500,500w" --start "22:00" --carbs 45
  */
 
 import { readFileSync } from "node:fs";
