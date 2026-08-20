@@ -17,7 +17,7 @@
     "analyze": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/analyze.mts",
     "strip-gpx": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/strip-gpx.mts",
     "plan": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/plan.mts",
-    "db:up": "docker compose --env-file .env.local -f docker-compose.dev.yml up -d",
+    "db:up": "docker compose --env-file .env.local -f docker-compose.dev.yml up -d --wait",
     "db:down": "docker compose --env-file .env.local -f docker-compose.dev.yml down",
     "db:logs": "docker compose --env-file .env.local -f docker-compose.dev.yml logs -f",
     "db:ps": "docker compose --env-file .env.local -f docker-compose.dev.yml ps",

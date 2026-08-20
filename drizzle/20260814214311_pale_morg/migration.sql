@@ -1,1 +1,0 @@
-ALTER TABLE "products" DROP CONSTRAINT "products_energy_carbs_ratio", ADD CONSTRAINT "products_energy_carbs_ratio" CHECK ("carbs_g" * 4 <= "energy_kcal" * 1.10);
