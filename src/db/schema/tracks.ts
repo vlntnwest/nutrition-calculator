@@ -1,7 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
   check,
-  date,
   foreignKey,
   integer,
   jsonb,
@@ -18,7 +17,6 @@ export const tracks = snakeCase.table(
   {
     planId: uuid().notNull(),
     name: text().notNull(),
-    raceDate: date().notNull(),
     distanceM: integer().notNull(),
     ascentM: integer().notNull(),
     points: jsonb().notNull(),

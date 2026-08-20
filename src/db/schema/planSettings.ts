@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   check,
+  date,
   foreignKey,
   integer,
   numeric,
@@ -22,6 +23,7 @@ export const planSettings = snakeCase.table(
       .notNull()
       .default(`0.25`),
     paceSplit: numeric({ precision: 3, scale: 2 }).notNull(),
+    raceDate: date().notNull(),
     startTime: time(),
     targetCarbsGH: integer("target_carbs_g_h").notNull().default(30),
     targetFluidMlH: integer().notNull().default(500),
