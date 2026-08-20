@@ -188,12 +188,12 @@ page par décision, avec les alternatives écartées et ce qu'elles coûtent.
 
 ## Feuille de route
 
-| Phase | Contenu                                                  | État     |
-| ----- | -------------------------------------------------------- | -------- |
-| 0     | Socle : TypeScript strict, Biome, Vitest, CI, ADR        | Terminé  |
-| 1     | Le noyau de calcul, en ligne de commande, sans interface | Terminé  |
-| 2     | Persistance : Drizzle, migrations versionnées, Postgres  | En cours |
-| 3     | Écrans upload et paramètres, profil SVG                  | À venir  |
-| 4     | Placement des ravitos : champ, profil, carte             | À venir  |
-| 5     | Plan généré et catalogue produits                        | À venir  |
-| 6     | Mise en ligne, page sources, observabilité               | À venir  |
+| Phase | Contenu                                                           | État     |
+| ----- | ----------------------------------------------------------------- | -------- |
+| 0     | Socle : TypeScript strict, Biome, Vitest, CI, ADR                 | Terminé  |
+| 1     | Le noyau de calcul, en ligne de commande, sans interface          | Terminé  |
+| 2     | Persistance : schéma, migrations, écriture et relecture d'un plan | En cours |
+| 3     | Écrans upload et paramètres, profil SVG                           | À venir  |
+| 4     | Placement des ravitos : champ, profil, carte                      | À venir  |
+| 5     | Plan généré et catalogue produits                                 | À venir  |
+| 6     | Mise en ligne, page sources, observabilité                        | À venir  |
