@@ -17,7 +17,9 @@ Le pipeline, dans l'ordre :
 | `simplifyPoints` | points → ~2 000 points pour l'affichage |
 | `paceModel` | pente → coefficient de coût |
 | `splitBySlope` | points → tronçons de pente homogène |
-| `distributeTime` | points + temps visé → temps cumulé sur chaque point |
+| `movingTimeS` | temps visé + ravitos → temps visé, arrêts déduits |
+| `fixedSpans` | ravitos → portions de trace à durée imposée |
+| `distributeTime` | points + temps de mouvement → temps cumulé sur chaque point |
 | `nutritionPlan` | plan + produits → besoins et unités |
 
 ## Lecture du GPX

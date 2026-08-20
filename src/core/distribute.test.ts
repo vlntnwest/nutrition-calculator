@@ -1,7 +1,18 @@
 import fc from "fast-check";
 import { expect, test } from "vitest";
-import { distributeTime, timeAt, timeSegments } from "./distribute";
-import type { PacingProfile, ResolvedPoint, Segment, TimedPoint } from "./type";
+import {
+  distributeTime,
+  pacingIssue,
+  timeAt,
+  timeSegments,
+} from "./distribute";
+import type {
+  FixedSpan,
+  PacingProfile,
+  ResolvedPoint,
+  Segment,
+  TimedPoint,
+} from "./type";
 
 const EVEN: PacingProfile = { climbIntensity: 0, split: 0 };
 
@@ -245,3 +256,162 @@ test("timeAt survit à une trace d'un seul point", () => {
   const [s] = timeSegments(alone, [segment(0, 0, 0)]);
   expect(s.durationS).toBe(0);
 });
+
+// ───────────────────────────────────────────────── Les durées imposées
+
+/** Une trace plate de `km` kilomètres, au pas de 10 m. */
+function flat(km: number): ResolvedPoint[] {
+  return trace(new Array(km * 100 + 1).fill(0));
+}
+
+test("une durée imposée est servie exactement, le reste s'accélère", () => {
+  // 40 km en 4 h, dont 1 h 30 imposée sur les dix premiers : il reste 2 h 30
+  // pour trente kilomètres, soit 50 min par tranche de 10 km.
+  const points = distributeTime(flat(40), 4 * 3600, EVEN, [
+    { startM: 0, endM: 10_000, durationS: 5400 },
+  ]);
+
+  expect(points[1000].t).toBeCloseTo(5400, 6);
+  expect(points[2000].t).toBeCloseTo(5400 + 3000, 6);
+  expect(points[3000].t).toBeCloseTo(5400 + 6000, 6);
+  expect(points[4000].t).toBe(4 * 3600);
+});
+
+test("deux portions imposées non contiguës cohabitent", () => {
+  const points = distributeTime(flat(40), 4 * 3600, EVEN, [
+    { startM: 0, endM: 10_000, durationS: 3600 },
+    { startM: 20_000, endM: 30_000, durationS: 1800 },
+  ]);
+
+  // 20 km libres pour 14 400 − 5 400 = 9 000 s, soit 4 500 s les 10 km.
+  expect(points[1000].t).toBeCloseTo(3600, 6);
+  expect(points[2000].t).toBeCloseTo(3600 + 4500, 6);
+  expect(points[3000].t).toBeCloseTo(3600 + 4500 + 1800, 6);
+  expect(points[4000].t).toBe(4 * 3600);
+});
+
+test("sans portion imposée, rien ne change", () => {
+  const points = trace([0, 40, 30, 90, 10, 10, 60]);
+  const profile: PacingProfile = { climbIntensity: 0.3, split: 0.15 };
+
+  expect(distributeTime(points, 3600, profile, [])).toEqual(
+    distributeTime(points, 3600, profile),
+  );
+});
+
+/**
+ * Le piège de la fonctionnalité : découper la trace puis répartir chaque
+ * portion isolément ferait repartir `paceDrift` de zéro à chaque ravito, et la
+ * dérive d'allure disparaîtrait sans le dire. Les poids restent donc calculés
+ * sur la trace entière, seule l'allure appliquée change d'une portion à
+ * l'autre — la portion libre garde ses proportions internes.
+ */
+test("une portion imposée ne réinitialise pas la dérive d'allure", () => {
+  const points = flat(40);
+  const profile: PacingProfile = { climbIntensity: 0, split: 0.4 };
+  const share = (timed: TimedPoint[]) =>
+    (timed[3000].t - timed[1000].t) / (timed[4000].t - timed[1000].t);
+
+  const free = distributeTime(points, 4 * 3600, profile);
+  const fixed = distributeTime(points, 4 * 3600, profile, [
+    { startM: 0, endM: 10_000, durationS: 5400 },
+  ]);
+
+  expect(share(fixed)).toBeCloseTo(share(free), 9);
+
+  // Et la dérive est bien là : la seconde moitié du libre est plus lente.
+  expect(fixed[3000].t - fixed[2000].t).toBeGreaterThan(
+    fixed[2000].t - fixed[1000].t,
+  );
+});
+
+test("des durées imposées au-delà de l'objectif sont refusées", () => {
+  const spans: FixedSpan[] = [
+    { startM: 0, endM: 10_000, durationS: 5400 },
+    { startM: 10_000, endM: 20_000, durationS: 12_600 },
+  ];
+
+  expect(() => distributeTime(flat(40), 4 * 3600, EVEN, spans)).toThrow();
+});
+
+test("tout imposer sans tomber sur l'objectif est refusé", () => {
+  // Aucune portion libre pour rattraper : l'arrivée manquerait l'objectif de
+  // 1 h sans que rien ne le signale.
+  const spans: FixedSpan[] = [
+    { startM: 0, endM: 20_000, durationS: 5400 },
+    { startM: 20_000, endM: 40_000, durationS: 5400 },
+  ];
+
+  expect(() => distributeTime(flat(40), 4 * 3600, EVEN, spans)).toThrow();
+
+  spans[1].durationS = 9000;
+  expect(distributeTime(flat(40), 4 * 3600, EVEN, spans)[2000].t).toBeCloseTo(
+    5400,
+    6,
+  );
+});
+
+test("chaque secteur peut être réglé, le dernier compris", () => {
+  // Quatre secteurs de 10 km, trois réglés : 1 h, 30 min et 45 min. Le
+  // quatrième prend ce qui reste, soit 1 h 45.
+  const points = distributeTime(flat(40), 4 * 3600, EVEN, [
+    { startM: 0, endM: 10_000, durationS: 3600 },
+    { startM: 10_000, endM: 20_000, durationS: 1800 },
+    { startM: 30_000, endM: 40_000, durationS: 2700 },
+  ]);
+
+  expect(points[1000].t).toBeCloseTo(3600, 6);
+  expect(points[2000].t).toBeCloseTo(5400, 6);
+  expect(points[3000].t).toBeCloseTo(5400 + 6300, 6);
+  expect(points[4000].t).toBe(4 * 3600);
+});
+
+test("tout régler est possible, à condition de tomber sur l'objectif", () => {
+  const spans: FixedSpan[] = [
+    { startM: 0, endM: 10_000, durationS: 3600 },
+    { startM: 10_000, endM: 25_000, durationS: 5400 },
+    { startM: 25_000, endM: 40_000, durationS: 5400 },
+  ];
+  const points = distributeTime(flat(40), 4 * 3600, EVEN, spans);
+
+  expect(points[1000].t).toBeCloseTo(3600, 6);
+  expect(points[2500].t).toBeCloseTo(9000, 6);
+  expect(points[4000].t).toBe(4 * 3600);
+});
+
+test("un plan infaisable porte ses chiffres, pas une phrase", () => {
+  // C'est ce qui permet à l'appelant de proposer la correction — caler
+  // l'objectif sur la somme saisie — au lieu de relayer un message.
+  const tooLong = [{ startM: 0, endM: 10_000, durationS: 20_000 }];
+  const missed = [
+    { startM: 0, endM: 20_000, durationS: 5400 },
+    { startM: 20_000, endM: 40_000, durationS: 5400 },
+  ];
+
+  expect(
+    pacingIssue(catchOf(() => distributeTime(flat(40), 14_400, EVEN, tooLong))),
+  ).toEqual({
+    code: "fixed-above-target",
+    fixedS: 20_000,
+    targetTimeS: 14_400,
+  });
+
+  expect(
+    pacingIssue(catchOf(() => distributeTime(flat(40), 14_400, EVEN, missed))),
+  ).toEqual({ code: "fixed-miss-target", fixedS: 10_800, targetTimeS: 14_400 });
+
+  // Une exception ordinaire n'est pas un plan infaisable.
+  expect(pacingIssue(new Error("boum"))).toBeNull();
+  expect(pacingIssue("boum")).toBeNull();
+});
+
+/** Ce que lève `run`, pour l'examiner. */
+function catchOf(run: () => unknown): unknown {
+  try {
+    run();
+  } catch (error) {
+    return error;
+  }
+
+  throw new Error("Rien n'a été levé");
+}

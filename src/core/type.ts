@@ -159,6 +159,56 @@ export type PacingProfile = {
   split: number;
 };
 
+/**
+ * Une portion de trace dont la durée est **imposée** : elle ne se répartit
+ * pas, elle se sert d'abord. Ce qui reste va aux portions libres, qui
+ * s'accélèrent d'autant.
+ *
+ * C'est ce qui traduit « je veux être à ce ravito à telle heure » : le coureur
+ * fixe la durée, le noyau redistribue le reste.
+ */
+export type FixedSpan = {
+  startM: number;
+  endM: number;
+  /** Du temps de **mouvement**, arrêt au ravito exclu. */
+  durationS: number;
+};
+
+/**
+ * Ce qui empêche de placer une allure, en **données**. Même principe que
+ * `Warning` : le noyau dit ce qu'il a constaté et avec quels chiffres, il
+ * n'écrit pas de phrases.
+ *
+ * Il voyage dans le `cause` de l'erreur levée, et se relit avec `pacingIssue`.
+ * Un appelant qui veut proposer une correction — caler l'objectif sur la somme
+ * saisie — a besoin des nombres, pas d'un message à analyser.
+ */
+export type PacingIssue =
+  | {
+      /** Les arrêts valent ou dépassent l'objectif : il ne reste rien à
+       * courir. `targetTimeS` est l'objectif brut. */
+      code: "stops-above-target";
+      stopS: number;
+      targetTimeS: number;
+    }
+  | {
+      /** Les durées imposées dépassent à elles seules le temps disponible. */
+      code: "fixed-above-target";
+      fixedS: number;
+      /** Le temps **de mouvement** disponible : l'objectif, arrêts déduits. */
+      targetTimeS: number;
+    }
+  | {
+      /**
+       * Tous les secteurs sont réglés, mais leur somme rate le temps
+       * disponible. Aucune seconde libre ne peut rattraper l'écart.
+       */
+      code: "fixed-miss-target";
+      fixedS: number;
+      /** Le temps **de mouvement** disponible : l'objectif, arrêts déduits. */
+      targetTimeS: number;
+    };
+
 export type TrackAnalysis = {
   name: string | null;
   /** Points présents dans le fichier, avant tout traitement. */
@@ -246,6 +296,26 @@ export type Runner = {
 export type AidStation = {
   name: string;
   distanceM: number;
+  /**
+   * Le temps d'arrêt prévu sur place, en secondes. Absent vaut zéro.
+   *
+   * Il ne se répartit **pas** sur la trace : il se retranche du temps visé
+   * avant que `distributeTime` ne place l'allure — voir `movingTimeS`. Le
+   * diluer décrirait un coureur uniformément plus lent partout au lieu d'un
+   * coureur à son allure qui s'arrête cinq fois, et ferait dériver tous les
+   * horaires de passage.
+   */
+  stopS?: number;
+  /**
+   * La durée imposée au secteur qui **se termine** ici, en secondes de
+   * mouvement, arrêt exclu. Absente, le noyau décide de l'allure comme
+   * ailleurs.
+   *
+   * Le dernier secteur n'est clos par aucun ravito : sa consigne ne peut pas
+   * voyager ici, elle passe par le troisième paramètre de `fixedSpans`. Tous
+   * les secteurs se règlent donc, mais pas tous par le même chemin.
+   */
+  legDurationS?: number;
 };
 
 export type Serving = {
@@ -291,9 +361,26 @@ export type Leg = {
   lengthM: number;
   ascentM: number;
   descentM: number;
+  /**
+   * Temps **écoulé** depuis le départ, arrêts aux ravitos compris. C'est
+   * l'heure au chronomètre, celle qui donne l'horaire de passage.
+   */
   startS: number;
   arrivalS: number;
+  /**
+   * Temps de **mouvement** sur le secteur. Vaut toujours `arrivalS - startS`,
+   * l'arrêt d'un ravito tombant entre l'arrivée d'un secteur et le départ du
+   * suivant, jamais à l'intérieur d'un secteur.
+   *
+   * C'est cette durée-là qui commande les besoins : le temps passé debout à
+   * une table se ravitaille sur place, pas dans le sac.
+   */
   durationS: number;
+  /**
+   * L'arrêt prévu au ravito qui **clôt** ce secteur. Nul sur le dernier, qui
+   * arrive à l'arrivée. Il n'entre pas dans `durationS`.
+   */
+  stopS: number;
   expenditureKcal: number;
   /** Ce qu'il faut emporter. */
   need: { carbsG: number; fluidMl: number; sodiumMg: number };
@@ -403,7 +490,12 @@ export type Warning =
 export type NutritionPlan = {
   legs: Leg[];
   total: {
+    /** Temps de mouvement, arrêts exclus. */
     durationS: number;
+    /** Somme des arrêts aux ravitos. */
+    stopS: number;
+    /** Le temps de course tel qu'il s'affiche : `durationS + stopS`. */
+    elapsedS: number;
     expenditureKcal: number;
     carbsG: number;
     energyKcal: number;
