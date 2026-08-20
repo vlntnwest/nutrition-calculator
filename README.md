@@ -8,10 +8,11 @@ sans être enfermé dans le catalogue d'une marque.
 
 > **État : phase 2.** Le socle d'ingénierie est en place et le noyau de calcul
 > est complet, du fichier GPX au plan nutritionnel — `npm run plan` produit déjà
-> un roadbook en ligne de commande. Le schéma de persistance est posé : treize
-> tables, migrations versionnées. Restent l'interface et la mise en ligne. Voir
-> [Feuille de route](#feuille-de-route). Une capture sera ajoutée dès qu'il y
-> aura une interface à montrer.
+> un roadbook en ligne de commande. Le schéma de persistance est posé — treize
+> tables, migrations versionnées — mais rien ne l'écrit encore : `src/db/`
+> n'expose qu'une connexion. Restent l'accès aux données, l'interface et la
+> mise en ligne. Voir [Feuille de route](#feuille-de-route). Une capture sera
+> ajoutée dès qu'il y aura une interface à montrer.
 
 ## Pourquoi il existe
 
