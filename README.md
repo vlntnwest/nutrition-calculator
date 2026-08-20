@@ -6,9 +6,11 @@ et l'outil produit les temps de passage par tronçon et la quantité de glucides
 d'eau et de sodium à emporter entre chaque. Sans compte, sans installation, et
 sans être enfermé dans le catalogue d'une marque.
 
-> **État : phase 1.** Le socle d'ingénierie est en place et le noyau de calcul
+> **État : phase 2.** Le socle d'ingénierie est en place et le noyau de calcul
 > est complet, du fichier GPX au plan nutritionnel — `npm run plan` produit déjà
-> un roadbook en ligne de commande. Restent l'interface, la persistance et la
+> un roadbook en ligne de commande. Le schéma de persistance est posé — treize
+> tables, migrations versionnées — mais rien ne l'écrit encore : `src/db/`
+> n'expose qu'une connexion. Restent l'accès aux données, l'interface et la
 > mise en ligne. Voir [Feuille de route](#feuille-de-route). Une capture sera
 > ajoutée dès qu'il y aura une interface à montrer.
 
@@ -36,14 +38,23 @@ Deux conséquences assumées dans tout le produit :
 
 ```bash
 npm install
+cp .env.example .env.local   # puis renseigner PSQL_PASSWORD et DATABASE_URL
+npm run db:up                # Postgres 18 dans Docker
+npm run db:migrate           # applique les migrations de drizzle/
 npm run dev
 ```
 
 L'application tourne sur http://localhost:3000.
 
-Aucune variable d'environnement ni base de données n'est nécessaire à ce stade — la
-persistance arrive en phase 2, et cette section sera complétée avec le
-`docker compose up` et les migrations à ce moment-là.
+Les variables sont décrites dans [`.env.example`](.env.example), seul fichier
+d'environnement commité. Deux consommateurs distincts s'y servent sans se parler :
+Docker Compose lit les `PSQL_*` pour créer le conteneur, Drizzle lit `DATABASE_URL`
+pour s'y connecter.
+
+Si `db:migrate` échoue sur un rôle inexistant, c'est qu'un autre Postgres occupe le
+port 5432 — celui d'un `brew services` oublié, typiquement. Il écoute sur
+`127.0.0.1`, ce qui l'emporte sur le `*` du conteneur, et la connexion part vers le
+mauvais serveur. `lsof -nP -iTCP:5432 -sTCP:LISTEN` dit qui est là.
 
 Les trois vérifications, qui sont exactement ce que rejoue la CI sur chaque PR :
 
@@ -70,6 +81,7 @@ La frontière qui structure le dépôt est celle-ci :
 ```
 src/
   core/   ← fonctions pures. Aucun import de React, de Next ou de la base.
+  db/     ← schéma Drizzle et connexion. Un fichier par table.
   app/    ← Next.js : routage, écrans, accès aux données.
 ```
 
@@ -90,6 +102,34 @@ Chacune est documentée avec ses hypothèses et ses seuils dans
 **[`docs/noyau-de-calcul.md`](docs/noyau-de-calcul.md)** — pourquoi le
 rééchantillonnage se fait à pas de distance et non à nombre de points, pourquoi le
 seuil d'accumulation du D+ est à trois mètres, et ce qui change si on le déplace.
+
+## Base de données
+
+Le schéma vit dans [`src/db/schema/`](src/db/schema/), un fichier par table, et les
+migrations générées dans [`drizzle/`](drizzle/).
+
+```bash
+npm run db:up        # démarre Postgres, attend qu'il réponde
+npm run db:generate  # écrit une migration à partir du schéma
+npm run db:migrate   # l'applique
+npm run db:studio    # inspecte les données
+npm run db:down      # arrête le conteneur — ajouter -v pour effacer le volume
+```
+
+Deux conventions structurent le schéma, et elles ne se devinent pas à la lecture
+d'une table isolée :
+
+- **Ce qui appartient à un plan est identifié par un couple** — `(plan_id, rank)`
+  pour un secteur ou une flasque, `(plan_id, position_m)` pour un ravitaillement.
+  Les clés étrangères qui les visent sont donc composites : référencer la seule
+  moitié `rank` échoue à la migration, faute d'unicité côté Postgres.
+- **Les produits retenus pour un plan sont figés** dans `product_snapshots` au
+  moment du choix, valeurs nutritionnelles comprises. Corriger le catalogue ne
+  réécrit jamais un plan déjà enregistré.
+
+Les valeurs nutritionnelles sont exprimées **par dose consommée** — l'unité pour un
+gel, la mesurette pour une poudre — jamais pour 100 g ni pour le contenant vendu.
+La conversion se fait à la saisie.
 
 ## Sources scientifiques
 
@@ -114,13 +154,13 @@ partir de la phase 3.
 
 La suite visée, par ordre de valeur :
 
-| Niveau | Objet |
-| --- | --- |
-| Caractérisation | 10 GPX de courses françaises confrontés à leur D+ officiel publié |
-| Propriété | L'invariant de somme : `Σ durées des tronçons === temps total`, quels que soient le profil, le temps visé et les durées imposées |
-| Unitaire | Les fonctions du noyau |
-| Intégration | Écriture puis relecture d'un plan, expiration |
-| Bout en bout | Un seul parcours nominal, plus le cas « zéro ravito » |
+| Niveau          | Objet                                                                                                                            |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Caractérisation | 10 GPX de courses françaises confrontés à leur D+ officiel publié                                                                |
+| Propriété       | L'invariant de somme : `Σ durées des tronçons === temps total`, quels que soient le profil, le temps visé et les durées imposées |
+| Unitaire        | Les fonctions du noyau                                                                                                           |
+| Intégration     | Écriture puis relecture d'un plan, expiration                                                                                    |
+| Bout en bout    | Un seul parcours nominal, plus le cas « zéro ravito »                                                                            |
 
 Les fixtures GPX sont le test qui porte le plus de valeur du projet : c'est ce qui
 rend le calcul de D+ défendable, et le seul garde-fou de non-régression sur la
@@ -148,12 +188,12 @@ page par décision, avec les alternatives écartées et ce qu'elles coûtent.
 
 ## Feuille de route
 
-| Phase | Contenu | État |
-| --- | --- | --- |
-| 0 | Socle : TypeScript strict, Biome, Vitest, CI, ADR | Terminé |
-| 1 | Le noyau de calcul, en ligne de commande, sans interface | En cours |
-| 2 | Persistance : Drizzle, migrations versionnées, Postgres | À venir |
-| 3 | Écrans upload et paramètres, profil SVG | À venir |
-| 4 | Placement des ravitos : champ, profil, carte | À venir |
-| 5 | Plan généré et catalogue produits | À venir |
-| 6 | Mise en ligne, page sources, observabilité | À venir |
+| Phase | Contenu                                                           | État     |
+| ----- | ----------------------------------------------------------------- | -------- |
+| 0     | Socle : TypeScript strict, Biome, Vitest, CI, ADR                 | Terminé  |
+| 1     | Le noyau de calcul, en ligne de commande, sans interface          | Terminé  |
+| 2     | Persistance : schéma, migrations, écriture et relecture d'un plan | En cours |
+| 3     | Écrans upload et paramètres, profil SVG                           | À venir  |
+| 4     | Placement des ravitos : champ, profil, carte                      | À venir  |
+| 5     | Plan généré et catalogue produits                                 | À venir  |
+| 6     | Mise en ligne, page sources, observabilité                        | À venir  |

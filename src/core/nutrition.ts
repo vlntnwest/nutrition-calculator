@@ -1,8 +1,9 @@
-import { timeAt } from "./distribute.ts";
+import { pacingError, timeAt } from "./distribute.ts";
 import { energyCost } from "./pace.ts";
 import type {
   AidStation,
   Fill,
+  FixedSpan,
   Flask,
   Leg,
   NutritionPlan,
@@ -89,8 +90,12 @@ export function nutritionPlan(
   }
 
   const carbsG = sum(legs, (s) => s.supply.carbsG);
+  const durationS = sum(legs, (s) => s.durationS);
+  const stopS = sum(legs, (s) => s.stopS);
   const total = {
-    durationS: sum(legs, (s) => s.durationS),
+    durationS,
+    stopS,
+    elapsedS: durationS + stopS,
     expenditureKcal: sum(legs, (s) => s.expenditureKcal),
     carbsG,
     energyKcal: sum(legs, (s) => s.supply.energyKcal),
@@ -108,8 +113,108 @@ function sum<T>(items: T[], read: (item: T) => number): number {
 }
 
 /**
+ * Les ravitos réellement sur le parcours, dans l'ordre. Ce qui tombe au départ,
+ * à l'arrivée ou au-delà n'en est pas un.
+ *
+ * `movingTimeS`, `fixedSpans` et `splitByAidStation` s'appuient tous les trois
+ * dessus : filtrer différemment d'un côté ou de l'autre ferait retrancher du
+ * temps visé un arrêt que le découpage n'applique jamais, et l'arrivée
+ * manquerait l'objectif sans que rien ne le dise.
+ */
+function onCourse(aidStations: AidStation[], endM: number): AidStation[] {
+  return [...aidStations]
+    .filter((r) => r.distanceM > 0 && r.distanceM < endM)
+    .sort((a, b) => a.distanceM - b.distanceM);
+}
+
+/** L'arrêt d'un ravito, en secondes. Absent ou négatif vaut zéro. */
+function stopOf(aidStation: AidStation | null): number {
+  return Math.max(aidStation?.stopS ?? 0, 0);
+}
+
+/**
+ * Le temps de mouvement : le temps visé, arrêts déduits. **C'est lui qu'il
+ * faut passer à `distributeTime`**, jamais le temps visé brut.
+ *
+ * Dix minutes de ravito demandent d'aller plus vite entre les ravitos, pas
+ * partout un peu moins vite. Répartir le temps total revient pourtant à ça :
+ * les arrêts se diluent sur toute la trace, chaque secteur reçoit une durée
+ * légèrement excédentaire, les horaires de passage dérivent d'autant, et les
+ * besoins d'un secteur se calculent sur du temps passé debout à une table.
+ *
+ * @param totalDistanceM Longueur du parcours, pour ignorer les ravitos qui
+ *   n'y tombent pas — le même filtre que `splitByAidStation`.
+ */
+export function movingTimeS(
+  targetTimeS: number,
+  aidStations: AidStation[],
+  totalDistanceM: number,
+): number {
+  const stops = sum(onCourse(aidStations, totalDistanceM), (r) => stopOf(r));
+
+  // Un objectif entièrement mangé par les arrêts n'a pas de solution plus
+  // lente : il n'en a aucune. Le taire donnerait une allure nulle ou négative
+  // qui contaminerait toute la trace en silence.
+  if (stops >= targetTimeS) {
+    throw pacingError(
+      { code: "stops-above-target", stopS: stops, targetTimeS },
+      "Aid station stops leave no time to move",
+    );
+  }
+
+  return targetTimeS - stops;
+}
+
+/**
+ * Les portions de trace dont la durée est **imposée**, dans l'ordre : chacune
+ * va de la borne qui la précède — le ravito d'avant, ou le départ — au ravito
+ * qui porte la consigne.
+ *
+ * Un ravito sans `legDurationS` n'en ouvre aucune, mais il borne quand même
+ * celle qui suit : c'est le découpage en secteurs qui commande, pas la liste
+ * des consignes.
+ *
+ * @param finishLegDurationS Le dernier secteur n'est clos par aucun ravito :
+ *   sa consigne ne peut pas voyager sur un `AidStation` et arrive donc à part.
+ *   Sans elle, il serait le seul secteur à ne pas pouvoir être réglé.
+ */
+export function fixedSpans(
+  aidStations: AidStation[],
+  totalDistanceM: number,
+  finishLegDurationS?: number,
+): FixedSpan[] {
+  const spans: FixedSpan[] = [];
+  let startM = 0;
+
+  for (const ravito of onCourse(aidStations, totalDistanceM)) {
+    if (ravito.legDurationS !== undefined) {
+      spans.push({
+        startM,
+        endM: ravito.distanceM,
+        durationS: ravito.legDurationS,
+      });
+    }
+    startM = ravito.distanceM;
+  }
+
+  if (finishLegDurationS !== undefined) {
+    spans.push({
+      startM,
+      endM: totalDistanceM,
+      durationS: finishLegDurationS,
+    });
+  }
+
+  return spans;
+}
+
+/**
  * Découpe la trace aux ravitos. Le premier secteur part du départ, le dernier
  * arrive à l'arrivée : un roadbook sans ravito donne donc un secteur unique.
+ *
+ * `points` porte le temps de **mouvement** — c'est ce que `distributeTime`
+ * répartit. Les arrêts sont réintroduits ici, en décalant les horaires de
+ * passage de tout ce qui a été perdu en amont, sans jamais toucher aux durées.
  */
 export function splitByAidStation(
   points: TimedPoint[],
@@ -119,9 +224,7 @@ export function splitByAidStation(
   if (points.length < 2) return [];
 
   const endM = points[points.length - 1].d;
-  const bounds = [...aidStations]
-    .filter((r) => r.distanceM > 0 && r.distanceM < endM)
-    .sort((a, b) => a.distanceM - b.distanceM);
+  const bounds = onCourse(aidStations, endM);
 
   const legs: RawLeg[] = [];
   let startM = 0;
@@ -129,6 +232,8 @@ export function splitByAidStation(
   // l'affaire de l'affichage. Le nom d'un ravito, lui, vient du roadbook.
   let from: string | null = null;
   let i = 1;
+  /** Tout ce qui a été perdu aux ravitos en amont du secteur courant. */
+  let stoppedS = 0;
 
   for (const [k, ravito] of [...bounds, null].entries()) {
     const boundM = ravito?.distanceM ?? endM;
@@ -151,8 +256,12 @@ export function splitByAidStation(
       i++;
     }
 
-    const startS = timeAt(points, startM);
-    const arrivalS = timeAt(points, boundM);
+    // Les deux bornes reçoivent le même décalage, donc `durationS` reste du
+    // temps de mouvement pur : l'arrêt d'un ravito sépare l'arrivée d'un
+    // secteur du départ du suivant, il ne rallonge aucun des deux.
+    const startS = timeAt(points, startM) + stoppedS;
+    const arrivalS = timeAt(points, boundM) + stoppedS;
+    const stopS = stopOf(ravito);
 
     legs.push({
       from,
@@ -165,9 +274,11 @@ export function splitByAidStation(
       startS,
       arrivalS,
       durationS: arrivalS - startS,
+      stopS,
       expenditureKcal: (joules * runner.massKg) / JOULES_PER_KCAL,
     });
 
+    stoppedS += stopS;
     startM = boundM;
     from = to;
     if (k === bounds.length) break;

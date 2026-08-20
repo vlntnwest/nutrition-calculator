@@ -16,11 +16,21 @@
     "typecheck": "next typegen && tsc --noEmit",
     "analyze": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/analyze.mts",
     "strip-gpx": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/strip-gpx.mts",
-    "plan": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/plan.mts"
+    "plan": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/plan.mts",
+    "db:up": "docker compose --env-file .env.local -f docker-compose.dev.yml up -d --wait",
+    "db:down": "docker compose --env-file .env.local -f docker-compose.dev.yml down",
+    "db:logs": "docker compose --env-file .env.local -f docker-compose.dev.yml logs -f",
+    "db:ps": "docker compose --env-file .env.local -f docker-compose.dev.yml ps",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^1.0.0-rc.4",
     "fast-xml-parser": "^5.10.1",
     "next": "16.3.0",
+    "pg": "^8.23.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "simplify-js": "^1.2.4"
@@ -29,10 +39,13 @@
     "@biomejs/biome": "2.4.2",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pg": "^8.21.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "drizzle-kit": "^1.0.0-rc.4",
     "fast-check": "^4.9.0",
     "tailwindcss": "^4",
+    "tsx": "^4.23.12",
     "typescript": "^5",
     "vitest": "^4.1.10"
   }

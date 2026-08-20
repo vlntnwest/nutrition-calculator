@@ -14,6 +14,7 @@ déjà le *quoi*, et l'historique Git dit le *quand*.
 | [007](007-le-plan-dit-ce-qu-on-emporte-pas-quand-on-mange.md) | Le plan dit ce qu'on emporte, pas quand on mange | Accepté |
 | [008](008-ne-pas-souder-deux-traces-independantes.md) | Ne pas souder deux traces indépendantes | Remplacé par 009 |
 | [009](009-combiner-les-traces-et-mesurer-la-jointure.md) | Combiner les traces, et mesurer la jointure | Accepté |
+| [010](010-retrancher-les-arrets-du-temps-vise.md) | Retrancher les arrêts du temps visé, ne pas les diluer | Accepté |
 
 ## Convention
 

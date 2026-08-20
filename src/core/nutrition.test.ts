@@ -1,8 +1,11 @@
 import fc from "fast-check";
 import { expect, test } from "vitest";
+import { pacingIssue } from "./distribute";
 import {
   CARBS_SINGLE_SOURCE_MAX_G_H,
   FLUID_GUIDE_ML_H,
+  fixedSpans,
+  movingTimeS,
   nutritionPlan,
   splitByAidStation,
   suggestedTargets,
@@ -707,4 +710,162 @@ test("un produit sans glucides ne décale pas les parts", () => {
   expect(served(gel.id) * gel.carbsG).toBeGreaterThan(
     served(baouwGel.id) * baouwGel.carbsG,
   );
+});
+
+// ─────────────────────────────────────────────── Les arrêts aux ravitos
+
+test("un arrêt ne rallonge aucun secteur : il décale les horaires", () => {
+  // `flatTrack` porte 5 h de **mouvement** — c'est ce que `distributeTime`
+  // répartit une fois les arrêts retranchés du temps visé.
+  const points = flatTrack(40, 5);
+  const aidStations: AidStation[] = [
+    { name: "Ravito 1", distanceM: 10_000, stopS: 600 },
+    { name: "Ravito 2", distanceM: 30_000, stopS: 300 },
+  ];
+  const legs = splitByAidStation(points, aidStations, RUNNER);
+
+  // Trois secteurs de 10, 20 et 10 km sur une trace plate : 1 h 15, 2 h 30,
+  // 1 h 15 de mouvement. Aucune de ces durées ne bouge à cause d'un arrêt.
+  expect(legs.map((s) => s.durationS)).toEqual([4500, 9000, 4500]);
+  expect(legs.map((s) => s.stopS)).toEqual([600, 300, 0]);
+
+  // Les horaires, eux, encaissent tout ce qui a été perdu en amont.
+  expect(legs.map((s) => s.startS)).toEqual([0, 4500 + 600, 13_500 + 900]);
+  expect(legs.map((s) => s.arrivalS)).toEqual([
+    4500,
+    13_500 + 600,
+    18_000 + 900,
+  ]);
+
+  // L'invariant qui tient l'ensemble.
+  for (const s of legs) expect(s.arrivalS - s.startS).toBe(s.durationS);
+});
+
+test("le temps de mouvement retranche les arrêts du temps visé", () => {
+  const aidStations: AidStation[] = [
+    { name: "A", distanceM: 10_000, stopS: 600 },
+    { name: "B", distanceM: 30_000, stopS: 300 },
+  ];
+
+  expect(movingTimeS(6 * 3600, aidStations, 40_000)).toBe(6 * 3600 - 900);
+});
+
+test("un ravito hors parcours ne retranche rien", () => {
+  // Le filtre doit être le même des deux côtés : retrancher l'arrêt d'un
+  // ravito que le découpage ignore ferait manquer l'objectif en silence.
+  const beyond: AidStation[] = [
+    { name: "Trop loin", distanceM: 90_000, stopS: 600 },
+  ];
+
+  expect(movingTimeS(6 * 3600, beyond, 40_000)).toBe(6 * 3600);
+  expect(splitByAidStation(flatTrack(40, 5), beyond, RUNNER)).toHaveLength(1);
+});
+
+test("des arrêts qui mangent l'objectif sont refusés", () => {
+  const aidStations: AidStation[] = [
+    { name: "A", distanceM: 10_000, stopS: 7200 },
+  ];
+
+  expect(() => movingTimeS(3600, aidStations, 40_000)).toThrow();
+
+  // Le refus porte ses chiffres : l'appelant propose la correction, le noyau
+  // ne rédige pas de phrase.
+  try {
+    movingTimeS(3600, aidStations, 40_000);
+  } catch (error) {
+    expect(pacingIssue(error)).toEqual({
+      code: "stops-above-target",
+      stopS: 7200,
+      targetTimeS: 3600,
+    });
+  }
+});
+
+test("les arrêts ne consomment pas de produits", () => {
+  const points = flatTrack(40, 5);
+  const products = [gel, drink];
+  const withoutStops = nutritionPlan(points, [], RUNNER, TARGETS, products);
+  const withStops = nutritionPlan(
+    points,
+    [{ name: "Ravito 1", distanceM: 20_000, stopS: 1800 }],
+    RUNNER,
+    TARGETS,
+    products,
+  );
+
+  // Même temps de mouvement des deux côtés, donc même besoin total : la
+  // demi-heure passée debout à une table se ravitaille sur place.
+  expect(withStops.total.durationS).toBeCloseTo(
+    withoutStops.total.durationS,
+    6,
+  );
+  expect(withStops.total.stopS).toBe(1800);
+  expect(withStops.total.elapsedS).toBeCloseTo(
+    withoutStops.total.durationS + 1800,
+    6,
+  );
+});
+
+// ───────────────────────────────────────────────── Les durées imposées
+
+test("une durée imposée devient la portion qui va du ravito précédent", () => {
+  const aidStations: AidStation[] = [
+    { name: "A", distanceM: 10_000 },
+    { name: "B", distanceM: 25_000, legDurationS: 7200 },
+    { name: "C", distanceM: 30_000, legDurationS: 1800 },
+  ];
+
+  // « B » impose le secteur A → B, pas le parcours depuis le départ : un
+  // ravito sans consigne borne quand même la portion qui le suit.
+  expect(fixedSpans(aidStations, 40_000)).toEqual([
+    { startM: 10_000, endM: 25_000, durationS: 7200 },
+    { startM: 25_000, endM: 30_000, durationS: 1800 },
+  ]);
+});
+
+test("un ravito hors parcours n'impose rien", () => {
+  // Le même filtre que `movingTimeS` et `splitByAidStation` : une consigne
+  // portée par un ravito que le découpage ignore ne doit pas retrancher du
+  // temps que personne ne parcourra.
+  const aidStations: AidStation[] = [
+    { name: "Trop loin", distanceM: 90_000, legDurationS: 3600 },
+    { name: "À l'arrivée", distanceM: 40_000, legDurationS: 3600 },
+    { name: "A", distanceM: 20_000, legDurationS: 5400 },
+  ];
+
+  expect(fixedSpans(aidStations, 40_000)).toEqual([
+    { startM: 0, endM: 20_000, durationS: 5400 },
+  ]);
+});
+
+test("le dernier secteur se règle comme les autres", () => {
+  const aidStations: AidStation[] = [
+    { name: "A", distanceM: 10_000 },
+    { name: "B", distanceM: 25_000, legDurationS: 7200 },
+  ];
+
+  // Aucun ravito ne clôt le dernier secteur : sa consigne arrive à part, et
+  // porte de la dernière borne à l'arrivée.
+  expect(fixedSpans(aidStations, 40_000, 3600)).toEqual([
+    { startM: 10_000, endM: 25_000, durationS: 7200 },
+    { startM: 25_000, endM: 40_000, durationS: 3600 },
+  ]);
+
+  // Seul, il part du départ : un parcours sans ravito n'a qu'un secteur.
+  expect(fixedSpans([], 40_000, 3600)).toEqual([
+    { startM: 0, endM: 40_000, durationS: 3600 },
+  ]);
+});
+
+test("l'arrêt d'un ravito n'entre pas dans la durée imposée", () => {
+  const aidStations: AidStation[] = [
+    { name: "A", distanceM: 20_000, stopS: 600, legDurationS: 5400 },
+  ];
+
+  // Deux consignes indépendantes : 1 h 30 de mouvement jusqu'au ravito, puis
+  // 10 min sur place retranchées du temps visé.
+  expect(fixedSpans(aidStations, 40_000)).toEqual([
+    { startM: 0, endM: 20_000, durationS: 5400 },
+  ]);
+  expect(movingTimeS(4 * 3600, aidStations, 40_000)).toBe(4 * 3600 - 600);
 });

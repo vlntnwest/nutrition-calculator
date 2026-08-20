@@ -8,7 +8,16 @@
  * Positionnels : le fichier, l'objectif en `h:mm`, la masse en kg.
  *
  *   --products      identifiants séparés par des virgules
- *   --aidStations   « nom@km » ou « km », séparés par des virgules
+ *   --aidStations   « nom@km » ou « km », séparés par des virgules. Deux
+ *                   suffixes cumulables, en minutes : « :8 » l'arrêt sur
+ *                   place, « =95 » la durée imposée au secteur qui s'y termine
+ *                   — « Lièpvre@39.8:8=95 ». L'arrêt est retranché du temps
+ *                   visé avant que l'allure ne soit placée, pas dilué sur la
+ *                   trace ; la durée imposée est servie d'abord, et les
+ *                   secteurs libres s'accélèrent d'autant
+ *   --finish        durée imposée au dernier secteur, en minutes. Il n'est
+ *                   clos par aucun ravito, sa consigne ne peut donc pas
+ *                   s'écrire « =95 » — c'est le seul secteur dans ce cas
  *   --flasks        volumes en mL, suffixe `w` pour une flasque réservée à
  *                   l'eau claire — « 500,500w ». Omis, la contenance n'est pas
  *                   déclarée et le noyau ne borne rien
@@ -31,8 +40,17 @@
  */
 
 import { readFileSync } from "node:fs";
-import { distributeTime, timeSegments } from "../src/core/distribute.ts";
-import { nutritionPlan, suggestedTargets } from "../src/core/nutrition.ts";
+import {
+  distributeTime,
+  pacingIssue,
+  timeSegments,
+} from "../src/core/distribute.ts";
+import {
+  fixedSpans,
+  movingTimeS,
+  nutritionPlan,
+  suggestedTargets,
+} from "../src/core/nutrition.ts";
 import { parseGpx } from "../src/core/parseGpx.ts";
 import { prepareTrack, SETTINGS } from "../src/core/pipeline.ts";
 import { CATALOG, productById } from "../src/core/products.ts";
@@ -41,6 +59,7 @@ import type {
   AidStation,
   Flask,
   Leg,
+  PacingIssue,
   SegmentType,
   Targets,
   Warning,
@@ -58,6 +77,7 @@ const option = (name: string) => {
 const VALUED = [
   "products",
   "aidStations",
+  "finish",
   "flasks",
   "start",
   "carbs",
@@ -119,16 +139,29 @@ const products = (option("products") ?? "naak-gel-ultra,naak-drink-ultra")
     return p;
   });
 
-// « nom@km » ou simplement « km ».
+// « nom@km », « km », avec deux suffixes facultatifs en minutes, dans
+// n'importe quel ordre : « :8 » l'arrêt sur place, « =95 » la durée imposée au
+// secteur qui s'y termine — « nom@km:8=95 ».
 const aidStations: AidStation[] = (option("aidStations") ?? "")
   .split(",")
   .filter(Boolean)
   .map((raw, i) => {
     const [a, b] = raw.split("@");
+    const spec = b ?? a;
+    const [km] = spec.split(/[:=]/);
+    const stop = spec.match(/:([^:=]+)/)?.[1];
+    const leg = spec.match(/=([^:=]+)/)?.[1];
 
-    return b === undefined
-      ? { name: `Ravito ${i + 1}`, distanceM: Number(a) * 1000 }
-      : { name: a, distanceM: Number(b) * 1000 };
+    return {
+      name: b === undefined ? `Ravito ${i + 1}` : a,
+      distanceM: Number(km) * 1000,
+      stopS: stop === undefined ? 0 : number(stop, "Arrêt au ravito") * 60,
+      // Absente plutôt que nulle : une durée imposée de zéro seconde est une
+      // consigne, pas une absence de consigne.
+      ...(leg === undefined
+        ? {}
+        : { legDurationS: number(leg, "Durée imposée") * 60 }),
+    };
   });
 
 // « 500,500w » : deux flasques de 500 mL, la seconde réservée à l'eau claire.
@@ -154,10 +187,99 @@ const path = file.includes("/")
 
 const trace = parseGpx(readFileSync(path, "utf8"));
 const smoothed = prepareTrack(trace.points);
-const timed = distributeTime(smoothed, targetTimeS, {
-  climbIntensity: 0.25,
-  split: 0.05,
-});
+
+const endM = smoothed[smoothed.length - 1].d;
+
+// Le dernier secteur se règle comme les autres, par une option à lui : aucun
+// ravito ne le clôt, donc aucun ne peut porter sa consigne.
+const finishRaw = option("finish");
+
+// Arrondi et non troncature : l'accumulation flottante rend 7199,999… pour
+// une durée imposée à 2 h, que tronquer afficherait « 1h59 ».
+const hoursMinutes = (s: number) => {
+  const minutes = Math.round(s / 60);
+
+  return `${Math.floor(minutes / 60)}h${(minutes % 60)
+    .toString()
+    .padStart(2, "0")}`;
+};
+
+/**
+ * Ce qu'on répond à un plan infaisable. Le noyau a constaté et chiffré ; les
+ * mots et la correction proposée sont ici, comme pour les remarques.
+ *
+ * Sur les deux premiers cas, `issue.targetTimeS` est le temps de **mouvement**
+ * disponible : ce que l'objectif brut lui retire est exactement la somme des
+ * arrêts, qu'il faut rajouter pour proposer un objectif tenable. Proposer la
+ * seule somme des durées réglées relancerait le même refus, les arrêts venant
+ * s'en retrancher au tour suivant.
+ *
+ * Le troisième ne propose rien : au-dessus des arrêts, tout objectif convient,
+ * et en choisir un pour l'utilisateur serait inventer son temps de course.
+ */
+function issuePhrase(issue: PacingIssue): string {
+  /** L'objectif qui rendrait les durées réglées tenables. */
+  const adjusted = (fixedS: number, availableS: number) => {
+    const stopS = targetTimeS - availableS;
+
+    return (
+      `Ajuster le temps total à ${hoursMinutes(fixedS + stopS)}` +
+      (stopS > 0
+        ? ` (${hoursMinutes(fixedS)} + ${Math.round(stopS / 60)} min de ravitos)`
+        : "") +
+      " ?"
+    );
+  };
+
+  switch (issue.code) {
+    case "fixed-miss-target":
+      return (
+        `Le temps distribué n'est pas égal au temps réglé : ` +
+        `${hoursMinutes(issue.targetTimeS)} disponibles pour ` +
+        `${hoursMinutes(issue.fixedS)} réglés.\n` +
+        adjusted(issue.fixedS, issue.targetTimeS)
+      );
+    case "fixed-above-target":
+      return (
+        `Le temps réglé (${hoursMinutes(issue.fixedS)}) est supérieur au ` +
+        `temps de mouvement disponible (${hoursMinutes(issue.targetTimeS)}).\n` +
+        adjusted(issue.fixedS, issue.targetTimeS)
+      );
+    case "stops-above-target":
+      return (
+        `Le temps de pauses aux ravitos (${hoursMinutes(issue.stopS)}) ` +
+        `dépasse le temps de course (${hoursMinutes(issue.targetTimeS)}). ` +
+        `Il faut un temps total supérieur à ${hoursMinutes(issue.stopS)}.`
+      );
+  }
+}
+
+// L'allure se place sur le temps de mouvement : les arrêts sont retranchés
+// d'abord, puis réintroduits par `splitByAidStation` aux horaires de passage.
+const timed = (() => {
+  try {
+    return distributeTime(
+      smoothed,
+      movingTimeS(targetTimeS, aidStations, endM),
+      { climbIntensity: 0.25, split: 0.05 },
+      fixedSpans(
+        aidStations,
+        endM,
+        finishRaw === undefined
+          ? undefined
+          : number(finishRaw, "Durée imposée à l'arrivée") * 60,
+      ),
+    );
+  } catch (error) {
+    const issue = pacingIssue(error);
+    // Une exception qui n'est pas un plan infaisable n'a rien à faire ici :
+    // la déguiser en conseil masquerait un vrai bug.
+    if (issue === null) throw error;
+
+    console.error(`\n⚠  ${issuePhrase(issue)}\n`);
+    process.exit(1);
+  }
+})();
 
 const runner = { massKg, flasks };
 
@@ -177,11 +299,6 @@ const targets: Targets = {
 };
 
 const plan = nutritionPlan(timed, aidStations, runner, targets, products);
-
-const hoursMinutes = (s: number) =>
-  `${Math.floor(s / 3600)}h${Math.floor((s % 3600) / 60)
-    .toString()
-    .padStart(2, "0")}`;
 
 const minutesSeconds = (s: number) =>
   `${Math.floor(s / 60)}'${Math.round(s % 60)
@@ -209,7 +326,7 @@ const startOfDayS = (() => {
 const passage = (elapsedS: number) => {
   if (startOfDayS === null) return hoursMinutes(elapsedS);
 
-  const total = startOfDayS + elapsedS;
+  const total = Math.round((startOfDayS + elapsedS) / 60) * 60;
   const days = Math.floor(total / 86_400);
   const hh = Math.floor((total % 86_400) / 3600);
   const mm = Math.floor((total % 3600) / 60);
@@ -297,7 +414,13 @@ if (trace.sources.length > 1) {
 }
 console.log(
   `${(smoothed[smoothed.length - 1].d / 1000).toFixed(1)} km · ` +
-    `objectif ${hoursMinutes(targetTimeS)} · ${massKg} kg · ` +
+    `objectif ${hoursMinutes(targetTimeS)}` +
+    (plan.total.stopS > 0
+      ? ` (${hoursMinutes(plan.total.durationS)} en mouvement + ${Math.round(
+          plan.total.stopS / 60,
+        )} min de ravitos)`
+      : "") +
+    ` · ${massKg} kg · ` +
     (startOfDayS === null
       ? ""
       : `départ ${passage(0)}, arrivée ${passage(targetTimeS)} · `) +
