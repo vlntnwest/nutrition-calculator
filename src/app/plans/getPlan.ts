@@ -1,12 +1,12 @@
 import { and, eq, gt, lte, sql } from "drizzle-orm";
-import { db } from "../../db";
-import { aidStations } from "../../db/schema/aidStations";
-import { flasks } from "../../db/schema/flasks";
-import { legs } from "../../db/schema/legs";
-import { planSettings } from "../../db/schema/planSettings";
-import { plans } from "../../db/schema/plans";
-import { tracks } from "../../db/schema/tracks";
-import { warnings } from "../../db/schema/warnings";
+import { db } from "@/db";
+import { aidStations } from "@/db/schema/aidStations";
+import { flasks } from "@/db/schema/flasks";
+import { legs } from "@/db/schema/legs";
+import { planSettings } from "@/db/schema/planSettings";
+import { plans } from "@/db/schema/plans";
+import { tracks } from "@/db/schema/tracks";
+import { warnings } from "@/db/schema/warnings";
 import type { NewPlan } from "./createPlan";
 
 /** Relit un plan par son identifiant d'accès. */

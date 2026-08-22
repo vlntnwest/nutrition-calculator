@@ -1,16 +1,11 @@
 import { sql } from "drizzle-orm";
-import type {
-  AidStation,
-  Flask,
-  ResolvedPoint,
-  Targets,
-} from "../../core/type";
-import { db } from "../../db";
-import { aidStations } from "../../db/schema/aidStations";
-import { flasks } from "../../db/schema/flasks";
-import { planSettings } from "../../db/schema/planSettings";
-import { plans } from "../../db/schema/plans";
-import { tracks } from "../../db/schema/tracks";
+import type { AidStation, Flask, ResolvedPoint, Targets } from "@/core/type";
+import { db } from "@/db";
+import { aidStations } from "@/db/schema/aidStations";
+import { flasks } from "@/db/schema/flasks";
+import { planSettings } from "@/db/schema/planSettings";
+import { plans } from "@/db/schema/plans";
+import { tracks } from "@/db/schema/tracks";
 
 /** Le côté saisie d'un plan. Le calculé naît de la régénération. */
 export type NewPlan = {
