@@ -10,6 +10,7 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
+import type { ResolvedPoint } from "../../core/type";
 import { plans } from "./plans";
 
 export const tracks = snakeCase.table(
@@ -19,7 +20,7 @@ export const tracks = snakeCase.table(
     name: text().notNull(),
     distanceM: integer().notNull(),
     ascentM: integer().notNull(),
-    points: jsonb().notNull(),
+    points: jsonb().$type<ResolvedPoint[]>().notNull(),
     importedAt: timestamp({
       precision: 6,
       withTimezone: true,
