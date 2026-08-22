@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { primaryKey, snakeCase, timestamp, uuid } from "drizzle-orm/pg-core";
 
 export const plans = snakeCase.table(
@@ -20,6 +21,9 @@ export const plans = snakeCase.table(
       precision: 6,
       withTimezone: true,
     }),
+    expiresAt: timestamp({ precision: 6, withTimezone: true })
+      .notNull()
+      .default(sql`now() + interval '6 months'`),
   },
   (table) => [
     primaryKey({

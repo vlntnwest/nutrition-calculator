@@ -38,7 +38,7 @@ export const planSettings = snakeCase.table(
       name: "plan_settings_plan_fk",
       columns: [table.planId],
       foreignColumns: [plans.accessId],
-    }),
+    }).onDelete("cascade"),
     check("plan_settings_mass_kg_positive", sql`${table.massKg} > 0`),
     check("plan_settings_target_time_positive", sql`${table.targetTimeS} > 0`),
     check(

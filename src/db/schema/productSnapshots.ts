@@ -50,7 +50,7 @@ export const productSnapshots = snakeCase.table(
       name: "product_snapshots_plan_fk",
       columns: [table.planId],
       foreignColumns: [plans.accessId],
-    }),
+    }).onDelete("cascade"),
     foreignKey({
       name: "product_snapshots_product_fk",
       columns: [table.productId],

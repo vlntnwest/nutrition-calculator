@@ -28,12 +28,12 @@ export const servings = snakeCase.table(
       name: "servings_leg_fk",
       columns: [table.planId, table.legRank],
       foreignColumns: [legs.planId, legs.rank],
-    }),
+    }).onDelete("cascade"),
     foreignKey({
       name: "servings_product_snapshot_fk",
       columns: [table.productSnapshotId],
       foreignColumns: [productSnapshots.id],
-    }),
+    }).onDelete("restrict"),
     check("servings_quantity_positive", sql`${table.quantity} > 0`),
   ],
 );

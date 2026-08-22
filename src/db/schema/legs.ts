@@ -5,6 +5,7 @@ import {
   integer,
   primaryKey,
   snakeCase,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import { aidStations } from "./aidStations";
@@ -15,7 +16,7 @@ export const legs = snakeCase.table(
   {
     planId: uuid().notNull(),
     rank: integer().notNull(),
-    endAidStationM: integer().notNull(),
+    endAidStationM: integer(),
     ascentM: integer().notNull(),
     descentM: integer().notNull(),
     durationS: integer().notNull(),
@@ -29,7 +30,7 @@ export const legs = snakeCase.table(
       name: "legs_plan_id_fkey",
       columns: [table.planId],
       foreignColumns: [plans.accessId],
-    }),
+    }).onDelete("cascade"),
     foreignKey({
       name: "legs_end_aid_station_fkey",
       columns: [table.planId, table.endAidStationM],
@@ -39,5 +40,8 @@ export const legs = snakeCase.table(
     check("legs_ascent_positive_or_zero", sql`${table.ascentM} >= 0`),
     check("legs_descent_positive_or_zero", sql`${table.descentM} >= 0`),
     check("legs_duration_positive", sql`${table.durationS} > 0`),
+    uniqueIndex("legs_single_open_end")
+      .on(table.planId)
+      .where(sql`${table.endAidStationM} is null`),
   ],
 );

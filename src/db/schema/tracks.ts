@@ -36,7 +36,7 @@ export const tracks = snakeCase.table(
       name: "tracks_plan_fk",
       columns: [table.planId],
       foreignColumns: [plans.accessId],
-    }),
+    }).onDelete("cascade"),
     check("tracks_distance_positive", sql`${table.distanceM} > 0`),
     check("tracks_ascent_positive_or_zero", sql`${table.ascentM} >= 0`),
   ],
