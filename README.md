@@ -8,11 +8,12 @@ sans être enfermé dans le catalogue d'une marque.
 
 > **État : phase 2.** Le socle d'ingénierie est en place et le noyau de calcul
 > est complet, du fichier GPX au plan nutritionnel — `npm run plan` produit déjà
-> un roadbook en ligne de commande. Le schéma de persistance est posé — treize
-> tables, migrations versionnées — mais rien ne l'écrit encore : `src/db/`
-> n'expose qu'une connexion. Restent l'accès aux données, l'interface et la
-> mise en ligne. Voir [Feuille de route](#feuille-de-route). Une capture sera
-> ajoutée dès qu'il y aura une interface à montrer.
+> un roadbook en ligne de commande. La persistance écrit et relit le côté saisie
+> d'un plan — trace, réglages, flasques, ravitos — contre un vrai Postgres, en
+> local comme en CI. Le plan **calculé**, lui, n'est pas encore écrit : c'est ce
+> qui reste de la phase 2, avant l'interface et la mise en ligne. Voir
+> [Feuille de route](#feuille-de-route). Une capture sera ajoutée dès qu'il y
+> aura une interface à montrer.
 
 ## Pourquoi il existe
 
@@ -41,6 +42,7 @@ npm install
 cp .env.example .env.local   # puis renseigner PSQL_PASSWORD et DATABASE_URL
 npm run db:up                # Postgres 18 dans Docker
 npm run db:migrate           # applique les migrations de drizzle/
+npm run db:seed              # écrit le catalogue produits
 npm run dev
 ```
 
@@ -112,6 +114,7 @@ migrations générées dans [`drizzle/`](drizzle/).
 npm run db:up        # démarre Postgres, attend qu'il réponde
 npm run db:generate  # écrit une migration à partir du schéma
 npm run db:migrate   # l'applique
+npm run db:seed      # écrit le catalogue de core/products.ts — relançable
 npm run db:studio    # inspecte les données
 npm run db:down      # arrête le conteneur — ajouter -v pour effacer le volume
 ```

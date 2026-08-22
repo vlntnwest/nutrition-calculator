@@ -5,7 +5,7 @@ export const brands = snakeCase.table(
   "brands",
   {
     id: uuid().defaultRandom().notNull(),
-    name: text().notNull(),
+    name: text().notNull().unique(),
     affiliateUrl: text(),
     websiteUrl: text(),
   },

@@ -23,6 +23,7 @@
     "db:ps": "docker compose --env-file .env.local -f docker-compose.dev.yml ps",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:seed": "tsx scripts/seed.ts",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
