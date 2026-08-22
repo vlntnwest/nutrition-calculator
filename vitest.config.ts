@@ -6,6 +6,10 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     environment: "node",
+    globalSetup: ["./src/db/seed.globalSetup.ts"],
+    // Les tests d'intégration partagent une seule base : deux fichiers qui
+    // écrivent en même temps s'entre-bloquent. Le noyau, lui, n'y perd rien.
+    fileParallelism: false,
   },
   resolve: {
     alias: {

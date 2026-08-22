@@ -29,4 +29,5 @@ export const newPlan: NewPlan = {
     { name: "Ravito Haberacker", distanceM: 9800, stopS: 300 },
     { name: "Ravito Ochsenstein", distanceM: 20800, stopS: 240 },
   ],
+  productCodes: ["naak-gel-ultra", "decathlon-iso-plus"],
 };
