@@ -5,7 +5,7 @@ export const formats = snakeCase.table(
   "formats",
   {
     id: uuid().defaultRandom().notNull(),
-    label: text().notNull(),
+    label: text().notNull().unique(),
   },
   (table) => [
     primaryKey({
