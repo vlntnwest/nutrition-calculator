@@ -4,7 +4,7 @@ import { check, primaryKey, snakeCase, text, uuid } from "drizzle-orm/pg-core";
 export const brands = snakeCase.table(
   "brands",
   {
-    id: uuid().defaultRandom(),
+    id: uuid().defaultRandom().notNull(),
     name: text().notNull(),
     affiliateUrl: text(),
     websiteUrl: text(),

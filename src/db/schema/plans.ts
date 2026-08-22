@@ -4,7 +4,7 @@ import { primaryKey, snakeCase, timestamp, uuid } from "drizzle-orm/pg-core";
 export const plans = snakeCase.table(
   "plans",
   {
-    accessId: uuid().defaultRandom(),
+    accessId: uuid().defaultRandom().notNull(),
     createdAt: timestamp({
       precision: 6,
       withTimezone: true,

@@ -16,13 +16,13 @@ export const planSettings = snakeCase.table(
   "plan_settings",
   {
     planId: uuid().notNull(),
-    massKg: numeric({ precision: 4, scale: 1 }).notNull(),
+    massKg: numeric({ precision: 4, scale: 1, mode: "number" }).notNull(),
     targetTimeS: integer().notNull(),
     ascentOverrideM: integer(),
-    climbIntensity: numeric({ precision: 3, scale: 2 })
+    climbIntensity: numeric({ precision: 3, scale: 2, mode: "number" })
       .notNull()
-      .default(`0.25`),
-    paceSplit: numeric({ precision: 3, scale: 2 }).notNull(),
+      .default(0.25),
+    paceSplit: numeric({ precision: 3, scale: 2, mode: "number" }).notNull(),
     raceDate: date().notNull(),
     startTime: time(),
     targetCarbsGH: integer("target_carbs_g_h").notNull().default(30),

@@ -33,6 +33,27 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+
+    # Un vrai Postgres, pas un mock — et la même majeure qu'en local et sur
+    # Neon. Un test d'écriture contre un double ne dirait rien des `check`,
+    # des clés composites ni des cascades, qui sont la moitié du schéma.
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: nutrition-calculator
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d nutrition-calculator"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nutrition-calculator
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -40,4 +61,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      # `.env.local` n'existe pas ici ; dotenv ne trouve rien et laisse
+      # DATABASE_URL de l'environnement faire foi.
+      - run: npm run db:migrate
       - run: npm test
