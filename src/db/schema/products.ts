@@ -17,7 +17,7 @@ import { formats } from "./formats";
 export const products = snakeCase.table(
   "products",
   {
-    id: uuid().defaultRandom(),
+    id: uuid().defaultRandom().notNull(),
     /**
      * L'identifiant du fichier de seed — « naak-waffle-citron ». C'est la clé
      * naturelle sur laquelle le seed s'upserte : sans elle, le relancer
@@ -34,14 +34,14 @@ export const products = snakeCase.table(
     gtin: text().unique(),
     energyKcal: integer().notNull(),
     weightG: integer().notNull(),
-    carbsG: numeric({ precision: 3, scale: 1 }).notNull(),
+    carbsG: numeric({ precision: 3, scale: 1, mode: "number" }).notNull(),
     sodiumMg: integer().notNull(),
     caffeineMg: integer().notNull(),
     fluidMl: integer().notNull(),
-    proteinG: numeric({ precision: 3, scale: 1 }),
-    fatG: numeric({ precision: 3, scale: 1 }),
-    fiberG: numeric({ precision: 3, scale: 1 }),
-    sugarG: numeric({ precision: 3, scale: 1 }),
+    proteinG: numeric({ precision: 3, scale: 1, mode: "number" }),
+    fatG: numeric({ precision: 3, scale: 1, mode: "number" }),
+    fiberG: numeric({ precision: 3, scale: 1, mode: "number" }),
+    sugarG: numeric({ precision: 3, scale: 1, mode: "number" }),
     divisibleBy: integer().default(1).notNull(),
     multiTransportable: boolean().notNull(),
     purchaseUrl: text(),

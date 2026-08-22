@@ -4,7 +4,7 @@ import { check, primaryKey, snakeCase, text, uuid } from "drizzle-orm/pg-core";
 export const formats = snakeCase.table(
   "formats",
   {
-    id: uuid().defaultRandom(),
+    id: uuid().defaultRandom().notNull(),
     label: text().notNull(),
   },
   (table) => [

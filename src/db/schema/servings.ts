@@ -17,7 +17,7 @@ export const servings = snakeCase.table(
     planId: uuid().notNull(),
     legRank: integer().notNull(),
     productSnapshotId: uuid().notNull(),
-    quantity: numeric({ precision: 3, scale: 1 }).notNull(),
+    quantity: numeric({ precision: 3, scale: 1, mode: "number" }).notNull(),
   },
   (table) => [
     primaryKey({
