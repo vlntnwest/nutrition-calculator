@@ -1,0 +1,61 @@
+name: Neon
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+permissions:
+  contents: read
+
+env:
+  # Le numéro de PR suffit à identifier la branche, et il évite d'avoir à lire
+  # le nom de la branche git — qui contient un slash sur ce dépôt.
+  NEON_BRANCH: preview/pr-${{ github.event.number }}
+
+jobs:
+  create:
+    name: Créer la branche
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Expiration dans quinze jours
+        run: echo "EXPIRES_AT=$(date -u --date '+14 days' +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_ENV"
+
+      - name: Créer la branche Neon
+        id: branch
+        uses: neondatabase/create-branch-action@v6
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          branch_name: ${{ env.NEON_BRANCH }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+          expires_at: ${{ env.EXPIRES_AT }}
+
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+
+      # Neon copie la branche parente, schéma compris : seules les migrations
+      # ajoutées par la PR restent à appliquer. Connexion non poolée — le
+      # pooler est en mode transaction, et le DDL s'en passe mal.
+      - name: Appliquer les migrations
+        run: npm run db:migrate
+        env:
+          DATABASE_URL: ${{ steps.branch.outputs.db_url }}
+
+  delete:
+    name: Supprimer la branche
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Supprimer la branche Neon
+        uses: neondatabase/delete-branch-action@v3
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          branch: ${{ env.NEON_BRANCH }}
+          api_key: ${{ secrets.NEON_API_KEY }}
