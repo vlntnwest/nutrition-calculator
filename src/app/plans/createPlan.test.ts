@@ -9,10 +9,7 @@ import { tracks } from "../../db/schema/tracks";
 import type { NewPlan } from "./createPlan";
 import { createPlan } from "./createPlan";
 
-/**
- * Trois points suffisent : ce fichier teste l'écriture, pas le noyau. Une vraie
- * trace ferait un test lent qui n'apprendrait rien de plus.
- */
+// Trois points suffisent : on teste l'écriture, pas le noyau.
 const input: NewPlan = {
   track: {
     name: "Saverne Trail",
@@ -179,4 +176,34 @@ test("un réglage refusé par la base n'écrit aucune ligne", async () => {
   ).rejects.toThrow();
 
   expect(await db.select().from(plans)).toHaveLength(before.length);
+});
+
+test("un plan expire six mois après la course, pas après son enregistrement", async () => {
+  const accessId = await createPlan({
+    ...input,
+    settings: { ...input.settings, raceDate: "2027-04-11" },
+  });
+  written.push(accessId);
+
+  const [plan] = await db
+    .select()
+    .from(plans)
+    .where(eq(plans.accessId, accessId));
+
+  expect(plan.expiresAt.toISOString().slice(0, 10)).toBe("2027-10-11");
+});
+
+test("une course déjà passée garde six mois à compter de l'enregistrement", async () => {
+  const accessId = await createPlan({
+    ...input,
+    settings: { ...input.settings, raceDate: "2020-01-01" },
+  });
+  written.push(accessId);
+
+  const [plan] = await db
+    .select()
+    .from(plans)
+    .where(eq(plans.accessId, accessId));
+
+  expect(plan.expiresAt.getTime()).toBeGreaterThan(Date.now());
 });
