@@ -1,11 +1,11 @@
 import { eq } from "drizzle-orm";
 import { afterEach, expect, test } from "vitest";
-import { db } from "../../db";
-import { aidStations } from "../../db/schema/aidStations";
-import { flasks } from "../../db/schema/flasks";
-import { planSettings } from "../../db/schema/planSettings";
-import { plans } from "../../db/schema/plans";
-import { tracks } from "../../db/schema/tracks";
+import { db } from "@/db";
+import { aidStations } from "@/db/schema/aidStations";
+import { flasks } from "@/db/schema/flasks";
+import { planSettings } from "@/db/schema/planSettings";
+import { plans } from "@/db/schema/plans";
+import { tracks } from "@/db/schema/tracks";
 import { createPlan } from "./createPlan";
 import { newPlan as input } from "./newPlan.fixture";
 

@@ -10,7 +10,7 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
-import type { ResolvedPoint } from "../../core/type";
+import type { ResolvedPoint } from "@/core/type";
 import { plans } from "./plans";
 
 export const tracks = snakeCase.table(

@@ -1,8 +1,8 @@
 import { eq, sql } from "drizzle-orm";
 import { afterEach, expect, test } from "vitest";
-import { db } from "../../db";
-import { plans } from "../../db/schema/plans";
-import { tracks } from "../../db/schema/tracks";
+import { db } from "@/db";
+import { plans } from "@/db/schema/plans";
+import { tracks } from "@/db/schema/tracks";
 import { createPlan } from "./createPlan";
 import { getPlan } from "./getPlan";
 import { newPlan as input } from "./newPlan.fixture";
