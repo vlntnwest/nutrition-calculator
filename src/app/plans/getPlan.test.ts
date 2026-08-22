@@ -19,7 +19,11 @@ test("un plan relu rend exactement ce qu'on avait écrit", async () => {
   const accessId = await createPlan(input);
   written.push(accessId);
 
-  expect(await getPlan(accessId)).toEqual(input);
+  // `productCodes` revient trié : c'est un ensemble, pas une suite.
+  expect(await getPlan(accessId)).toEqual({
+    ...input,
+    productCodes: [...input.productCodes].sort(),
+  });
 });
 
 /** On ne peut pas créer un plan déjà expiré : on fait passer le temps. */
@@ -62,5 +66,8 @@ test("un plan en autonomie complète se relit aussi", async () => {
   const accessId = await createPlan(autonome);
   written.push(accessId);
 
-  expect(await getPlan(accessId)).toEqual(autonome);
+  expect(await getPlan(accessId)).toEqual({
+    ...autonome,
+    productCodes: [...autonome.productCodes].sort(),
+  });
 });

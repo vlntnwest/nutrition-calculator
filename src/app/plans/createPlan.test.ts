@@ -5,6 +5,7 @@ import { aidStations } from "@/db/schema/aidStations";
 import { flasks } from "@/db/schema/flasks";
 import { planSettings } from "@/db/schema/planSettings";
 import { plans } from "@/db/schema/plans";
+import { productSnapshots } from "@/db/schema/productSnapshots";
 import { tracks } from "@/db/schema/tracks";
 import { createPlan } from "./createPlan";
 import { newPlan as input } from "./newPlan.fixture";
@@ -175,4 +176,39 @@ test("une course déjà passée garde six mois à compter de l'enregistrement", 
     .where(eq(plans.accessId, accessId));
 
   expect(plan.expiresAt.getTime()).toBeGreaterThan(Date.now());
+});
+
+test("les produits retenus sont figés au moment du choix", async () => {
+  const accessId = await createPlan(input);
+  written.push(accessId);
+
+  const rows = await db
+    .select()
+    .from(productSnapshots)
+    .where(eq(productSnapshots.planId, accessId))
+    .orderBy(productSnapshots.name);
+
+  expect(rows).toHaveLength(2);
+  expect(rows[0]).toMatchObject({
+    name: "Boisson isotonique ISO+",
+    brandName: "Decathlon",
+    formatLabel: "drink",
+    carbsG: 33,
+    fluidMl: 500,
+    divisibleBy: 2,
+    multiTransportable: false,
+  });
+});
+
+test("un code produit inconnu refuse le plan entier", async () => {
+  const before = await db.select().from(plans);
+
+  await expect(
+    createPlan({
+      ...input,
+      productCodes: ["naak-gel-ultra", "gel-imaginaire"],
+    }),
+  ).rejects.toThrow("gel-imaginaire");
+
+  expect(await db.select().from(plans)).toHaveLength(before.length);
 });

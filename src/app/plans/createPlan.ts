@@ -1,10 +1,14 @@
-import { sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import type { AidStation, Flask, ResolvedPoint, Targets } from "@/core/type";
 import { db } from "@/db";
 import { aidStations } from "@/db/schema/aidStations";
+import { brands } from "@/db/schema/brands";
 import { flasks } from "@/db/schema/flasks";
+import { formats } from "@/db/schema/formats";
 import { planSettings } from "@/db/schema/planSettings";
 import { plans } from "@/db/schema/plans";
+import { productSnapshots } from "@/db/schema/productSnapshots";
+import { products } from "@/db/schema/products";
 import { tracks } from "@/db/schema/tracks";
 
 /** Le côté saisie d'un plan. Le calculé naît de la régénération. */
@@ -29,6 +33,8 @@ export type NewPlan = {
   };
   flasks: Flask[];
   aidStations: AidStation[];
+  /** Les `code_seed` des produits retenus — « naak-gel-ultra ». */
+  productCodes: string[];
 };
 
 /** Écrit un plan et rend son identifiant d'accès. */
@@ -85,6 +91,47 @@ export async function createPlan(input: NewPlan): Promise<string> {
           name: aid.name,
           stopDurationS: aid.stopS ?? null,
           durationOverrideS: aid.legDurationS ?? null,
+        })),
+      );
+    }
+
+    if (input.productCodes.length > 0) {
+      const catalogue = await tx
+        .select()
+        .from(products)
+        .innerJoin(brands, eq(products.brandId, brands.id))
+        .innerJoin(formats, eq(products.formatId, formats.id))
+        .where(inArray(products.codeSeed, input.productCodes));
+
+      if (catalogue.length !== input.productCodes.length) {
+        const connus = new Set(catalogue.map((r) => r.products.codeSeed));
+        const manquants = input.productCodes.filter((c) => !connus.has(c));
+
+        throw new Error(`Unknown product codes: ${manquants.join(", ")}`);
+      }
+
+      // Figés à la sélection : corriger le catalogue ne réécrit jamais un plan
+      // enregistré. `divisibleBy` et `multiTransportable` en font partie, ils
+      // entrent tous deux dans le calcul.
+      await tx.insert(productSnapshots).values(
+        catalogue.map(({ products: p, brands: b, formats: f }) => ({
+          planId: plan.accessId,
+          productId: p.id,
+          name: p.name,
+          brandName: b.name,
+          formatLabel: f.label,
+          energyKcal: p.energyKcal,
+          carbsG: p.carbsG,
+          proteinG: p.proteinG,
+          fatG: p.fatG,
+          fiberG: p.fiberG,
+          sugarG: p.sugarG,
+          sodiumMg: p.sodiumMg,
+          caffeineMg: p.caffeineMg,
+          fluidMl: p.fluidMl,
+          weightG: p.weightG,
+          divisibleBy: p.divisibleBy,
+          multiTransportable: p.multiTransportable,
         })),
       );
     }

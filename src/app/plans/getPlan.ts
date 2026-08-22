@@ -5,6 +5,8 @@ import { flasks } from "@/db/schema/flasks";
 import { legs } from "@/db/schema/legs";
 import { planSettings } from "@/db/schema/planSettings";
 import { plans } from "@/db/schema/plans";
+import { productSnapshots } from "@/db/schema/productSnapshots";
+import { products } from "@/db/schema/products";
 import { tracks } from "@/db/schema/tracks";
 import { warnings } from "@/db/schema/warnings";
 import type { NewPlan } from "./createPlan";
@@ -24,7 +26,7 @@ export async function getPlan(accessId: string): Promise<NewPlan | null> {
     return null;
   }
 
-  const [flaskRows, aidRows] = await Promise.all([
+  const [flaskRows, aidRows, productRows] = await Promise.all([
     db
       .select()
       .from(flasks)
@@ -35,6 +37,12 @@ export async function getPlan(accessId: string): Promise<NewPlan | null> {
       .from(aidStations)
       .where(eq(aidStations.planId, accessId))
       .orderBy(aidStations.positionM),
+    db
+      .select({ codeSeed: products.codeSeed })
+      .from(productSnapshots)
+      .innerJoin(products, eq(productSnapshots.productId, products.id))
+      .where(eq(productSnapshots.planId, accessId))
+      .orderBy(products.codeSeed),
   ]);
 
   const settings = row.plan_settings;
@@ -65,6 +73,9 @@ export async function getPlan(accessId: string): Promise<NewPlan | null> {
       volumeMl: flask.volumeMl,
       onlyWater: flask.onlyWater,
     })),
+    // Une sélection est un ensemble, pas une suite : l'ordre de saisie ne
+    // porte rien tant que `parts` n'est pas exposé (§7). Rendu trié, donc.
+    productCodes: productRows.map((p) => p.codeSeed),
     aidStations: aidRows.map((aid) => ({
       name: aid.name,
       distanceM: aid.positionM,
