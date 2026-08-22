@@ -27,7 +27,7 @@ export const flasks = snakeCase.table(
       name: "flasks_plan_fk",
       columns: [table.planId],
       foreignColumns: [plans.accessId],
-    }),
+    }).onDelete("cascade"),
     check("flasks_rank_positive", sql`${table.rank} > 0`),
     check("flasks_volume_ml_positive", sql`${table.volumeMl} > 0`),
   ],

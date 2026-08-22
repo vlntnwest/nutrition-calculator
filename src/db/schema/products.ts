@@ -18,6 +18,16 @@ export const products = snakeCase.table(
   "products",
   {
     id: uuid().defaultRandom(),
+    /**
+     * L'identifiant du fichier de seed — « naak-waffle-citron ». C'est la clé
+     * naturelle sur laquelle le seed s'upserte : sans elle, le relancer
+     * duplique le catalogue, `gtin` étant optionnel.
+     *
+     * Convention : `marque-format-distinctif`, le format reprenant le
+     * vocabulaire de `ProductType` du noyau. Choisi à la main, jamais dérivé
+     * du nom commercial — une clé qui suit le packaging n'est pas une clé.
+     */
+    codeSeed: text().notNull().unique(),
     brandId: uuid().notNull(),
     formatId: uuid().notNull(),
     name: text().notNull(),
@@ -83,5 +93,9 @@ export const products = snakeCase.table(
     check("product_caffeine_mg_positive", sql`${table.caffeineMg} >= 0`),
     check("products_name_not_empty", sql`${table.name} != ''`),
     check("products_gtin_format", sql`${table.gtin} ~ '^[0-9]{8,14}$'`),
+    check(
+      "products_code_seed_format",
+      sql`${table.codeSeed} ~ '^[a-z0-9]+(-[a-z0-9]+)*$'`,
+    ),
   ],
 );

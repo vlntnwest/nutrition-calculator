@@ -41,11 +41,11 @@ export const warnings = snakeCase.table(
       name: "warnings_leg_fk",
       columns: [table.legRank, table.planId],
       foreignColumns: [legs.rank, legs.planId],
-    }),
+    }).onDelete("cascade"),
     foreignKey({
       name: "warnings_plan_fk",
       columns: [table.planId],
       foreignColumns: [plans.accessId],
-    }),
+    }).onDelete("cascade"),
   ],
 );

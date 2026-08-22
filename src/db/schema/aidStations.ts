@@ -34,7 +34,7 @@ export const aidStations = snakeCase.table(
       name: "aid_stations_plan_fk",
       columns: [table.planId],
       foreignColumns: [plans.accessId],
-    }),
+    }).onDelete("cascade"),
     check(
       "aid_stations_duration_positive",
       sql`${table.durationOverrideS} > 0`,
