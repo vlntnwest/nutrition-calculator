@@ -88,18 +88,14 @@ test("les consignes de secteur font l'aller-retour, triées", async () => {
   ]);
 });
 
-test("un ravito sans eau se relit comme tel", async () => {
-  const accessId = await createPlan({
-    ...input,
-    aidStations: [
-      input.aidStations[0],
-      { ...input.aidStations[1], providesLiquid: false },
-    ],
-  });
+test("ce qu'un ravito ne fournit pas se relit comme tel", async () => {
+  // Un point d'eau, puis un passage sans assistance.
+  const aidStations = [
+    { ...input.aidStations[0], providesSolid: false },
+    { ...input.aidStations[1], providesLiquid: false, providesSolid: false },
+  ];
+  const accessId = await createPlan({ ...input, aidStations });
   written.push(accessId);
 
-  expect((await getPlan(accessId))?.aidStations).toEqual([
-    input.aidStations[0],
-    { ...input.aidStations[1], providesLiquid: false },
-  ]);
+  expect((await getPlan(accessId))?.aidStations).toEqual(aidStations);
 });

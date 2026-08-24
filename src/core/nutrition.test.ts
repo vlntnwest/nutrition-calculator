@@ -949,3 +949,56 @@ test("sans mention contraire, chaque ravito rouvre le portage", () => {
     plan.warnings.filter((w) => w.code === "leg-fluid-above-carry"),
   ).toEqual([]);
 });
+
+/**
+ * Les deux portées sont indépendantes : un ravito peut avoir de l'eau sans
+ * nourriture, et l'inverse. Le solide n'a pas de contenance déclarée, donc
+ * pas d'avertissement — seulement un découpage.
+ */
+test("un ravito sans solide ne rouvre pas le sac", () => {
+  const plan = nutritionPlan(
+    flatTrack(40, 4),
+    [WATER_STOP, { ...DRY_STOP, providesLiquid: true, providesSolid: false }],
+    CARRIER,
+    TARGETS,
+    [gel, drink],
+  );
+
+  // De l'eau aux deux ravitos, mais rien à manger au second.
+  expect(plan.spans.liquid).toEqual([[0], [1], [2]]);
+  expect(plan.spans.solid).toEqual([[0], [1, 2]]);
+});
+
+test("un passage sans assistance ne rouvre rien", () => {
+  const plan = nutritionPlan(
+    flatTrack(40, 4),
+    [
+      WATER_STOP,
+      {
+        name: "Col",
+        distanceM: 20_000,
+        providesLiquid: false,
+        providesSolid: false,
+      },
+    ],
+    CARRIER,
+    TARGETS,
+    [gel, drink],
+  );
+
+  expect(plan.spans.liquid).toEqual([[0], [1, 2]]);
+  expect(plan.spans.solid).toEqual([[0], [1, 2]]);
+});
+
+test("sans mention contraire, chaque ravito rouvre les deux", () => {
+  const plan = nutritionPlan(
+    flatTrack(40, 4),
+    [WATER_STOP, { name: "Ravito", distanceM: 20_000 }],
+    CARRIER,
+    TARGETS,
+    [gel, drink],
+  );
+
+  expect(plan.spans.liquid).toEqual([[0], [1], [2]]);
+  expect(plan.spans.solid).toEqual([[0], [1], [2]]);
+});

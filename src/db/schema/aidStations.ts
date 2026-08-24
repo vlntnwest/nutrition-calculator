@@ -18,7 +18,7 @@ export const aidStations = snakeCase.table(
     positionM: integer().notNull(),
     name: text().notNull(),
     providesLiquid: boolean().notNull().default(true),
-    providesSolid: boolean().default(true),
+    providesSolid: boolean().notNull().default(true),
     stopDurationS: integer(),
   },
   (table) => [
