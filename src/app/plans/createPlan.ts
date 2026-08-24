@@ -20,6 +20,8 @@ export type NewAidStation = {
   stopS?: number;
   /** Y trouve-t-on de l'eau ? Absent vaut oui. */
   providesLiquid?: boolean;
+  /** Y trouve-t-on de quoi manger ? Absent vaut oui. */
+  providesSolid?: boolean;
 };
 
 /**
@@ -111,6 +113,7 @@ export async function createPlan(input: NewPlan): Promise<string> {
           name: aid.name,
           stopDurationS: aid.stopS ?? null,
           providesLiquid: aid.providesLiquid ?? true,
+          providesSolid: aid.providesSolid ?? true,
         })),
       );
     }

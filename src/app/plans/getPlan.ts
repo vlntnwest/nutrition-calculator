@@ -87,6 +87,7 @@ export async function getPlan(accessId: string): Promise<NewPlan | null> {
       stopS: aid.stopDurationS ?? undefined,
       // Absent et `true` disent la même chose : on ne rend que le cas notable.
       providesLiquid: aid.providesLiquid ? undefined : false,
+      providesSolid: aid.providesSolid ? undefined : false,
     })),
     legOverrides: overrideRows.map((o) => ({
       endPositionM: o.endPositionM,

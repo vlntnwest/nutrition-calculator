@@ -75,12 +75,12 @@ export function nutritionPlan(
   parts?: number[],
 ): NutritionPlan {
   const raws = splitByAidStation(points, aidStations, runner);
-  const spans = carrySpans(
-    aidStations,
-    points.length > 0 ? points[points.length - 1].d : 0,
-    raws.length,
-  );
-  const legs = provision(raws, targets, products, runner, spans, parts);
+  const endM = points.length > 0 ? points[points.length - 1].d : 0;
+  const spans = {
+    liquid: carrySpans(aidStations, endM, raws.length, (a) => a.providesLiquid),
+    solid: carrySpans(aidStations, endM, raws.length, (a) => a.providesSolid),
+  };
+  const legs = provision(raws, targets, products, runner, spans.liquid, parts);
 
   const units = new Map<string, number>();
   for (const s of legs) {
@@ -107,8 +107,9 @@ export function nutritionPlan(
 
   return {
     legs,
+    spans,
     total,
-    warnings: warnings(legs, targets, products, runner, spans),
+    warnings: warnings(legs, targets, products, runner, spans.liquid),
   };
 }
 
@@ -132,24 +133,29 @@ function onCourse(aidStations: AidStation[], endM: number): AidStation[] {
 }
 
 /**
- * Les portées de portage, en indices de secteurs. Chacune va d'un point d'eau
- * au suivant : c'est là qu'on remplit, et c'est elle que la contenance doit
- * couvrir.
+ * Les portées de ravitaillement, en indices de secteurs. Chacune va d'une
+ * borne qui réapprovisionne à la suivante : ce qu'on y prend doit tenir
+ * jusqu'au bout de la portée.
  *
- * Un ravito sans eau ne rouvre rien — la portée le franchit et continue. Le
- * départ, lui, en fournit toujours : on part avec des flasques pleines.
+ * Une borne qui ne fournit pas ne rouvre rien — la portée la franchit et
+ * continue. Le départ, lui, fournit toujours : on part avec ses flasques
+ * pleines et son sac fait.
+ *
+ * @param provides Ce qu'on cherche à la borne : de l'eau, ou de quoi manger.
  */
 function carrySpans(
   aidStations: AidStation[],
   totalDistanceM: number,
   legCount: number,
+  provides: (station: AidStation) => boolean | undefined,
 ): number[][] {
   const bounds = onCourse(aidStations, totalDistanceM);
   const spans: number[][] = [];
 
   for (let l = 0; l < legCount; l++) {
     // Le secteur `l` part de la borne `l - 1`.
-    const opens = l === 0 || bounds[l - 1]?.providesLiquid !== false;
+    const at = l === 0 ? undefined : bounds[l - 1];
+    const opens = at === undefined || provides(at) !== false;
 
     if (opens || spans.length === 0) spans.push([l]);
     else spans[spans.length - 1].push(l);

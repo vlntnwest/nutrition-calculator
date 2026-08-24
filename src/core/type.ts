@@ -324,6 +324,18 @@ export type AidStation = {
    * point d'eau suivant et peut couvrir plusieurs secteurs.
    */
   providesLiquid?: boolean;
+  /**
+   * Y trouve-t-on de quoi manger ? Absent vaut **oui**.
+   *
+   * Le solide n'a pas de contenance déclarée — le noyau ne connaît que celle
+   * des flasques — donc ce drapeau ne produit aucun avertissement. Il découpe
+   * la course en portées de ravitaillement solide : ce qu'on emporte à
+   * l'ouverture de l'une doit tenir jusqu'à la suivante.
+   *
+   * Conforme au §8 : le noyau ne suppose rien de ce que sert l'organisation.
+   * Ce drapeau dit où l'on peut se réapprovisionner, jamais en quoi.
+   */
+  providesSolid?: boolean;
 };
 
 export type Serving = {
@@ -505,6 +517,15 @@ export type Warning =
 
 export type NutritionPlan = {
   legs: Leg[];
+  /**
+   * Le découpage en portées, en indices de secteurs. Chacune va d'une borne
+   * qui réapprovisionne à la suivante, et ce qu'on prend à son ouverture doit
+   * tenir jusqu'au bout.
+   *
+   * Les deux sont **indépendantes** : un ravito peut offrir de l'eau sans
+   * nourriture, et l'inverse. Un passage sans assistance n'en rouvre aucune.
+   */
+  spans: { liquid: number[][]; solid: number[][] };
   total: {
     /** Temps de mouvement, arrêts exclus. */
     durationS: number;
