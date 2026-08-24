@@ -81,7 +81,7 @@ export async function regeneratePlan(accessId: string): Promise<void> {
     points,
     movingTimeS(settings.targetTimeS, stations, totalM),
     { climbIntensity: settings.climbIntensity, split: settings.paceSplit },
-    fixedSpans(stations, totalM),
+    fixedSpans(stations, totalM, settings.finishDurationOverrideS ?? undefined),
   );
   const plan = nutritionPlan(
     timed,
