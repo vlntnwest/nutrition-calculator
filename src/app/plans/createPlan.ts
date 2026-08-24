@@ -1,15 +1,33 @@
 import { eq, inArray, sql } from "drizzle-orm";
-import type { AidStation, Flask, ResolvedPoint, Targets } from "@/core/type";
+import type { Flask, ResolvedPoint, Targets } from "@/core/type";
 import { db } from "@/db";
 import { aidStations } from "@/db/schema/aidStations";
 import { brands } from "@/db/schema/brands";
 import { flasks } from "@/db/schema/flasks";
 import { formats } from "@/db/schema/formats";
+import { legOverrides } from "@/db/schema/legOverrides";
 import { planSettings } from "@/db/schema/planSettings";
 import { plans } from "@/db/schema/plans";
 import { productSnapshots } from "@/db/schema/productSnapshots";
 import { products } from "@/db/schema/products";
 import { tracks } from "@/db/schema/tracks";
+
+/** Un ravito, tel qu'il se saisit. Ce qu'il impose au secteur est à part. */
+export type NewAidStation = {
+  name: string;
+  distanceM: number;
+  /** L'arrêt sur place, en secondes. */
+  stopS?: number;
+};
+
+/**
+ * Ce qui est imposé au secteur se terminant à `endPositionM` — la position
+ * d'un ravito, ou la distance totale pour l'arrivée, que rien ne clôt.
+ */
+export type LegOverride = {
+  endPositionM: number;
+  durationS?: number;
+};
 
 /** Le côté saisie d'un plan. Le calculé naît de la régénération. */
 export type NewPlan = {
@@ -29,12 +47,12 @@ export type NewPlan = {
     raceDate: string;
     /** `HH:MM` */
     startTime?: string;
-    /** La durée imposée au secteur d'arrivée, qu'aucun ravito ne clôt. */
-    finishDurationOverrideS?: number;
     targets: Targets;
   };
   flasks: Flask[];
-  aidStations: AidStation[];
+  aidStations: NewAidStation[];
+  /** Ce qui est imposé aux secteurs. Voir `LegOverride`. */
+  legOverrides: LegOverride[];
   /** Les `code_seed` des produits retenus — « naak-gel-ultra ». */
   productCodes: string[];
 };
@@ -67,7 +85,6 @@ export async function createPlan(input: NewPlan): Promise<string> {
       paceSplit: input.settings.paceSplit,
       raceDate: input.settings.raceDate,
       startTime: input.settings.startTime ?? null,
-      finishDurationOverrideS: input.settings.finishDurationOverrideS ?? null,
       targetCarbsGH: input.settings.targets.carbsGH,
       targetFluidMlH: input.settings.targets.fluidMlH,
       targetSodiumMgL: input.settings.targets.sodiumMgL,
@@ -93,7 +110,33 @@ export async function createPlan(input: NewPlan): Promise<string> {
           positionM: aid.distanceM,
           name: aid.name,
           stopDurationS: aid.stopS ?? null,
-          durationOverrideS: aid.legDurationS ?? null,
+        })),
+      );
+    }
+
+    const overrides = input.legOverrides;
+    if (overrides.length > 0) {
+      // Une borne inconnue serait ignorée sans bruit à la régénération : aucune
+      // clé étrangère ne peut la tenir, l'arrivée n'étant pas un ravito.
+      const bornes = new Set([
+        ...input.aidStations.map((aid) => aid.distanceM),
+        input.track.distanceM,
+      ]);
+      const perdus = overrides.filter((o) => !bornes.has(o.endPositionM));
+
+      if (perdus.length > 0) {
+        throw new Error(
+          `Leg overrides at unknown boundaries: ${perdus
+            .map((o) => o.endPositionM)
+            .join(", ")}`,
+        );
+      }
+
+      await tx.insert(legOverrides).values(
+        overrides.map((o) => ({
+          planId: plan.accessId,
+          endPositionM: o.endPositionM,
+          durationOverrideS: o.durationS ?? null,
         })),
       );
     }

@@ -28,7 +28,6 @@ export const planSettings = snakeCase.table(
     targetCarbsGH: integer("target_carbs_g_h").notNull().default(30),
     targetFluidMlH: integer().notNull().default(500),
     targetSodiumMgL: integer().notNull().default(500),
-    finishDurationOverrideS: integer(),
   },
   (table) => [
     primaryKey({
@@ -53,12 +52,6 @@ export const planSettings = snakeCase.table(
     check(
       "plan_settings_pace_split_between_minus_1_and_1",
       sql`${table.paceSplit} >= -1 AND ${table.paceSplit} <= 1`,
-    ),
-    // Le dernier secteur n'est clos par aucun ravito : sa durée imposée ne
-    // peut pas voyager sur `aid_stations.duration_override_s`.
-    check(
-      "plan_settings_finish_duration_positive",
-      sql`${table.finishDurationOverrideS} > 0`,
     ),
   ],
 );

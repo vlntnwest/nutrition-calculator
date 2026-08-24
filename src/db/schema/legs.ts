@@ -16,7 +16,7 @@ export const legs = snakeCase.table(
   {
     planId: uuid().notNull(),
     rank: integer().notNull(),
-    endAidStationM: integer(),
+    endPositionM: integer(),
     ascentM: integer().notNull(),
     descentM: integer().notNull(),
     durationS: integer().notNull(),
@@ -32,8 +32,8 @@ export const legs = snakeCase.table(
       foreignColumns: [plans.accessId],
     }).onDelete("cascade"),
     foreignKey({
-      name: "legs_end_aid_station_fkey",
-      columns: [table.planId, table.endAidStationM],
+      name: "legs_end_position_fkey",
+      columns: [table.planId, table.endPositionM],
       foreignColumns: [aidStations.planId, aidStations.positionM],
     }),
     check("legs_rank_positive", sql`${table.rank} > 0`),
@@ -42,6 +42,6 @@ export const legs = snakeCase.table(
     check("legs_duration_positive", sql`${table.durationS} > 0`),
     uniqueIndex("legs_single_open_end")
       .on(table.planId)
-      .where(sql`${table.endAidStationM} is null`),
+      .where(sql`${table.endPositionM} is null`),
   ],
 );

@@ -2,6 +2,7 @@ import { and, eq, gt, lte, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { aidStations } from "@/db/schema/aidStations";
 import { flasks } from "@/db/schema/flasks";
+import { legOverrides } from "@/db/schema/legOverrides";
 import { legs } from "@/db/schema/legs";
 import { planSettings } from "@/db/schema/planSettings";
 import { plans } from "@/db/schema/plans";
@@ -26,7 +27,7 @@ export async function getPlan(accessId: string): Promise<NewPlan | null> {
     return null;
   }
 
-  const [flaskRows, aidRows, productRows] = await Promise.all([
+  const [flaskRows, aidRows, productRows, overrideRows] = await Promise.all([
     db
       .select()
       .from(flasks)
@@ -43,6 +44,11 @@ export async function getPlan(accessId: string): Promise<NewPlan | null> {
       .innerJoin(products, eq(productSnapshots.productId, products.id))
       .where(eq(productSnapshots.planId, accessId))
       .orderBy(products.codeSeed),
+    db
+      .select()
+      .from(legOverrides)
+      .where(eq(legOverrides.planId, accessId))
+      .orderBy(legOverrides.endPositionM),
   ]);
 
   const settings = row.plan_settings;
@@ -63,7 +69,6 @@ export async function getPlan(accessId: string): Promise<NewPlan | null> {
       raceDate: settings.raceDate,
       // La base rend `HH:MM:SS`, le contrat d'entrée est `HH:MM`.
       startTime: settings.startTime?.slice(0, 5),
-      finishDurationOverrideS: settings.finishDurationOverrideS ?? undefined,
       targets: {
         carbsGH: settings.targetCarbsGH,
         fluidMlH: settings.targetFluidMlH,
@@ -81,7 +86,10 @@ export async function getPlan(accessId: string): Promise<NewPlan | null> {
       name: aid.name,
       distanceM: aid.positionM,
       stopS: aid.stopDurationS ?? undefined,
-      legDurationS: aid.durationOverrideS ?? undefined,
+    })),
+    legOverrides: overrideRows.map((o) => ({
+      endPositionM: o.endPositionM,
+      durationS: o.durationOverrideS ?? undefined,
     })),
   };
 }

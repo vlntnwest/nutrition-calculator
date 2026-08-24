@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { aidStations } from "@/db/schema/aidStations";
 import { fill } from "@/db/schema/fill";
 import { flasks } from "@/db/schema/flasks";
+import { legOverrides } from "@/db/schema/legOverrides";
 import { legs } from "@/db/schema/legs";
 import { planSettings } from "@/db/schema/planSettings";
 import { plans } from "@/db/schema/plans";
@@ -30,7 +31,7 @@ export async function regeneratePlan(accessId: string): Promise<void> {
 
   if (!row) throw new Error(`Unknown plan: ${accessId}`);
 
-  const [flaskRows, aidRows, snapshots] = await Promise.all([
+  const [flaskRows, aidRows, snapshots, overrideRows] = await Promise.all([
     db
       .select()
       .from(flasks)
@@ -45,6 +46,7 @@ export async function regeneratePlan(accessId: string): Promise<void> {
       .select()
       .from(productSnapshots)
       .where(eq(productSnapshots.planId, accessId)),
+    db.select().from(legOverrides).where(eq(legOverrides.planId, accessId)),
   ]);
 
   const settings = row.plan_settings;
@@ -55,11 +57,16 @@ export async function regeneratePlan(accessId: string): Promise<void> {
       onlyWater: f.onlyWater,
     })),
   };
+  // Une consigne se range sur l'abscisse où le secteur s'achève : le noyau la
+  // porte sur le ravito qui l'y clôt, et à part pour l'arrivée.
+  const imposed = new Map(
+    overrideRows.map((o) => [o.endPositionM, o.durationOverrideS ?? undefined]),
+  );
   const stations = aidRows.map((a) => ({
     name: a.name,
     distanceM: a.positionM,
     stopS: a.stopDurationS ?? undefined,
-    legDurationS: a.durationOverrideS ?? undefined,
+    legDurationS: imposed.get(a.positionM),
   }));
   const products: Product[] = snapshots.map((s) => ({
     id: s.id,
@@ -81,7 +88,7 @@ export async function regeneratePlan(accessId: string): Promise<void> {
     points,
     movingTimeS(settings.targetTimeS, stations, totalM),
     { climbIntensity: settings.climbIntensity, split: settings.paceSplit },
-    fixedSpans(stations, totalM, settings.finishDurationOverrideS ?? undefined),
+    fixedSpans(stations, totalM, imposed.get(totalM)),
   );
   const plan = nutritionPlan(
     timed,
@@ -134,7 +141,7 @@ async function write(accessId: string, plan: NutritionPlan): Promise<void> {
         planId: accessId,
         rank: i + 1,
         // Le dernier secteur s'achève à l'arrivée, qui n'est pas un ravito.
-        endAidStationM: leg.to === null ? null : Math.round(leg.endM),
+        endPositionM: leg.to === null ? null : Math.round(leg.endM),
         ascentM: Math.round(leg.ascentM),
         descentM: Math.round(leg.descentM),
         durationS: durations[i],
