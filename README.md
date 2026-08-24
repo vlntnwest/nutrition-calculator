@@ -6,14 +6,15 @@ et l'outil produit les temps de passage par tronçon et la quantité de glucides
 d'eau et de sodium à emporter entre chaque. Sans compte, sans installation, et
 sans être enfermé dans le catalogue d'une marque.
 
-> **État : phase 2.** Le socle d'ingénierie est en place et le noyau de calcul
-> est complet, du fichier GPX au plan nutritionnel — `npm run plan` produit déjà
-> un roadbook en ligne de commande. La persistance écrit et relit le côté saisie
-> d'un plan — trace, réglages, flasques, ravitos — contre un vrai Postgres, en
-> local comme en CI. Le plan **calculé**, lui, n'est pas encore écrit : c'est ce
-> qui reste de la phase 2, avant l'interface et la mise en ligne. Voir
+> **État : phase 2 terminée.** Le socle d'ingénierie est en place et le noyau de
+> calcul est complet, du fichier GPX au plan nutritionnel — `npm run plan`
+> produit déjà un roadbook en ligne de commande. La persistance est bouclée : un
+> plan s'écrit, se relit et se régénère entièrement — trace, réglages, flasques,
+> ravitos et produits figés d'un côté, tronçons, rations, remplissages et
+> avertissements de l'autre — contre un vrai Postgres, en local comme en CI.
+> **Il n'y a pas encore d'interface**, et c'est l'objet de la phase 3. Voir
 > [Feuille de route](#feuille-de-route). Une capture sera ajoutée dès qu'il y
-> aura une interface à montrer.
+> aura quelque chose à montrer.
 
 ## Pourquoi il existe
 
@@ -201,7 +202,7 @@ page par décision, avec les alternatives écartées et ce qu'elles coûtent.
 | ----- | ----------------------------------------------------------------- | -------- |
 | 0     | Socle : TypeScript strict, Biome, Vitest, CI, ADR                 | Terminé  |
 | 1     | Le noyau de calcul, en ligne de commande, sans interface          | Terminé  |
-| 2     | Persistance : schéma, migrations, écriture et relecture d'un plan | En cours |
+| 2     | Persistance : schéma, migrations, écriture et relecture d'un plan | Terminé  |
 | 3     | Écrans upload et paramètres, profil SVG                           | À venir  |
 | 4     | Placement des ravitos : champ, profil, carte                      | À venir  |
 | 5     | Plan généré et catalogue produits                                 | À venir  |
