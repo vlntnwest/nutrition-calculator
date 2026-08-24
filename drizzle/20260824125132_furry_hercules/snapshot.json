@@ -1,0 +1,2356 @@
+{
+  "version": "8",
+  "dialect": "postgres",
+  "id": "6d237d77-e41c-4fae-b6c0-6f59f353d574",
+  "prevIds": [
+    "fb6a85e0-68d8-4714-903b-7e286ec43112"
+  ],
+  "ddl": [
+    {
+      "values": [
+        "no-carb-product",
+        "carbs-above-guide",
+        "carbs-single-source",
+        "fluid-above-guide",
+        "sodium-below-target",
+        "leg-fluid-above-target",
+        "leg-fluid-above-carry",
+        "leg-drink-unused",
+        "leg-drink-above-flasks"
+      ],
+      "name": "warning",
+      "entityType": "enums",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "aid_stations",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "brands",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "fill",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "flasks",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "formats",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "leg_overrides",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "legs",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "plan_settings",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "plans",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "product_snapshots",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "products",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "servings",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "tracks",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "warnings",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "plan_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "aid_stations"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "position_m",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "aid_stations"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "aid_stations"
+    },
+    {
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": "true",
+      "generated": null,
+      "identity": null,
+      "name": "provides_liquid",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "aid_stations"
+    },
+    {
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": "true",
+      "generated": null,
+      "identity": null,
+      "name": "provides_solid",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "aid_stations"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "stop_duration_s",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "aid_stations"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "gen_random_uuid()",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "brands"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "brands"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "affiliate_url",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "brands"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "website_url",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "brands"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "plan_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "fill"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "leg_rank",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "fill"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "flask_rank",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "fill"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "product_snapshot_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "fill"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "volume_ml",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "fill"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "plan_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "flasks"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "rank",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "flasks"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "volume_ml",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "flasks"
+    },
+    {
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "false",
+      "generated": null,
+      "identity": null,
+      "name": "only_water",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "flasks"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "gen_random_uuid()",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "formats"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "label",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "formats"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "plan_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "leg_overrides"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "end_position_m",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "leg_overrides"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "duration_override_s",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "leg_overrides"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "carbs_override_g_h",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "leg_overrides"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "sodium_override_mg_l",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "leg_overrides"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "fluid_override_ml_l",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "leg_overrides"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "plan_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "legs"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "rank",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "legs"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "end_position_m",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "legs"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "ascent_m",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "legs"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "descent_m",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "legs"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "duration_s",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "legs"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "plan_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "plan_settings"
+    },
+    {
+      "type": "numeric(4,1)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "mass_kg",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "plan_settings"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "target_time_s",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "plan_settings"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "ascent_override_m",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "plan_settings"
+    },
+    {
+      "type": "numeric(3,2)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'0.25'",
+      "generated": null,
+      "identity": null,
+      "name": "climb_intensity",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "plan_settings"
+    },
+    {
+      "type": "numeric(3,2)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "pace_split",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "plan_settings"
+    },
+    {
+      "type": "date",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "race_date",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "plan_settings"
+    },
+    {
+      "type": "time",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "start_time",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "plan_settings"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "30",
+      "generated": null,
+      "identity": null,
+      "name": "target_carbs_g_h",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "plan_settings"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "500",
+      "generated": null,
+      "identity": null,
+      "name": "target_fluid_ml_h",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "plan_settings"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "500",
+      "generated": null,
+      "identity": null,
+      "name": "target_sodium_mg_l",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "plan_settings"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "gen_random_uuid()",
+      "generated": null,
+      "identity": null,
+      "name": "access_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "plans"
+    },
+    {
+      "type": "timestamp(6) with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "plans"
+    },
+    {
+      "type": "timestamp(6) with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "last_saved_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "plans"
+    },
+    {
+      "type": "timestamp(6) with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "generated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "plans"
+    },
+    {
+      "type": "timestamp(6) with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now() + interval '6 months'",
+      "generated": null,
+      "identity": null,
+      "name": "expires_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "plans"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "gen_random_uuid()",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "plan_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "product_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "brand_name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "format_label",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "energy_kcal",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "type": "numeric(3,1)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "carbs_g",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "type": "numeric(3,1)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "protein_g",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "type": "numeric(3,1)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "fat_g",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "type": "numeric(3,1)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "fiber_g",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "type": "numeric(3,1)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "sugar_g",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "sodium_mg",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "caffeine_mg",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "fluid_ml",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "weight_g",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "1",
+      "generated": null,
+      "identity": null,
+      "name": "divisible_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "false",
+      "generated": null,
+      "identity": null,
+      "name": "multi_transportable",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "type": "timestamp(6) with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "frozen_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "gen_random_uuid()",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "code_seed",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "brand_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "format_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "gtin",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "energy_kcal",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "weight_g",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "type": "numeric(3,1)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "carbs_g",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "sodium_mg",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "caffeine_mg",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "fluid_ml",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "type": "numeric(3,1)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "protein_g",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "type": "numeric(3,1)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "fat_g",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "type": "numeric(3,1)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "fiber_g",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "type": "numeric(3,1)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "sugar_g",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "1",
+      "generated": null,
+      "identity": null,
+      "name": "divisible_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "multi_transportable",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "purchase_url",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "type": "timestamp(6) with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "discontinued_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "type": "timestamp(6) with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "plan_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "servings"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "leg_rank",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "servings"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "product_snapshot_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "servings"
+    },
+    {
+      "type": "numeric(3,1)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "quantity",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "servings"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "plan_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "tracks"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "tracks"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "distance_m",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "tracks"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "ascent_m",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "tracks"
+    },
+    {
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "points",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "tracks"
+    },
+    {
+      "type": "timestamp(6) with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "imported_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "tracks"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "gen_random_uuid()",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "warnings"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "plan_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "warnings"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "leg_rank",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "warnings"
+    },
+    {
+      "type": "warning",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "code",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "warnings"
+    },
+    {
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "payload",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "warnings"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "plan_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": "\"end_position_m\" is null",
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "legs_single_open_end",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "legs"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "plan_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "plans",
+      "columnsTo": [
+        "access_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "aid_stations_plan_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "aid_stations"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "plan_id",
+        "leg_rank"
+      ],
+      "schemaTo": "public",
+      "tableTo": "legs",
+      "columnsTo": [
+        "plan_id",
+        "rank"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "fill_leg_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "fill"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "flask_rank",
+        "plan_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "flasks",
+      "columnsTo": [
+        "rank",
+        "plan_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "fill_flask_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "fill"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "product_snapshot_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "product_snapshots",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "fill_product_snapshot_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "fill"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "plan_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "plans",
+      "columnsTo": [
+        "access_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "flasks_plan_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "flasks"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "plan_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "plans",
+      "columnsTo": [
+        "access_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "leg_overrides_plan_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "leg_overrides"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "plan_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "plans",
+      "columnsTo": [
+        "access_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "legs_plan_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "legs"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "plan_id",
+        "end_position_m"
+      ],
+      "schemaTo": "public",
+      "tableTo": "aid_stations",
+      "columnsTo": [
+        "plan_id",
+        "position_m"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "legs_end_position_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "legs"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "plan_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "plans",
+      "columnsTo": [
+        "access_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "plan_settings_plan_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "plan_settings"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "plan_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "plans",
+      "columnsTo": [
+        "access_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "product_snapshots_plan_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "product_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "products",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "product_snapshots_product_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "brand_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "brands",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "products_brand_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "format_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "formats",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "products_format_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "plan_id",
+        "leg_rank"
+      ],
+      "schemaTo": "public",
+      "tableTo": "legs",
+      "columnsTo": [
+        "plan_id",
+        "rank"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "servings_leg_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "servings"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "product_snapshot_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "product_snapshots",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "servings_product_snapshot_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "servings"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "plan_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "plans",
+      "columnsTo": [
+        "access_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "tracks_plan_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "tracks"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "leg_rank",
+        "plan_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "legs",
+      "columnsTo": [
+        "rank",
+        "plan_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "warnings_leg_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "warnings"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "plan_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "plans",
+      "columnsTo": [
+        "access_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "warnings_plan_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "warnings"
+    },
+    {
+      "columns": [
+        "plan_id",
+        "position_m"
+      ],
+      "nameExplicit": true,
+      "name": "aid_stations_pk",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "aid_stations"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": true,
+      "name": "brands_pk",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "brands"
+    },
+    {
+      "columns": [
+        "plan_id",
+        "leg_rank",
+        "flask_rank"
+      ],
+      "nameExplicit": true,
+      "name": "fill_pk",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "fill"
+    },
+    {
+      "columns": [
+        "plan_id",
+        "rank"
+      ],
+      "nameExplicit": true,
+      "name": "flasks_pk",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "flasks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": true,
+      "name": "formats_pk",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "formats"
+    },
+    {
+      "columns": [
+        "plan_id",
+        "end_position_m"
+      ],
+      "nameExplicit": true,
+      "name": "leg_overrides_pk",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "leg_overrides"
+    },
+    {
+      "columns": [
+        "plan_id",
+        "rank"
+      ],
+      "nameExplicit": true,
+      "name": "legs_pk",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "legs"
+    },
+    {
+      "columns": [
+        "plan_id"
+      ],
+      "nameExplicit": true,
+      "name": "plan_settings_pk",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "plan_settings"
+    },
+    {
+      "columns": [
+        "access_id"
+      ],
+      "nameExplicit": true,
+      "name": "plans_pk",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "plans"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": true,
+      "name": "product_snapshots_pk",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": true,
+      "name": "products_pk",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "columns": [
+        "plan_id",
+        "leg_rank",
+        "product_snapshot_id"
+      ],
+      "nameExplicit": true,
+      "name": "servings_pk",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "servings"
+    },
+    {
+      "columns": [
+        "plan_id"
+      ],
+      "nameExplicit": true,
+      "name": "tracks_pk",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "tracks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": true,
+      "name": "warnings_pk",
+      "entityType": "pks",
+      "schema": "public",
+      "table": "warnings"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "name"
+      ],
+      "nullsNotDistinct": false,
+      "name": "brands_name_key",
+      "schema": "public",
+      "table": "brands",
+      "entityType": "uniques"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "label"
+      ],
+      "nullsNotDistinct": false,
+      "name": "formats_label_key",
+      "schema": "public",
+      "table": "formats",
+      "entityType": "uniques"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "code_seed"
+      ],
+      "nullsNotDistinct": false,
+      "name": "products_code_seed_key",
+      "schema": "public",
+      "table": "products",
+      "entityType": "uniques"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "gtin"
+      ],
+      "nullsNotDistinct": false,
+      "name": "products_gtin_key",
+      "schema": "public",
+      "table": "products",
+      "entityType": "uniques"
+    },
+    {
+      "value": "\"stop_duration_s\" > 0",
+      "name": "aid_stations_stop_duration_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "aid_stations"
+    },
+    {
+      "value": "\"name\" != ''",
+      "name": "aid_stations_name_not_empty",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "aid_stations"
+    },
+    {
+      "value": "\"name\" != ''",
+      "name": "brands_name_not_empty",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "brands"
+    },
+    {
+      "value": "\"volume_ml\" > 0",
+      "name": "fill_volume_be_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "fill"
+    },
+    {
+      "value": "\"rank\" > 0",
+      "name": "flasks_rank_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "flasks"
+    },
+    {
+      "value": "\"volume_ml\" > 0",
+      "name": "flasks_volume_ml_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "flasks"
+    },
+    {
+      "value": "\"label\" != ''",
+      "name": "formats_label_not_empty",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "formats"
+    },
+    {
+      "value": "\"end_position_m\" > 0",
+      "name": "leg_overrides_end_position_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "leg_overrides"
+    },
+    {
+      "value": "\"duration_override_s\" > 0",
+      "name": "leg_overrides_duration_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "leg_overrides"
+    },
+    {
+      "value": "\"carbs_override_g_h\" > 0",
+      "name": "leg_overrides_carbs_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "leg_overrides"
+    },
+    {
+      "value": "\"sodium_override_mg_l\" > 0",
+      "name": "leg_overrides_sodium_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "leg_overrides"
+    },
+    {
+      "value": "\"fluid_override_ml_l\" > 0",
+      "name": "leg_overrides_fluid_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "leg_overrides"
+    },
+    {
+      "value": "\"rank\" > 0",
+      "name": "legs_rank_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "legs"
+    },
+    {
+      "value": "\"ascent_m\" >= 0",
+      "name": "legs_ascent_positive_or_zero",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "legs"
+    },
+    {
+      "value": "\"descent_m\" >= 0",
+      "name": "legs_descent_positive_or_zero",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "legs"
+    },
+    {
+      "value": "\"duration_s\" > 0",
+      "name": "legs_duration_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "legs"
+    },
+    {
+      "value": "\"mass_kg\" > 0",
+      "name": "plan_settings_mass_kg_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "plan_settings"
+    },
+    {
+      "value": "\"target_time_s\" > 0",
+      "name": "plan_settings_target_time_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "plan_settings"
+    },
+    {
+      "value": "\"ascent_override_m\" >= 0",
+      "name": "plan_settings_ascent_override_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "plan_settings"
+    },
+    {
+      "value": "\"climb_intensity\" >= 0 AND \"climb_intensity\" <= 1",
+      "name": "plan_settings_climb_intensity_between_0_and_1",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "plan_settings"
+    },
+    {
+      "value": "\"pace_split\" >= -1 AND \"pace_split\" <= 1",
+      "name": "plan_settings_pace_split_between_minus_1_and_1",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "plan_settings"
+    },
+    {
+      "value": "\"fluid_ml\" >= 0",
+      "name": "product_snapshots_fluid_ml_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "value": "\"weight_g\" >= 0",
+      "name": "product_snapshots_weight_g_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "value": "\"energy_kcal\" >= 0",
+      "name": "product_snapshots_energy_kcal_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "value": "\"carbs_g\" >= 0",
+      "name": "product_snapshots_carbs_g_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "value": "\"protein_g\" >= 0",
+      "name": "product_snapshots_protein_g_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "value": "\"fat_g\" >= 0",
+      "name": "product_snapshots_fat_g_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "value": "\"fiber_g\" >= 0",
+      "name": "product_snapshots_fiber_g_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "value": "\"sugar_g\" >= 0",
+      "name": "product_snapshots_sugar_g_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "value": "\"sugar_g\" <= \"carbs_g\"",
+      "name": "sugar_g_lte_carbs_g",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "value": "\"sodium_mg\" >= 0",
+      "name": "product_snapshots_sodium_mg_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "value": "\"caffeine_mg\" >= 0",
+      "name": "product_snapshots_caffeine_mg_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "value": "\"divisible_by\" IN (1, 2)",
+      "name": "product_snapshots_divisible_by_one_or_two",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "product_snapshots"
+    },
+    {
+      "value": "\"carbs_g\" > 0",
+      "name": "products_carbs_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "value": "\"carbs_g\" * 4 <= \"energy_kcal\" * 1.10",
+      "name": "products_energy_carbs_ratio",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "value": "\"divisible_by\" IN (1, 2)",
+      "name": "products_divisible_by_one_or_two",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "value": "\"fluid_ml\" >= 0",
+      "name": "product_fluid_ml_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "value": "\"weight_g\" >= 0",
+      "name": "product_weight_g_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "value": "\"energy_kcal\" >= 0",
+      "name": "product_energy_kcal_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "value": "\"protein_g\" >= 0",
+      "name": "product_protein_g_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "value": "\"fat_g\" >= 0",
+      "name": "product_fat_g_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "value": "\"fiber_g\" >= 0",
+      "name": "product_fiber_g_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "value": "\"sugar_g\" >= 0",
+      "name": "product_sugar_g_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "value": "\"sugar_g\" <= \"carbs_g\"",
+      "name": "sugar_g_lte_carbs_g",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "value": "\"sodium_mg\" >= 0",
+      "name": "product_sodium_mg_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "value": "\"caffeine_mg\" >= 0",
+      "name": "product_caffeine_mg_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "value": "\"name\" != ''",
+      "name": "products_name_not_empty",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "value": "\"gtin\" ~ '^[0-9]{8,14}$'",
+      "name": "products_gtin_format",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "value": "\"code_seed\" ~ '^[a-z0-9]+(-[a-z0-9]+)*$'",
+      "name": "products_code_seed_format",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "products"
+    },
+    {
+      "value": "\"quantity\" > 0",
+      "name": "servings_quantity_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "servings"
+    },
+    {
+      "value": "\"distance_m\" > 0",
+      "name": "tracks_distance_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "tracks"
+    },
+    {
+      "value": "\"ascent_m\" >= 0",
+      "name": "tracks_ascent_positive_or_zero",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "tracks"
+    }
+  ],
+  "renames": []
+}
