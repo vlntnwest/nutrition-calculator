@@ -39,7 +39,7 @@ test("un tronçon par secteur, le dernier ouvert sur l'arrivée", async () => {
 
   // Deux ravitos découpent la course en trois secteurs.
   expect(rows).toHaveLength(3);
-  expect(rows.map((l) => l.endAidStationM)).toEqual([9800, 20800, null]);
+  expect(rows.map((l) => l.endPositionM)).toEqual([9800, 20800, null]);
   expect(rows.every((l) => l.durationS > 0)).toBe(true);
 });
 
@@ -131,7 +131,7 @@ test("les avertissements sont écrits, globaux comme par secteur", async () => {
 test("le dernier secteur accepte une durée imposée", async () => {
   const accessId = await createPlan({
     ...input,
-    settings: { ...input.settings, finishDurationOverrideS: 3600 },
+    legOverrides: [{ endPositionM: input.track.distanceM, durationS: 3600 }],
   });
   written.push(accessId);
   await regeneratePlan(accessId);
@@ -149,4 +149,22 @@ test("le dernier secteur accepte une durée imposée", async () => {
   expect(rows.reduce((s, l) => s + l.durationS, 0)).toBe(
     input.settings.targetTimeS - stops,
   );
+});
+
+test("un ravito impose la durée du secteur qui s'y termine", async () => {
+  const accessId = await createPlan({
+    ...input,
+    legOverrides: [{ endPositionM: 20800, durationS: 4920 }],
+  });
+  written.push(accessId);
+  await regeneratePlan(accessId);
+
+  const rows = await db
+    .select()
+    .from(legs)
+    .where(eq(legs.planId, accessId))
+    .orderBy(legs.rank);
+
+  // Le secteur 9800 → 20800 est celui que le second ravito clôt.
+  expect(rows[1].durationS).toBe(4920);
 });

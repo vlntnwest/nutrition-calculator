@@ -3,6 +3,7 @@ import { afterEach, expect, test } from "vitest";
 import { db } from "@/db";
 import { aidStations } from "@/db/schema/aidStations";
 import { flasks } from "@/db/schema/flasks";
+import { legOverrides } from "@/db/schema/legOverrides";
 import { planSettings } from "@/db/schema/planSettings";
 import { plans } from "@/db/schema/plans";
 import { productSnapshots } from "@/db/schema/productSnapshots";
@@ -86,19 +87,8 @@ test("les flasques prennent leur rang dans l'ordre où elles arrivent", async ()
   ]);
 });
 
-test("les ravitos sont situés en mètres, l'arrêt et la durée imposée séparés", async () => {
-  const accessId = await createPlan({
-    ...input,
-    aidStations: [
-      { name: "Ravito Haberacker", distanceM: 9800, stopS: 300 },
-      {
-        name: "Ravito Ochsenstein",
-        distanceM: 20800,
-        stopS: 240,
-        legDurationS: 4920,
-      },
-    ],
-  });
+test("un ravito porte son lieu et son arrêt, rien de plus", async () => {
+  const accessId = await createPlan(input);
   written.push(accessId);
 
   const rows = await db
@@ -108,19 +98,40 @@ test("les ravitos sont situés en mètres, l'arrêt et la durée imposée sépar
     .orderBy(aidStations.positionM);
 
   expect(rows).toMatchObject([
-    {
-      positionM: 9800,
-      name: "Ravito Haberacker",
-      stopDurationS: 300,
-      durationOverrideS: null,
-    },
-    {
-      positionM: 20800,
-      name: "Ravito Ochsenstein",
-      stopDurationS: 240,
-      durationOverrideS: 4920,
-    },
+    { positionM: 9800, name: "Ravito Haberacker", stopDurationS: 300 },
+    { positionM: 20800, name: "Ravito Ochsenstein", stopDurationS: 240 },
   ]);
+});
+
+test("une consigne se range sur l'abscisse où le secteur s'achève", async () => {
+  const accessId = await createPlan({
+    ...input,
+    // Un ravito, puis l'arrivée : les deux sortes de borne.
+    legOverrides: [
+      { endPositionM: 20800, durationS: 4920 },
+      { endPositionM: input.track.distanceM, durationS: 3600 },
+    ],
+  });
+  written.push(accessId);
+
+  const rows = await db
+    .select()
+    .from(legOverrides)
+    .where(eq(legOverrides.planId, accessId))
+    .orderBy(legOverrides.endPositionM);
+
+  expect(rows).toMatchObject([
+    { endPositionM: 20800, durationOverrideS: 4920 },
+    { endPositionM: 28350, durationOverrideS: 3600 },
+  ]);
+});
+
+test("une consigne posée hors d'une borne est refusée", async () => {
+  // 15000 n'est ni un ravito ni l'arrivée : aucune clé étrangère ne peut le
+  // dire, l'arrivée n'étant pas un ravito.
+  await expect(
+    createPlan({ ...input, legOverrides: [{ endPositionM: 15000 }] }),
+  ).rejects.toThrow("Leg overrides at unknown boundaries: 15000");
 });
 
 test("un plan sans ravito ni flasque s'écrit quand même", async () => {

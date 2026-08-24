@@ -19,10 +19,6 @@ export const aidStations = snakeCase.table(
     name: text().notNull(),
     providesLiquid: boolean().default(true),
     providesSolid: boolean().default(true),
-    durationOverrideS: integer(),
-    carbsOverrideG_H: integer(),
-    sodiumOverrideMg_L: integer(),
-    fluidOverrideMl_L: integer(),
     stopDurationS: integer(),
   },
   (table) => [
@@ -35,13 +31,6 @@ export const aidStations = snakeCase.table(
       columns: [table.planId],
       foreignColumns: [plans.accessId],
     }).onDelete("cascade"),
-    check(
-      "aid_stations_duration_positive",
-      sql`${table.durationOverrideS} > 0`,
-    ),
-    check("aid_stations_carbs_positive", sql`${table.carbsOverrideG_H} > 0`),
-    check("aid_stations_sodium_positive", sql`${table.sodiumOverrideMg_L} > 0`),
-    check("aid_stations_fluid_positive", sql`${table.fluidOverrideMl_L} > 0`),
     check(
       "aid_stations_stop_duration_positive",
       sql`${table.stopDurationS} > 0`,

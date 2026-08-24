@@ -119,13 +119,19 @@ npm run db:studio    # inspecte les données
 npm run db:down      # arrête le conteneur — ajouter -v pour effacer le volume
 ```
 
-Deux conventions structurent le schéma, et elles ne se devinent pas à la lecture
+Trois conventions structurent le schéma, et elles ne se devinent pas à la lecture
 d'une table isolée :
 
 - **Ce qui appartient à un plan est identifié par un couple** — `(plan_id, rank)`
   pour un secteur ou une flasque, `(plan_id, position_m)` pour un ravitaillement.
   Les clés étrangères qui les visent sont donc composites : référencer la seule
   moitié `rank` échoue à la migration, faute d'unicité côté Postgres.
+- **Un secteur se désigne par l'abscisse où il se termine.** `legs` est réécrit
+  à chaque calcul et n'a donc pas d'identité stable : ce qu'on lui impose vit à
+  part, dans `leg_overrides`, clé `(plan_id, end_position_m)`. Un ravito y porte
+  sa position ; le secteur d'arrivée, la distance totale, puisqu'aucun ravito ne
+  le clôt. C'est aussi pourquoi `legs.end_position_m` vaut `null` sur ce
+  dernier, et pourquoi un index partiel interdit qu'il y en ait deux.
 - **Les produits retenus pour un plan sont figés** dans `product_snapshots` au
   moment du choix, valeurs nutritionnelles comprises. Corriger le catalogue ne
   réécrit jamais un plan déjà enregistré.

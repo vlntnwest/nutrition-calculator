@@ -72,14 +72,18 @@ test("un plan en autonomie complète se relit aussi", async () => {
   });
 });
 
-test("la durée imposée au secteur d'arrivée fait l'aller-retour", async () => {
+test("les consignes de secteur font l'aller-retour, triées", async () => {
   const accessId = await createPlan({
     ...input,
-    settings: { ...input.settings, finishDurationOverrideS: 3600 },
+    legOverrides: [
+      { endPositionM: input.track.distanceM, durationS: 3600 },
+      { endPositionM: 9800, durationS: 2700 },
+    ],
   });
   written.push(accessId);
 
-  expect((await getPlan(accessId))?.settings.finishDurationOverrideS).toBe(
-    3600,
-  );
+  expect((await getPlan(accessId))?.legOverrides).toEqual([
+    { endPositionM: 9800, durationS: 2700 },
+    { endPositionM: 28350, durationS: 3600 },
+  ]);
 });
