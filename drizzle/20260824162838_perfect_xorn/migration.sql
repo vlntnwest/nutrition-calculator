@@ -1,0 +1,1 @@
+ALTER TABLE "aid_stations" ALTER COLUMN "provides_liquid" SET NOT NULL;

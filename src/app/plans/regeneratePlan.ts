@@ -67,6 +67,7 @@ export async function regeneratePlan(accessId: string): Promise<void> {
     distanceM: a.positionM,
     stopS: a.stopDurationS ?? undefined,
     legDurationS: imposed.get(a.positionM),
+    providesLiquid: a.providesLiquid,
   }));
   const products: Product[] = snapshots.map((s) => ({
     id: s.id,

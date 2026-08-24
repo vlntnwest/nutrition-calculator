@@ -316,6 +316,14 @@ export type AidStation = {
    * les secteurs se règlent donc, mais pas tous par le même chemin.
    */
   legDurationS?: number;
+  /**
+   * Y trouve-t-on de l'eau ? Absent vaut **oui** : c'est le cas courant, et
+   * c'est aussi ce que le noyau supposait partout avant d'avoir ce drapeau.
+   *
+   * Un ravito sans eau ne rouvre pas le portage : la **portée** court jusqu'au
+   * point d'eau suivant et peut couvrir plusieurs secteurs.
+   */
+  providesLiquid?: boolean;
 };
 
 export type Serving = {
@@ -401,9 +409,11 @@ export type Leg = {
   /** Eau claire à ajouter à la boisson pour atteindre la cible. */
   plainWaterMl: number;
   /**
-   * Le remplissage des contenants au départ du secteur — quelle flasque porte
-   * quoi. Vide tant qu'aucune contenance n'est déclarée : le noyau ne suppose
-   * pas un matériel qu'on ne lui a pas donné.
+   * Le remplissage des contenants à l'ouverture de la **portée** — quelle
+   * flasque porte quoi. Vide sur un secteur qui part d'un ravito sans eau : on
+   * n'y verse rien, la portée précédente court encore. Vide aussi tant
+   * qu'aucune contenance n'est déclarée, le noyau ne supposant pas un matériel
+   * qu'on ne lui a pas donné.
    */
   fills: Fill[];
   /**
@@ -459,7 +469,10 @@ export type Warning =
        * ravito ou puiser en route, et le taire serait proposer l'impossible.
        */
       code: "leg-fluid-above-carry";
+      /** Premier secteur de la portée. */
       legIndex: number;
+      /** Dernier secteur de la portée. Vaut `legIndex` si elle n'en couvre qu'un. */
+      throughLegIndex: number;
       /** Le plus contraignant de ce qu'il faut boire et de ce qu'occupe la
        * boisson préparée. */
       requiredMl: number;
@@ -482,7 +495,10 @@ export type Warning =
        * ventilation laisserait le surplus disparaître de la liste.
        */
       code: "leg-drink-above-flasks";
+      /** Premier secteur de la portée. */
       legIndex: number;
+      /** Dernier secteur de la portée. */
+      throughLegIndex: number;
       drinkMl: number;
       capacityMl: number;
     };

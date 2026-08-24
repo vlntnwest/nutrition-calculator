@@ -18,6 +18,8 @@ export type NewAidStation = {
   distanceM: number;
   /** L'arrêt sur place, en secondes. */
   stopS?: number;
+  /** Y trouve-t-on de l'eau ? Absent vaut oui. */
+  providesLiquid?: boolean;
 };
 
 /**
@@ -108,6 +110,7 @@ export async function createPlan(input: NewPlan): Promise<string> {
           positionM: aid.distanceM,
           name: aid.name,
           stopDurationS: aid.stopS ?? null,
+          providesLiquid: aid.providesLiquid ?? true,
         })),
       );
     }

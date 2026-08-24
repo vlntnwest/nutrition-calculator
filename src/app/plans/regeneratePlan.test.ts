@@ -168,3 +168,25 @@ test("un ravito impose la durée du secteur qui s'y termine", async () => {
   // Le secteur 9800 → 20800 est celui que le second ravito clôt.
   expect(rows[1].durationS).toBe(4920);
 });
+
+test("un ravito sans eau ne rouvre pas le remplissage", async () => {
+  const accessId = await createPlan({
+    ...input,
+    aidStations: [
+      input.aidStations[0],
+      { ...input.aidStations[1], providesLiquid: false },
+    ],
+  });
+  written.push(accessId);
+  await regeneratePlan(accessId);
+
+  const rows = await db
+    .select()
+    .from(fill)
+    .where(eq(fill.planId, accessId))
+    .orderBy(fill.legRank);
+
+  // La portée ouverte au premier ravito franchit le second : on verse au
+  // secteur 2, rien au secteur 3.
+  expect(new Set(rows.map((r) => r.legRank))).toEqual(new Set([1, 2]));
+});
