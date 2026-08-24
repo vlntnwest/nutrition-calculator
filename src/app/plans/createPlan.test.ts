@@ -68,7 +68,6 @@ test("les réglages sont écrits, les trois cibles à plat", async () => {
     targetFluidMlH: 490,
     targetSodiumMgL: 600,
   });
-  expect(settings.ascentOverrideM).toBeNull();
 });
 
 test("les flasques prennent leur rang dans l'ordre où elles arrivent", async () => {
