@@ -63,6 +63,7 @@ export async function getPlan(accessId: string): Promise<NewPlan | null> {
       raceDate: settings.raceDate,
       // La base rend `HH:MM:SS`, le contrat d'entrée est `HH:MM`.
       startTime: settings.startTime?.slice(0, 5),
+      finishDurationOverrideS: settings.finishDurationOverrideS ?? undefined,
       targets: {
         carbsGH: settings.targetCarbsGH,
         fluidMlH: settings.targetFluidMlH,

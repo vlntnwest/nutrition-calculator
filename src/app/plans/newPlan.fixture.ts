@@ -1,6 +1,8 @@
 import type { NewPlan } from "./createPlan";
 
-// Trois points suffisent : on teste la persistance, pas le noyau.
+// On teste la persistance, pas le noyau — mais les ravitos tombent sur des
+// points : une durée imposée ne se tient qu'à la résolution de la trace, et
+// l'intervalle qui enjambe une borne dilue la consigne sur toute sa longueur.
 export const newPlan: NewPlan = {
   track: {
     name: "Saverne Trail",
@@ -8,7 +10,9 @@ export const newPlan: NewPlan = {
     ascentM: 1314,
     points: [
       { d: 0, lat: 48.7411, lon: 7.3623, ele: 200 },
+      { d: 9800, lat: 48.7466, lon: 7.3668, ele: 380 },
       { d: 14175, lat: 48.7502, lon: 7.3701, ele: 420 },
+      { d: 20800, lat: 48.7455, lon: 7.3662, ele: 300 },
       { d: 28350, lat: 48.7411, lon: 7.3623, ele: 210 },
     ],
   },

@@ -29,6 +29,8 @@ export type NewPlan = {
     raceDate: string;
     /** `HH:MM` */
     startTime?: string;
+    /** La durée imposée au secteur d'arrivée, qu'aucun ravito ne clôt. */
+    finishDurationOverrideS?: number;
     targets: Targets;
   };
   flasks: Flask[];
@@ -65,6 +67,7 @@ export async function createPlan(input: NewPlan): Promise<string> {
       paceSplit: input.settings.paceSplit,
       raceDate: input.settings.raceDate,
       startTime: input.settings.startTime ?? null,
+      finishDurationOverrideS: input.settings.finishDurationOverrideS ?? null,
       targetCarbsGH: input.settings.targets.carbsGH,
       targetFluidMlH: input.settings.targets.fluidMlH,
       targetSodiumMgL: input.settings.targets.sodiumMgL,

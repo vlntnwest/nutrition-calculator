@@ -127,3 +127,26 @@ test("les avertissements sont écrits, globaux comme par secteur", async () => {
     true,
   );
 });
+
+test("le dernier secteur accepte une durée imposée", async () => {
+  const accessId = await createPlan({
+    ...input,
+    settings: { ...input.settings, finishDurationOverrideS: 3600 },
+  });
+  written.push(accessId);
+  await regeneratePlan(accessId);
+
+  const rows = await db
+    .select()
+    .from(legs)
+    .where(eq(legs.planId, accessId))
+    .orderBy(legs.rank);
+  const stops = input.aidStations.reduce((s, a) => s + (a.stopS ?? 0), 0);
+
+  // La consigne est tenue, et le reste de la course s'ajuste autour : la
+  // somme vaut toujours le temps de mouvement.
+  expect(rows.at(-1)?.durationS).toBe(3600);
+  expect(rows.reduce((s, l) => s + l.durationS, 0)).toBe(
+    input.settings.targetTimeS - stops,
+  );
+});

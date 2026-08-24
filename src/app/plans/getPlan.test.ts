@@ -71,3 +71,15 @@ test("un plan en autonomie complète se relit aussi", async () => {
     productCodes: [...autonome.productCodes].sort(),
   });
 });
+
+test("la durée imposée au secteur d'arrivée fait l'aller-retour", async () => {
+  const accessId = await createPlan({
+    ...input,
+    settings: { ...input.settings, finishDurationOverrideS: 3600 },
+  });
+  written.push(accessId);
+
+  expect((await getPlan(accessId))?.settings.finishDurationOverrideS).toBe(
+    3600,
+  );
+});

@@ -1,0 +1,2 @@
+ALTER TABLE "plan_settings" ADD COLUMN "finish_duration_override_s" integer;--> statement-breakpoint
+ALTER TABLE "plan_settings" ADD CONSTRAINT "plan_settings_finish_duration_positive" CHECK ("finish_duration_override_s" > 0);
