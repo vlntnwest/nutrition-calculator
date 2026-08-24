@@ -40,7 +40,6 @@ export type NewPlan = {
   settings: {
     massKg: number;
     targetTimeS: number;
-    ascentOverrideM?: number;
     climbIntensity: number;
     paceSplit: number;
     /** `AAAA-MM-JJ` */
@@ -80,7 +79,6 @@ export async function createPlan(input: NewPlan): Promise<string> {
       planId: plan.accessId,
       massKg: input.settings.massKg,
       targetTimeS: input.settings.targetTimeS,
-      ascentOverrideM: input.settings.ascentOverrideM ?? null,
       climbIntensity: input.settings.climbIntensity,
       paceSplit: input.settings.paceSplit,
       raceDate: input.settings.raceDate,

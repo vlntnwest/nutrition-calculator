@@ -63,7 +63,6 @@ export async function getPlan(accessId: string): Promise<NewPlan | null> {
     settings: {
       massKg: settings.massKg,
       targetTimeS: settings.targetTimeS,
-      ascentOverrideM: settings.ascentOverrideM ?? undefined,
       climbIntensity: settings.climbIntensity,
       paceSplit: settings.paceSplit,
       raceDate: settings.raceDate,

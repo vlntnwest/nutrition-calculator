@@ -18,7 +18,6 @@ export const planSettings = snakeCase.table(
     planId: uuid().notNull(),
     massKg: numeric({ precision: 4, scale: 1, mode: "number" }).notNull(),
     targetTimeS: integer().notNull(),
-    ascentOverrideM: integer(),
     climbIntensity: numeric({ precision: 3, scale: 2, mode: "number" })
       .notNull()
       .default(0.25),
@@ -41,10 +40,6 @@ export const planSettings = snakeCase.table(
     }).onDelete("cascade"),
     check("plan_settings_mass_kg_positive", sql`${table.massKg} > 0`),
     check("plan_settings_target_time_positive", sql`${table.targetTimeS} > 0`),
-    check(
-      "plan_settings_ascent_override_positive",
-      sql`${table.ascentOverrideM} >= 0`,
-    ),
     check(
       "plan_settings_climb_intensity_between_0_and_1",
       sql`${table.climbIntensity} >= 0 AND ${table.climbIntensity} <= 1`,
