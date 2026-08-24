@@ -8,13 +8,16 @@
  * Positionnels : le fichier, l'objectif en `h:mm`, la masse en kg.
  *
  *   --products      identifiants séparés par des virgules
- *   --aidStations   « nom@km » ou « km », séparés par des virgules. Deux
- *                   suffixes cumulables, en minutes : « :8 » l'arrêt sur
- *                   place, « =95 » la durée imposée au secteur qui s'y termine
- *                   — « Lièpvre@39.8:8=95 ». L'arrêt est retranché du temps
- *                   visé avant que l'allure ne soit placée, pas dilué sur la
- *                   trace ; la durée imposée est servie d'abord, et les
- *                   secteurs libres s'accélèrent d'autant
+ *   --aidStations   « nom@km » ou « km », séparés par des virgules. Quatre
+ *                   suffixes cumulables : « :8 » l'arrêt sur place en minutes,
+ *                   « =95 » la durée imposée au secteur qui s'y termine,
+ *                   « -eau » et « -solide » ce que la borne ne fournit pas
+ *                   — « Lièpvre@39.8:8=95 », « Col@63-eau-solide ».
+ *                   L'arrêt est retranché du temps visé avant que l'allure ne
+ *                   soit placée, pas dilué sur la trace ; la durée imposée est
+ *                   servie d'abord, et les secteurs libres s'accélèrent
+ *                   d'autant. Une borne qui ne fournit pas ne rouvre pas la
+ *                   portée : ce qu'on porte doit tenir jusqu'à la suivante
  *   --finish        durée imposée au dernier secteur, en minutes. Il n'est
  *                   clos par aucun ravito, sa consigne ne peut donc pas
  *                   s'écrire « =95 » — c'est le seul secteur dans ce cas
@@ -139,15 +142,18 @@ const products = (option("products") ?? "naak-gel-ultra,naak-drink-ultra")
     return p;
   });
 
-// « nom@km », « km », avec deux suffixes facultatifs en minutes, dans
-// n'importe quel ordre : « :8 » l'arrêt sur place, « =95 » la durée imposée au
-// secteur qui s'y termine — « nom@km:8=95 ».
+// « nom@km », « km », avec des suffixes facultatifs dans n'importe quel
+// ordre : « :8 » l'arrêt sur place en minutes, « =95 » la durée imposée au
+// secteur qui s'y termine, « -eau » et « -solide » ce que la borne ne fournit
+// pas — « nom@km:8=95-eau ». Une borne qui ne fournit pas ne rouvre pas la
+// portée : ce qu'on porte doit tenir jusqu'à la suivante.
 const aidStations: AidStation[] = (option("aidStations") ?? "")
   .split(",")
   .filter(Boolean)
   .map((raw, i) => {
     const [a, b] = raw.split("@");
-    const spec = b ?? a;
+    const full = b ?? a;
+    const spec = full.replace(/-eau|-solide/g, "");
     const [km] = spec.split(/[:=]/);
     const stop = spec.match(/:([^:=]+)/)?.[1];
     const leg = spec.match(/=([^:=]+)/)?.[1];
@@ -156,6 +162,8 @@ const aidStations: AidStation[] = (option("aidStations") ?? "")
       name: b === undefined ? `Ravito ${i + 1}` : a,
       distanceM: Number(km) * 1000,
       stopS: stop === undefined ? 0 : number(stop, "Arrêt au ravito") * 60,
+      ...(full.includes("-eau") ? { providesLiquid: false } : {}),
+      ...(full.includes("-solide") ? { providesSolid: false } : {}),
       // Absente plutôt que nulle : une durée imposée de zéro seconde est une
       // consigne, pas une absence de consigne.
       ...(leg === undefined
@@ -336,6 +344,9 @@ const passage = (elapsedS: number) => {
 
 // Le noyau rend des données ; les mots sont ici, et nulle part ailleurs.
 const legName = (s: Leg) => `${s.from ?? "Départ"} → ${s.to ?? "Arrivée"}`;
+/** Une portée se nomme par ses deux bouts : elle peut couvrir plusieurs secteurs. */
+const spanName = (from: number, through: number) =>
+  `${plan.legs[from].from ?? "Départ"} → ${plan.legs[through].to ?? "Arrivée"}`;
 const percent = (share: number) => `${Math.round(share * 100)} %`;
 const typeName: Record<SegmentType, string> = {
   climb: "montée",
@@ -379,13 +390,13 @@ function phrase(w: Warning): string {
       );
     case "leg-fluid-above-carry":
       return (
-        `${legName(plan.legs[w.legIndex])} : ${Math.round(w.requiredMl)} mL à porter ` +
+        `${spanName(w.legIndex, w.throughLegIndex)} : ${Math.round(w.requiredMl)} mL à porter ` +
         `pour ${Math.round(w.carryMl)} mL de contenance. ` +
         `Il faudra boire au ravito ou puiser en route.`
       );
     case "leg-drink-above-flasks":
       return (
-        `${legName(plan.legs[w.legIndex])} : ${Math.round(w.drinkMl)} mL de boisson préparée ` +
+        `${spanName(w.legIndex, w.throughLegIndex)} : ${Math.round(w.drinkMl)} mL de boisson préparée ` +
         `pour ${Math.round(w.capacityMl)} mL de flasques qui l'acceptent. ` +
         `Le reste des contenants est réservé à l'eau claire.`
       );
@@ -427,7 +438,12 @@ console.log(
     `${targets.carbsGH} g/h, ${Math.round(targets.fluidMlH)} mL/h, ${targets.sodiumMgL} mg/L`,
 );
 
-for (const s of plan.legs) {
+// Les secteurs qui ouvrent une portée sont les seuls où l'on charge quoi que
+// ce soit : ailleurs, on vit sur ce qu'on porte depuis l'amont.
+const opensLiquid = new Set(plan.spans.liquid.map((span) => span[0]));
+const opensSolid = new Set(plan.spans.solid.map((span) => span[0]));
+
+for (const [l, s] of plan.legs.entries()) {
   console.log(`\n── ${legName(s)}`);
   console.log(
     `   ${(s.startM / 1000).toFixed(1)} → ${(s.endM / 1000).toFixed(1)} km · ` +
@@ -445,7 +461,12 @@ for (const s of plan.legs) {
       `     ${amount(r.units)} × ${`${r.product.brand} ${r.product.name}`}`,
     );
   }
-  if (s.fills.length > 0) {
+  if (!opensSolid.has(l)) {
+    console.log(`          (solide pris plus tôt : rien à manger à ${s.from})`);
+  }
+  if (!opensLiquid.has(l)) {
+    console.log(`          (rien à verser : pas d'eau à ${s.from})`);
+  } else if (s.fills.length > 0) {
     for (const f of s.fills) {
       console.log(
         `          flasque ${f.flaskIndex + 1} : ${Math.round(f.volumeMl)} mL ` +
