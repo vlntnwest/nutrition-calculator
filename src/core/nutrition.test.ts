@@ -409,8 +409,9 @@ test("ce qui se coupe se compte en demies, le reste en entiers", () => {
 });
 
 /**
- * La contenance est une contrainte **par secteur** : on remplit à chaque point
- * d'eau. Le noyau proposait jusqu'ici 2 500 mL à qui porte deux flasques.
+ * La contenance est une contrainte **par portée**. Sans ravito, la portée est
+ * la course entière : le noyau proposait jusqu'ici 2 500 mL à qui en porte
+ * 1 000.
  */
 test("un secteur qui demande plus que ce qu'on porte le dit", () => {
   const runner: Runner = {
@@ -429,6 +430,7 @@ test("un secteur qui demande plus que ce qu'on porte le dit", () => {
   expect(plan.warnings).toContainEqual({
     code: "leg-fluid-above-carry",
     legIndex: 0,
+    throughLegIndex: 0,
     requiredMl: 2500,
     carryMl: 1000,
   });
@@ -523,6 +525,7 @@ test("une boisson qui déborde des flasques autorisées le dit", () => {
   expect(plan.warnings).toContainEqual({
     code: "leg-drink-above-flasks",
     legIndex: 0,
+    throughLegIndex: 0,
     drinkMl: 3750,
     capacityMl: 500,
   });
@@ -868,4 +871,81 @@ test("l'arrêt d'un ravito n'entre pas dans la durée imposée", () => {
     { startM: 0, endM: 20_000, durationS: 5400 },
   ]);
   expect(movingTimeS(4 * 3600, aidStations, 40_000)).toBe(4 * 3600 - 600);
+});
+
+/**
+ * Un ravito sans eau ne rouvre pas le portage : la **portée** court jusqu'au
+ * point d'eau suivant, et c'est elle que la contenance doit couvrir.
+ */
+const WATER_STOP: AidStation = { name: "Point d'eau", distanceM: 10_000 };
+const DRY_STOP: AidStation = {
+  name: "Passage sec",
+  distanceM: 20_000,
+  providesLiquid: false,
+};
+
+/** Deux flasques : 1 000 mL en tout, dont 500 pour la boisson. */
+const CARRIER: Runner = {
+  massKg: 70,
+  flasks: [
+    { volumeMl: 500, onlyWater: false },
+    { volumeMl: 500, onlyWater: true },
+  ],
+};
+
+test("une portée franchit le ravito sans eau", () => {
+  // 40 km en 4 h, coupés à 10 et 20 km. La portée qui part du point d'eau
+  // couvre 1 h puis 2 h, soit 1 500 mL pour 1 000 mL portés — alors qu'aucun
+  // des deux secteurs pris isolément ne dépasse la contenance.
+  const plan = nutritionPlan(
+    flatTrack(40, 4),
+    [WATER_STOP, DRY_STOP],
+    CARRIER,
+    TARGETS,
+    [gel, drink],
+  );
+
+  expect(plan.warnings).toContainEqual({
+    code: "leg-fluid-above-carry",
+    legIndex: 1,
+    throughLegIndex: 2,
+    requiredMl: 1500,
+    carryMl: 1000,
+  });
+});
+
+test("on ne remplit qu'à l'ouverture d'une portée", () => {
+  const plan = nutritionPlan(
+    flatTrack(40, 4),
+    [WATER_STOP, DRY_STOP],
+    CARRIER,
+    TARGETS,
+    [gel, drink],
+  );
+
+  // Le secteur 2 part d'un ravito sec : rien à y verser.
+  expect(plan.legs[2].fills).toEqual([]);
+  expect(plan.legs[2].refillMl).toBe(0);
+
+  // Tout le liquide de la portée est versé à son ouverture, et ce qui ne tient
+  // pas dans les flasques ressort plutôt que de disparaître.
+  expect(plan.legs[1].fills.length).toBeGreaterThan(0);
+  expect(plan.legs[1].refillMl).toBeCloseTo(500, 6);
+});
+
+test("sans mention contraire, chaque ravito rouvre le portage", () => {
+  // Le même parcours, mais le ravito de 20 km fournit de l'eau : trois
+  // portées d'un secteur, aucune ne dépasse la contenance.
+  const plan = nutritionPlan(
+    flatTrack(40, 4),
+    [WATER_STOP, { name: "Ravito", distanceM: 20_000 }],
+    CARRIER,
+    TARGETS,
+    [gel, drink],
+  );
+
+  expect(plan.legs.every((leg) => leg.fills.length > 0)).toBe(true);
+  expect(
+    plan.warnings.filter((w) => w.code === "leg-fluid-above-carry"),
+  ).toEqual([]);
 });

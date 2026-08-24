@@ -74,13 +74,13 @@ export function nutritionPlan(
   products: Product[],
   parts?: number[],
 ): NutritionPlan {
-  const legs = provision(
-    splitByAidStation(points, aidStations, runner),
-    targets,
-    products,
-    runner,
-    parts,
+  const raws = splitByAidStation(points, aidStations, runner);
+  const spans = carrySpans(
+    aidStations,
+    points.length > 0 ? points[points.length - 1].d : 0,
+    raws.length,
   );
+  const legs = provision(raws, targets, products, runner, spans, parts);
 
   const units = new Map<string, number>();
   for (const s of legs) {
@@ -105,7 +105,11 @@ export function nutritionPlan(
     units,
   };
 
-  return { legs, total, warnings: warnings(legs, targets, products, runner) };
+  return {
+    legs,
+    total,
+    warnings: warnings(legs, targets, products, runner, spans),
+  };
 }
 
 function sum<T>(items: T[], read: (item: T) => number): number {
@@ -125,6 +129,33 @@ function onCourse(aidStations: AidStation[], endM: number): AidStation[] {
   return [...aidStations]
     .filter((r) => r.distanceM > 0 && r.distanceM < endM)
     .sort((a, b) => a.distanceM - b.distanceM);
+}
+
+/**
+ * Les portées de portage, en indices de secteurs. Chacune va d'un point d'eau
+ * au suivant : c'est là qu'on remplit, et c'est elle que la contenance doit
+ * couvrir.
+ *
+ * Un ravito sans eau ne rouvre rien — la portée le franchit et continue. Le
+ * départ, lui, en fournit toujours : on part avec des flasques pleines.
+ */
+function carrySpans(
+  aidStations: AidStation[],
+  totalDistanceM: number,
+  legCount: number,
+): number[][] {
+  const bounds = onCourse(aidStations, totalDistanceM);
+  const spans: number[][] = [];
+
+  for (let l = 0; l < legCount; l++) {
+    // Le secteur `l` part de la borne `l - 1`.
+    const opens = l === 0 || bounds[l - 1]?.providesLiquid !== false;
+
+    if (opens || spans.length === 0) spans.push([l]);
+    else spans[spans.length - 1].push(l);
+  }
+
+  return spans;
 }
 
 /** L'arrêt d'un ravito, en secondes. Absent ou négatif vaut zéro. */
@@ -361,6 +392,7 @@ function provision(
   targets: Targets,
   products: Product[],
   runner: Runner,
+  spans: number[][],
   parts?: number[],
 ): Leg[] {
   // La part est lue sur la position d'origine, avant le filtrage : sinon un
@@ -402,8 +434,10 @@ function provision(
       }
     }
 
-    return raws.map((raw, l) =>
-      assemble(raw, needs[l], loaded[l], runner.flasks),
+    return fillSpans(
+      raws.map((raw, l) => assemble(raw, needs[l], loaded[l])),
+      spans,
+      runner.flasks,
     );
   }
 
@@ -440,9 +474,45 @@ function provision(
     }
   }
 
-  return raws.map((raw, l) =>
-    assemble(raw, needs[l], loaded[l], runner.flasks),
+  return fillSpans(
+    raws.map((raw, l) => assemble(raw, needs[l], loaded[l])),
+    spans,
+    runner.flasks,
   );
+}
+
+/**
+ * Verse le liquide d'une portée à son ouverture. Les secteurs qui partent d'un
+ * ravito sans eau ne reçoivent rien : leur liquide a été chargé en amont.
+ */
+function fillSpans(
+  legs: Omit<Leg, "fills" | "refillMl">[],
+  spans: number[][],
+  flasks: Flask[],
+): Leg[] {
+  const filled = legs.map((leg) => ({ ...leg, fills: [], refillMl: 0 }) as Leg);
+
+  for (const span of spans) {
+    const totalMl = span.reduce(
+      (s, l) => s + Math.max(legs[l].need.fluidMl, legs[l].supply.fluidMl),
+      0,
+    );
+    // La boisson de toute la portée se prépare d'un coup : les doses des
+    // secteurs qu'elle couvre se regroupent par produit.
+    const drinks: Serving[] = [];
+    for (const l of span) {
+      for (const r of legs[l].servings) {
+        if (r.product.fluidMl === 0) continue;
+        const at = drinks.find((d) => d.product.id === r.product.id);
+        if (at) at.units += r.units;
+        else drinks.push({ product: r.product, units: r.units });
+      }
+    }
+
+    filled[span[0]] = { ...filled[span[0]], ...fill(flasks, drinks, totalMl) };
+  }
+
+  return filled;
 }
 
 /**
@@ -589,8 +659,7 @@ function assemble(
   raw: RawLeg,
   need: Leg["need"],
   loaded: Loaded[],
-  flasks: Flask[],
-): Leg {
+): Omit<Leg, "fills" | "refillMl"> {
   const servings: Serving[] = loaded
     .filter((x) => x.steps > 0)
     .map((x) => ({ product: x.product, units: x.steps / stepsOf(x.product) }));
@@ -605,11 +674,6 @@ function assemble(
     { carbsG: 0, energyKcal: 0, sodiumMg: 0, fluidMl: 0 },
   );
 
-  // Tout le liquide qui doit passer sur ce secteur. La boisson peut dépasser
-  // la cible d'hydratation quand elle porte les glucides seule : c'est alors
-  // elle qui commande, pas le besoin.
-  const totalMl = Math.max(need.fluidMl, supply.fluidMl);
-
   return {
     ...raw,
     need,
@@ -617,11 +681,6 @@ function assemble(
     supply,
     marginG: supply.carbsG - need.carbsG,
     plainWaterMl: Math.max(need.fluidMl - supply.fluidMl, 0),
-    ...fill(
-      flasks,
-      servings.filter((r) => r.product.fluidMl > 0),
-      totalMl,
-    ),
   };
 }
 
@@ -636,6 +695,7 @@ function warnings(
   targets: Targets,
   products: Product[],
   runner: Runner,
+  spans: number[][],
 ): Warning[] {
   const messages: Warning[] = [];
 
@@ -706,18 +766,6 @@ function warnings(
       });
     }
 
-    // Ce qu'il faut réellement porter : le plus contraignant de ce qu'on doit
-    // boire et de ce que la boisson préparée occupe.
-    const requiredMl = Math.max(s.need.fluidMl, s.supply.fluidMl);
-    if (carryMl !== null && requiredMl > carryMl) {
-      messages.push({
-        code: "leg-fluid-above-carry",
-        legIndex,
-        requiredMl,
-        carryMl,
-      });
-    }
-
     // Le cas silencieux d'avant l'ADR 007 : une boisson glucidique était
     // cochée, aucune dose n'entre dans ce secteur, tout part en eau claire.
     if (hasCarbDrink && s.supply.fluidMl === 0 && s.plainWaterMl > 0) {
@@ -727,15 +775,41 @@ function warnings(
         plainWaterMl: s.plainWaterMl,
       });
     }
+  }
+
+  // Le portage se juge sur la **portée** : entre deux points d'eau, une seule
+  // contenance doit couvrir tous les secteurs franchis. Secteur par secteur,
+  // un ravito sans eau passait inaperçu.
+  const drinkCap = drinkCapacityMl(runner);
+  for (const span of spans) {
+    const legIndex = span[0];
+    const throughLegIndex = span[span.length - 1];
+
+    // Ce qu'il faut réellement porter : le plus contraignant de ce qu'on doit
+    // boire et de ce que la boisson préparée occupe.
+    const requiredMl = span.reduce(
+      (t, l) => t + Math.max(legs[l].need.fluidMl, legs[l].supply.fluidMl),
+      0,
+    );
+    if (carryMl !== null && requiredMl > carryMl) {
+      messages.push({
+        code: "leg-fluid-above-carry",
+        legIndex,
+        throughLegIndex,
+        requiredMl,
+        carryMl,
+      });
+    }
 
     // La boisson préparée ne tient pas dans les flasques qui l'acceptent. Sans
     // ça, la ventilation laisserait le surplus disparaître de la liste.
-    const drinkCap = drinkCapacityMl(runner);
-    if (drinkCap !== null && s.supply.fluidMl > drinkCap) {
+    const drinkMl = span.reduce((t, l) => t + legs[l].supply.fluidMl, 0);
+    if (drinkCap !== null && drinkMl > drinkCap) {
       messages.push({
         code: "leg-drink-above-flasks",
         legIndex,
-        drinkMl: s.supply.fluidMl,
+        throughLegIndex,
+        drinkMl,
         capacityMl: drinkCap,
       });
     }

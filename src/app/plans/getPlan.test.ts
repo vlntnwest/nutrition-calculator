@@ -87,3 +87,19 @@ test("les consignes de secteur font l'aller-retour, triées", async () => {
     { endPositionM: 28350, durationS: 3600 },
   ]);
 });
+
+test("un ravito sans eau se relit comme tel", async () => {
+  const accessId = await createPlan({
+    ...input,
+    aidStations: [
+      input.aidStations[0],
+      { ...input.aidStations[1], providesLiquid: false },
+    ],
+  });
+  written.push(accessId);
+
+  expect((await getPlan(accessId))?.aidStations).toEqual([
+    input.aidStations[0],
+    { ...input.aidStations[1], providesLiquid: false },
+  ]);
+});
