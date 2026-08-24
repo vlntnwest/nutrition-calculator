@@ -165,7 +165,6 @@ async function write(accessId: string, plan: NutritionPlan): Promise<void> {
         flaskRank: f.flaskIndex + 1,
         productSnapshotId: f.product?.id ?? null,
         volumeMl: Math.round(f.volumeMl),
-        remainingMl: 0,
       })),
     );
     if (remplissages.length > 0) await tx.insert(fill).values(remplissages);

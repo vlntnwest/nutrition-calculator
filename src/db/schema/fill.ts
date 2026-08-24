@@ -19,7 +19,6 @@ export const fill = snakeCase.table(
     flaskRank: integer().notNull(),
     productSnapshotId: uuid(),
     volumeMl: integer().notNull(),
-    remainingMl: integer().notNull(),
   },
   (table) => [
     primaryKey({
@@ -42,10 +41,5 @@ export const fill = snakeCase.table(
       foreignColumns: [productSnapshots.id],
     }).onDelete("restrict"),
     check("fill_volume_be_positive", sql`${table.volumeMl} > 0`),
-    check("fill_remaining_be_positive_or_zero", sql`${table.remainingMl} >= 0`),
-    check(
-      "fill_remaining_lte_volume",
-      sql`${table.remainingMl} <= ${table.volumeMl}`,
-    ),
   ],
 );
