@@ -82,7 +82,8 @@ function tooClose(input: NewPlan): [number, number] | null {
   ];
 
   for (let i = 1; i < bounds.length; i++) {
-    if (bounds[i] - bounds[i - 1] < MIN_LEG_M) return [bounds[i - 1], bounds[i]];
+    if (bounds[i] - bounds[i - 1] < MIN_LEG_M)
+      return [bounds[i - 1], bounds[i]];
   }
 
   return null;
