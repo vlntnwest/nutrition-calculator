@@ -164,10 +164,30 @@ sections ci-dessus au fur et à mesure que les fonctions seront écrites.
   ~3–5 m sur une trace issue d'un modèle numérique de terrain, ~10 m sur une
   trace GPS brute. `elevationGain` accepte ce seuil en paramètre — son défaut de
   3 m n'est utilisé que par les tests, le pipeline passe `0`.
-  <br>Ce choix n'est adossé à **aucune ADR** : c'est le seul réglage du pipeline
-  dans ce cas. `npm run analyze` affiche la grille complète seuil × filtrage
-  contre le D+ publié, et sur Saverne le seuil 0 avec médiane rend 1 314 m
-  contre 1 450 m annoncés par Strava et 1 318 m par Garmin.
+  <br>**Pourquoi zéro.** Sur les traces de montre, qui sont le cas courant,
+  le seuil 0 tombe systématiquement plus près du D+ publié — les enregistrements
+  d'aujourd'hui sont assez propres pour que la médiane suffise, et un seuil
+  par-dessus retranche du vrai dénivelé. Mesuré sur les dix références :
+
+  | trace | publié | seuil 0 | seuil 3 |
+  | --- | --- | --- | --- |
+  | `utdc.gpx` (montre) | 6 373 | **6 362** | 6 003 |
+  | `uthk.gpx` (montre) | 4 449 | **4 372** | 4 129 |
+  | `andlau.gpx` (montre) | 959 | **943** | 884 |
+  | `saintelyon-benj.gpx` (montre) | 2 139 | **2 232** | 1 954 |
+  | `utdc-karim.gpx` (montre) | 5 200 | 5 620 | **5 122** |
+  | `strasparis.gpx` (vélo) | 2 914 | 3 177 | 2 325 |
+
+  Le seuil déplace le chiffre de 6 à 12 % : l'impact existe, il est simplement
+  dans le mauvais sens. Le point faible n'est pas la montre mais le **vélo**,
+  que le seuil 0 surestime de 9 à 15 % sans que le seuil 3 fasse mieux — il
+  sous-estime alors de plus de 20 %.
+
+  <br>**Ce réglage ne touche pas le plan.** Il n'entre que dans le D+ *rapporté*
+  par `analyzeTrack` : le modèle d'allure lit la pente de chaque intervalle, pas
+  un total accumulé. Le vérifier est immédiat — passer `thresholdM` à 3 laisse
+  `plan.caracterisation.test.ts` au vert et fait rougir
+  `pipeline.caracterisation.test.ts`.
 - **Écrêtage de la pente à ±45 %**, qui est le domaine de validité du modèle de
   coût énergétique utilisé.
 - **Paliers de 30, 60 et 90 g de glucides par heure, défaut à 60.** Chacun
