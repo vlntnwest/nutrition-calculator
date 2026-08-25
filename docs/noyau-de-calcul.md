@@ -157,12 +157,17 @@ sections ci-dessus au fur et à mesure que les fonctions seront écrites.
   d'enregistrement. Un filtre exprimé en nombre de points représente donc une
   distance physique différente sur chaque fichier — c'est un bug déguisé en
   paramètre. Voir [ADR 002](adr/002-ancrer-les-points-sur-la-distance-cumulee.md).
-- **Seuil à hystérésis sur l'accumulation du D+** : une montée n'est comptée
-  qu'au-delà d'un gain net de ~3–5 m depuis le dernier minimum local sur une trace
-  issue d'un modèle numérique de terrain, ~10 m sur une trace GPS brute. Sans ce
-  seuil, le bruit d'altitude seul produit plusieurs centaines de mètres de D+
-  fictif sur un ultra. L'abaisser gonfle le chiffre, l'augmenter écrase les
-  reliefs courts.
+- **Aucun seuil à hystérésis sur l'accumulation du D+** — `SETTINGS.thresholdM`
+  vaut `0`. C'est le filtre médian sur 30 m qui retire le bruit d'altitude, en
+  amont ; poser un seuil par-dessus le retrancherait deux fois. La plupart des
+  outils font l'inverse et ne comptent une montée qu'au-delà d'un gain net de
+  ~3–5 m sur une trace issue d'un modèle numérique de terrain, ~10 m sur une
+  trace GPS brute. `elevationGain` accepte ce seuil en paramètre — son défaut de
+  3 m n'est utilisé que par les tests, le pipeline passe `0`.
+  <br>Ce choix n'est adossé à **aucune ADR** : c'est le seul réglage du pipeline
+  dans ce cas. `npm run analyze` affiche la grille complète seuil × filtrage
+  contre le D+ publié, et sur Saverne le seuil 0 avec médiane rend 1 314 m
+  contre 1 450 m annoncés par Strava et 1 318 m par Garmin.
 - **Écrêtage de la pente à ±45 %**, qui est le domaine de validité du modèle de
   coût énergétique utilisé.
 - **Paliers de 30, 60 et 90 g de glucides par heure, défaut à 60.** Chacun

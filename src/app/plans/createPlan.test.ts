@@ -222,3 +222,38 @@ test("un code produit inconnu refuse le plan entier", async () => {
 
   expect(await db.select().from(plans)).toHaveLength(before.length);
 });
+
+/**
+ * Un secteur d'un mètre s'arrondit à zéro seconde et viole
+ * `legs_duration_positive` à la régénération. La borne se pose ici, à
+ * l'écriture, plutôt que de laisser une erreur Postgres brute remonter.
+ */
+test.each([
+  ["deux ravitos collés", [9800, 9801], "9800 m et 9801 m"],
+  ["un ravito collé au départ", [500, 20800], "0 m et 500 m"],
+  ["un ravito collé à l'arrivée", [9800, 28100], "28100 m et 28350 m"],
+  ["un ravito au-delà de la trace", [9800, 30000], "30000 m et 28350 m"],
+])("%s : refusé", async (_, positions, pair) => {
+  await expect(
+    createPlan({
+      ...input,
+      aidStations: positions.map((distanceM, i) => ({
+        name: `Ravito ${i + 1}`,
+        distanceM,
+      })),
+    }),
+  ).rejects.toThrow(`Aid stations too close: ${pair}`);
+});
+
+test("un kilomètre pile suffit", async () => {
+  const accessId = await createPlan({
+    ...input,
+    aidStations: [
+      { name: "A", distanceM: 9800 },
+      { name: "B", distanceM: 10800 },
+    ],
+  });
+  written.push(accessId);
+
+  expect(accessId).toBeTruthy();
+});
