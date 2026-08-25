@@ -60,8 +60,45 @@ export type NewPlan = {
   productCodes: string[];
 };
 
+/**
+ * L'écart minimal entre deux bornes d'un secteur, en mètres.
+ *
+ * Deux ravitos collés fabriquent un secteur qui s'arrondit à zéro seconde et
+ * viole `legs_duration_positive` à la régénération. On refuse ici plutôt que
+ * de laisser remonter une erreur Postgres brute — et un secteur de quelques
+ * mètres n'a de toute façon aucun sens pour un coureur.
+ */
+const MIN_LEG_M = 1000;
+
+/**
+ * Les bornes trop rapprochées, s'il y en a. Le départ et l'arrivée en font
+ * partie : un ravito collé à l'un des deux fabrique le même secteur nul.
+ */
+function tooClose(input: NewPlan): [number, number] | null {
+  const bounds = [
+    0,
+    ...input.aidStations.map((aid) => aid.distanceM).sort((a, b) => a - b),
+    input.track.distanceM,
+  ];
+
+  for (let i = 1; i < bounds.length; i++) {
+    if (bounds[i] - bounds[i - 1] < MIN_LEG_M)
+      return [bounds[i - 1], bounds[i]];
+  }
+
+  return null;
+}
+
 /** Écrit un plan et rend son identifiant d'accès. */
 export async function createPlan(input: NewPlan): Promise<string> {
+  const collees = tooClose(input);
+  if (collees) {
+    throw new Error(
+      `Aid stations too close: ${collees[0]} m et ${collees[1]} m ` +
+        `(minimum ${MIN_LEG_M} m)`,
+    );
+  }
+
   return db.transaction(async (tx) => {
     // `greatest` couvre la course déjà passée, qui garde six mois pleins.
     const [plan] = await tx

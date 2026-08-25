@@ -103,8 +103,10 @@ rééchantillonnage, lissage, D+, simplification, découpage en tronçons de pen
 homogène, modèle d'allure, répartition du temps, répartition nutritionnelle.
 Chacune est documentée avec ses hypothèses et ses seuils dans
 **[`docs/noyau-de-calcul.md`](docs/noyau-de-calcul.md)** — pourquoi le
-rééchantillonnage se fait à pas de distance et non à nombre de points, pourquoi le
-seuil d'accumulation du D+ est à trois mètres, et ce qui change si on le déplace.
+rééchantillonnage se fait à pas de distance et non à nombre de points, et pourquoi
+le D+ se dérive d'un filtre médian sur 30 m **sans seuil d'accumulation**, là où
+la plupart des outils en posent un. `npm run analyze` compare les deux approches
+sur une trace et affiche l'écart au D+ publié.
 
 ## Base de données
 
