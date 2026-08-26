@@ -3,7 +3,7 @@ import type { NewPlan } from "./createPlan";
 // On teste la persistance, pas le noyau — mais les ravitos tombent sur des
 // points : une durée imposée ne se tient qu'à la résolution de la trace, et
 // l'intervalle qui enjambe une borne dilue la consigne sur toute sa longueur.
-export const newPlan: NewPlan = {
+export const newPlan = {
   track: {
     name: "Saverne Trail",
     distanceM: 28350,
@@ -35,4 +35,4 @@ export const newPlan: NewPlan = {
   ],
   legOverrides: [],
   productCodes: ["naak-gel-ultra", "decathlon-iso-plus"],
-};
+} satisfies NewPlan;
