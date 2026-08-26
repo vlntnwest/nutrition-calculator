@@ -42,12 +42,12 @@ export type NewPlan = {
     points: ResolvedPoint[];
   };
   settings: {
-    massKg: number;
-    targetTimeS: number;
+    massKg?: number;
+    targetTimeS?: number;
     climbIntensity: number;
     paceSplit: number;
     /** `AAAA-MM-JJ` */
-    raceDate: string;
+    raceDate?: string;
     /** `HH:MM` */
     startTime?: string;
     targets: Targets;
@@ -118,11 +118,11 @@ export async function createPlan(input: NewPlan): Promise<string> {
 
     await tx.insert(planSettings).values({
       planId: plan.accessId,
-      massKg: input.settings.massKg,
-      targetTimeS: input.settings.targetTimeS,
+      massKg: input.settings.massKg ?? null,
+      targetTimeS: input.settings.targetTimeS ?? null,
       climbIntensity: input.settings.climbIntensity,
       paceSplit: input.settings.paceSplit,
-      raceDate: input.settings.raceDate,
+      raceDate: input.settings.raceDate ?? null,
       startTime: input.settings.startTime ?? null,
       targetCarbsGH: input.settings.targets.carbsGH,
       targetFluidMlH: input.settings.targets.fluidMlH,
