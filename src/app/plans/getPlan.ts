@@ -61,11 +61,11 @@ export async function getPlan(accessId: string): Promise<NewPlan | null> {
       points: row.tracks.points,
     },
     settings: {
-      massKg: settings.massKg,
-      targetTimeS: settings.targetTimeS,
+      massKg: settings.massKg ?? undefined,
+      targetTimeS: settings.targetTimeS ?? undefined,
       climbIntensity: settings.climbIntensity,
       paceSplit: settings.paceSplit,
-      raceDate: settings.raceDate,
+      raceDate: settings.raceDate ?? undefined,
       // La base rend `HH:MM:SS`, le contrat d'entrée est `HH:MM`.
       startTime: settings.startTime?.slice(0, 5),
       targets: {

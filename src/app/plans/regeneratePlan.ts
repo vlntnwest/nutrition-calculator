@@ -50,6 +50,11 @@ export async function regeneratePlan(accessId: string): Promise<void> {
   ]);
 
   const settings = row.plan_settings;
+
+  if (settings.massKg === null || settings.targetTimeS === null) {
+    throw new Error(`Plan not ready: missing mass or target time`);
+  }
+
   const runner = {
     massKg: settings.massKg,
     flasks: flaskRows.map((f) => ({
