@@ -59,3 +59,52 @@ test("les avertissements globaux ne sont attachés à aucun secteur", async () =
   ]);
   expect(roadbook?.legs.every((l) => l.warnings.length === 0)).toBe(true);
 });
+
+/**
+ * Ce que le CLI affichait et que l'écran n'avait pas : l'apport réel du
+ * secteur, et l'écart à ce qui était visé.
+ */
+test("chaque secteur porte son apport, et l'écart à la cible", async () => {
+  const accessId = await createPlan(input);
+  written.push(accessId);
+  await regeneratePlan(accessId);
+
+  const roadbook = await getRoadbook(accessId);
+  const leg = roadbook?.legs[0];
+
+  // L'apport est la somme des rations : rien d'autre ne peut le produire.
+  expect(leg?.supply.carbsG).toBeGreaterThan(0);
+  expect(leg?.supply.energyKcal).toBeGreaterThan(leg?.supply.carbsG ?? 0);
+
+  // L'écart est signé, et vaut apport moins besoin — c'est sa définition.
+  expect(leg?.marginG).toBeCloseTo(
+    (leg?.supply.carbsG ?? 0) - (leg?.needG ?? 0),
+    6,
+  );
+
+  // Le besoin suit la durée et la cible horaire, rien de plus.
+  expect(leg?.needG).toBeCloseTo(
+    (input.settings.targets.carbsGH * (leg?.durationS ?? 0)) / 3600,
+    6,
+  );
+});
+
+test("le total est la somme des secteurs", async () => {
+  const accessId = await createPlan(input);
+  written.push(accessId);
+  await regeneratePlan(accessId);
+
+  const roadbook = await getRoadbook(accessId);
+  const legs = roadbook?.legs ?? [];
+
+  expect(roadbook?.total.carbsG).toBeCloseTo(
+    legs.reduce((t, l) => t + l.supply.carbsG, 0),
+    6,
+  );
+  expect(roadbook?.total.marginG).toBeCloseTo(
+    legs.reduce((t, l) => t + l.marginG, 0),
+    6,
+  );
+  // Le sac : combien de chaque produit, tous secteurs confondus.
+  expect(roadbook?.total.units.length).toBe(input.productCodes.length);
+});

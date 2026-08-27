@@ -1,11 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 import { distributeTime } from "@/core/distribute";
-import {
-  fixedSpans,
-  movingTimeS,
-  nutritionPlan,
-  suggestedTargets,
-} from "@/core/nutrition";
+import { fixedSpans, movingTimeS, nutritionPlan } from "@/core/nutrition";
 import type { NutritionPlan, Product, ProductType } from "@/core/type";
 import { db } from "@/db";
 import { aidStations } from "@/db/schema/aidStations";
@@ -20,6 +15,7 @@ import { servings } from "@/db/schema/servings";
 import { tracks } from "@/db/schema/tracks";
 import { warnings } from "@/db/schema/warnings";
 import { PlanError } from "./planError";
+import { resolveTargets } from "./targets";
 
 /**
  * Recalcule le plan et réécrit tout le côté droit du modèle.
@@ -103,19 +99,7 @@ export async function regeneratePlan(accessId: string): Promise<void> {
     { climbIntensity: settings.climbIntensity, split: settings.paceSplit },
     fixedSpans(stations, totalM, imposed.get(totalM)),
   );
-  // Sans cibles saisies, celles que le noyau suggère : elles tiennent compte
-  // du coureur et de la durée, là où une constante en base ne peut pas.
-  const targets =
-    settings.targetCarbsGH === null ||
-    settings.targetFluidMlH === null ||
-    settings.targetSodiumMgL === null
-      ? suggestedTargets(runner, settings.targetTimeS)
-      : {
-          carbsGH: settings.targetCarbsGH,
-          fluidMlH: settings.targetFluidMlH,
-          sodiumMgL: settings.targetSodiumMgL,
-        };
-
+  const targets = resolveTargets(settings, runner, settings.targetTimeS);
   const plan = nutritionPlan(timed, stations, runner, targets, products);
 
   await write(accessId, plan);

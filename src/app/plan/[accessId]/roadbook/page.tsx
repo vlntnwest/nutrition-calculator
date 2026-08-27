@@ -2,6 +2,14 @@ import type { Roadbook } from "@/app/plans/getRoadbook";
 import { planOf, roadbookOf } from "../plan";
 import { Calculer } from "./Calculer";
 
+/** `-12.4` → `−12`, `+3.2` → `+3`. Signé : l'écart peut être négatif. */
+function ecart(marginG: number): string {
+  if (Math.abs(marginG) < 1) return "";
+  const signe = marginG > 0 ? "+" : "−";
+
+  return ` (${signe}${Math.round(Math.abs(marginG))} g)`;
+}
+
 /** `4556` → `1 h 15`. */
 function duree(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -67,6 +75,14 @@ export default async function Page(
                   </ul>
                 )}
 
+                <p className="text-sm">
+                  Apport : {Math.round(leg.supply.carbsG)} g de glucides
+                  {ecart(leg.marginG)} ·{" "}
+                  {Math.round(leg.supply.energyKcal).toLocaleString("fr")} kcal
+                  · {Math.round(leg.supply.sodiumMg)} mg de sodium ·{" "}
+                  {Math.round(leg.supply.fluidMl)} mL de boisson
+                </p>
+
                 {leg.fills.length > 0 && (
                   <ul className="text-sm">
                     {leg.fills.map((f) => (
@@ -86,6 +102,24 @@ export default async function Page(
               </li>
             ))}
           </ol>
+
+          <section className="flex flex-col gap-1 border-t pt-2">
+            <h3 className="font-semibold">Le sac complet</h3>
+            <ul className="text-sm">
+              {roadbook.total.units.map((u) => (
+                <li key={u.name}>
+                  {u.quantity} × {u.brandName} {u.name}
+                </li>
+              ))}
+            </ul>
+            <p className="text-sm">
+              {Math.round(roadbook.total.carbsG)} g de glucides
+              {ecart(roadbook.total.marginG)} ·{" "}
+              {Math.round(roadbook.total.energyKcal).toLocaleString("fr")} kcal
+              · {Math.round(roadbook.total.sodiumMg)} mg de sodium ·{" "}
+              {Math.round(roadbook.total.fluidMl)} mL de boisson
+            </p>
+          </section>
         </>
       )}
     </section>
