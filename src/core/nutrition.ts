@@ -28,6 +28,16 @@ export const CARBS_SINGLE_SOURCE_MAX_G_H = 60;
 export const CARBS_GUIDE_G_H = 90;
 
 /**
+ * L'écart toléré entre ce qu'on sert et ce qu'on vise, en glucides.
+ *
+ * Une boisson concentrée traîne ses glucides avec le liquide : viser bas en
+ * glucides tout en buvant beaucoup dépasse la cible sans qu'on l'ait demandé,
+ * et le solide n'a plus sa place. On tolère le rangement — les produits sont
+ * discrets, un gel de trop dépasse de quelques pour cent — pas le structurel.
+ */
+export const CARBS_OVERSHOOT_MAX = 1.3;
+
+/**
  * Repère d'hydratation. Boire plus qu'on ne transpire dilue le sodium sanguin
  * — c'est l'hyponatrémie d'effort. On alerte, on n'écrête pas : changer une
  * valeur saisie sans le dire est pire que de ne rien faire.
@@ -739,6 +749,14 @@ function warnings(
       carbsGH: targets.carbsGH,
       maxGH: CARBS_SINGLE_SOURCE_MAX_G_H,
       multiShare: multi / supplied,
+    });
+  }
+
+  const carbNeed = sum(legs, (s) => s.need.carbsG);
+  if (carbNeed > 0 && supplied > carbNeed * CARBS_OVERSHOOT_MAX) {
+    messages.push({
+      code: "carbs-above-target",
+      share: supplied / carbNeed,
     });
   }
 

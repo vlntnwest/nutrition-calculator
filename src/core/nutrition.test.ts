@@ -2,6 +2,7 @@ import fc from "fast-check";
 import { expect, test } from "vitest";
 import { pacingIssue } from "./distribute";
 import {
+  CARBS_OVERSHOOT_MAX,
   CARBS_SINGLE_SOURCE_MAX_G_H,
   FLUID_GUIDE_ML_H,
   fixedSpans,
@@ -1001,4 +1002,42 @@ test("sans mention contraire, chaque ravito rouvre les deux", () => {
 
   expect(plan.spans.liquid).toEqual([[0], [1], [2]]);
   expect(plan.spans.solid).toEqual([[0], [1], [2]]);
+});
+
+/**
+ * Le cas du plan trop sucré sans l'avoir demandé.
+ *
+ * Une boisson à 55 g pour 500 ml apporte 55 g/h dès qu'on vise 500 ml/h :
+ * viser 30 g/h de glucides est alors dépassé avant d'avoir rien mangé. Rien
+ * ne le signalait — `carbs-above-guide` juge la **cible**, pas ce qui est
+ * réellement servi.
+ */
+test("alerte quand le plan sert bien plus de glucides que demandé", () => {
+  const points = flatTrack(40, 5);
+  const bas: Targets = { carbsGH: 30, fluidMlH: 500, sodiumMgL: 600 };
+
+  const trop = nutritionPlan(points, [], RUNNER, bas, [drink]);
+  const juste = nutritionPlan(points, [], RUNNER, TARGETS, [gel, drink]);
+
+  expect(trop.warnings.some((w) => w.code === "carbs-above-target")).toBe(true);
+  expect(juste.warnings.some((w) => w.code === "carbs-above-target")).toBe(
+    false,
+  );
+});
+
+test("l'alerte porte l'écart, pas une phrase", () => {
+  const bas: Targets = { carbsGH: 30, fluidMlH: 500, sodiumMgL: 600 };
+  const plan = nutritionPlan(flatTrack(40, 5), [], RUNNER, bas, [drink]);
+  const alerte = plan.warnings.find((w) => w.code === "carbs-above-target");
+
+  expect(alerte).toMatchObject({ code: "carbs-above-target" });
+  // Le rapport servi/visé : au-delà de 1, et au-delà du seuil toléré.
+  expect(alerte && "share" in alerte ? alerte.share : 0).toBeGreaterThan(
+    CARBS_OVERSHOOT_MAX,
+  );
+});
+
+test("un dépassement de rangement ne déclenche rien", () => {
+  // Les produits sont discrets : un gel de trop suffit à dépasser de peu.
+  expect(CARBS_OVERSHOOT_MAX).toBe(1.3);
 });

@@ -377,6 +377,12 @@ function phrase(w: Warning): string {
         `${Math.round(w.fluidMlH)} mL/h dépasse ce que la plupart des coureurs ` +
         `transpirent. Boire au-delà de sa sudation expose à l'hyponatrémie.`
       );
+    case "carbs-above-target":
+      return (
+        `Le plan sert ${percent(w.share)} des glucides visés : une boisson ` +
+        `concentrée traîne ses glucides avec le liquide. ` +
+        `Viser plus haut, ou diluer moins — sinon le solide n'a plus sa place.`
+      );
     case "sodium-below-target":
       return (
         `Sodium à ${percent(w.share)} de la cible : ` +

@@ -467,6 +467,8 @@ export type Warning =
     }
   | { code: "fluid-above-guide"; fluidMlH: number; guideMlH: number }
   | { code: "sodium-below-target"; share: number }
+  /** Le plan sert bien plus de glucides que visé. `share` = servi / visé. */
+  | { code: "carbs-above-target"; share: number }
   | {
       code: "leg-fluid-above-target";
       /** Position du secteur dans `NutritionPlan.legs`. */

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { savePlan } from "@/app/plans/actions";
 import type { CatalogueEntry } from "@/app/plans/catalogue";
@@ -16,6 +17,7 @@ export function ProduitsForm({
   const [retenus, setRetenus] = useState(new Set(choisis));
   const [message, setMessage] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const router = useRouter();
 
   function toggle(code: string) {
     const suite = new Set(retenus);
@@ -60,6 +62,9 @@ export function ProduitsForm({
                 productCodes: [...retenus],
               });
               setMessage(result.ok ? "Enregistré." : result.error);
+              // Les props viennent du serveur : sans ce rendu, l'écran continuerait
+              // d'annoncer l'état d'avant l'enregistrement.
+              if (result.ok) router.refresh();
             });
           }}
         >

@@ -32,7 +32,9 @@ test("importer une trace ouvre un plan et rend son identifiant", async () => {
         paceSplit: 0,
         raceDate: undefined,
         startTime: undefined,
-        targets: { carbsGH: 30, fluidMlH: 500, sodiumMgL: 500 },
+        // Les cibles attendent l'écran qui les demande : rien n'est écrit
+        // à l'import, un chiffre posé se confondrait avec une réponse.
+        targets: undefined,
       },
       flasks: [],
       aidStations: [],

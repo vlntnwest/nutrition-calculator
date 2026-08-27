@@ -15,6 +15,7 @@ export default async function Layout(props: LayoutProps<"/plan/[accessId]">) {
 
   const onglets = [
     { href: `/plan/${accessId}`, texte: "Course" },
+    { href: `/plan/${accessId}/cibles`, texte: "Cibles" },
     { href: `/plan/${accessId}/produits`, texte: "Produits" },
     { href: `/plan/${accessId}/roadbook`, texte: "Roadbook" },
   ];

@@ -9,6 +9,7 @@ import { plans } from "@/db/schema/plans";
 import { productSnapshots } from "@/db/schema/productSnapshots";
 import { tracks } from "@/db/schema/tracks";
 import { createPlan } from "./createPlan";
+import { getPlan } from "./getPlan";
 import { newPlan as input } from "./newPlan.fixture";
 
 const written: string[] = [];
@@ -303,8 +304,34 @@ test("un plan réduit à sa trace s'écrit", async () => {
     // Une course linéaire : `paceDrift` rend 1 partout.
     paceSplit: 0,
     climbIntensity: 0.25,
-    targetCarbsGH: 30,
-    targetFluidMlH: 500,
-    targetSodiumMgL: 500,
   });
+});
+
+/**
+ * Une cible absente doit rester absente : un `30 g/h` écrit à l'import ne se
+ * distingue plus d'une réponse réfléchie, et c'est précisément ce qui a
+ * produit des plans tout en boisson sans que personne l'ait demandé.
+ */
+test("un plan nu n'a pas de cibles, il n'en a pas encore été question", async () => {
+  const accessId = await createPlan({
+    track: input.track,
+    settings: {},
+    flasks: [],
+    aidStations: [],
+    legOverrides: [],
+    productCodes: [],
+  });
+  written.push(accessId);
+
+  const [settings] = await db
+    .select()
+    .from(planSettings)
+    .where(eq(planSettings.planId, accessId));
+
+  expect(settings).toMatchObject({
+    targetCarbsGH: null,
+    targetFluidMlH: null,
+    targetSodiumMgL: null,
+  });
+  expect((await getPlan(accessId))?.settings.targets).toBeUndefined();
 });

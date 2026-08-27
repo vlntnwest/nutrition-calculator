@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { savePlan } from "@/app/plans/actions";
 import type { NewAidStation, NewPlan } from "@/app/plans/planInput";
@@ -59,6 +60,7 @@ export function CourseForm({
   const [lignes, setLignes] = useState<Ligne[]>(plan.aidStations.map(toLigne));
   const [message, setMessage] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const router = useRouter();
 
   function submit() {
     const stations = toStations(lignes);
@@ -75,6 +77,9 @@ export function CourseForm({
         aidStations: stations,
       });
       setMessage(result.ok ? "Enregistré." : result.error);
+      // Les props viennent du serveur : sans ce rendu, l'écran continuerait
+      // d'annoncer l'état d'avant l'enregistrement.
+      if (result.ok) router.refresh();
     });
   }
 
