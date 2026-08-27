@@ -3,17 +3,19 @@
 import { useState } from "react";
 import type { TrackAnalysis } from "@/core/type";
 import { analyzeGpx } from "./import/analyzeGpx";
+import { importTrack } from "./plans/actions";
+import { rememberPlan } from "./plans/stored";
 
 type State =
   | { kind: "vide" }
   | { kind: "lecture" }
-  | { kind: "lu"; analysis: TrackAnalysis; ms: number }
+  | { kind: "ouvert"; analysis: TrackAnalysis; accessId: string; ms: number }
   | { kind: "erreur"; message: string };
 
 /**
  * Écran d'import, réduit à son squelette : il n'y a pas encore de direction
- * artistique, et cette page sert d'abord à prouver que le noyau tourne dans un
- * worker. La mise en forme viendra avec les maquettes.
+ * artistique. Le GPX est lu dans un worker, puis le plan s'ouvre en base
+ * aussitôt — l'identifiant rendu est tout ce qui rouvre le plan ensuite.
  */
 export default function Page() {
   const [state, setState] = useState<State>({ kind: "vide" });
@@ -23,7 +25,26 @@ export default function Page() {
     const started = performance.now();
     try {
       const analysis = await analyzeGpx(await file.text());
-      setState({ kind: "lu", analysis, ms: performance.now() - started });
+      const created = await importTrack({
+        name: analysis.name,
+        distanceM: analysis.distanceM,
+        ascentM: Math.round(analysis.ascentM),
+        points: analysis.points,
+      });
+
+      if (!created.ok) {
+        setState({ kind: "erreur", message: created.error });
+
+        return;
+      }
+
+      rememberPlan(created.value);
+      setState({
+        kind: "ouvert",
+        analysis,
+        accessId: created.value,
+        ms: performance.now() - started,
+      });
     } catch (error) {
       setState({
         kind: "erreur",
@@ -51,11 +72,13 @@ export default function Page() {
       {state.kind === "lecture" && <p>Lecture…</p>}
 
       {state.kind === "erreur" && (
-        <p role="alert">Fichier illisible — {state.message}</p>
+        <p role="alert">Import impossible — {state.message}</p>
       )}
 
-      {state.kind === "lu" && (
+      {state.kind === "ouvert" && (
         <dl className="grid grid-cols-2 gap-x-6 gap-y-1">
+          <dt>Plan</dt>
+          <dd data-testid="access-id">{state.accessId}</dd>
           <dt>Nom</dt>
           <dd>{state.analysis.name ?? "sans nom"}</dd>
           <dt>Distance</dt>
@@ -68,7 +91,7 @@ export default function Page() {
           <dd>{state.analysis.points.length}</dd>
           <dt>Tronçons</dt>
           <dd>{state.analysis.segments.length}</dd>
-          <dt>Durée de l'analyse</dt>
+          <dt>Import et écriture</dt>
           <dd>{Math.round(state.ms)} ms</dd>
         </dl>
       )}
