@@ -10,6 +10,7 @@ import { productSnapshots } from "@/db/schema/productSnapshots";
 import { products } from "@/db/schema/products";
 import { warnings } from "@/db/schema/warnings";
 import { getPlan } from "./getPlan";
+import { PlanError } from "./planError";
 import type { NewPlan } from "./planInput";
 import { assertValid, insertSnapshots, settingsColumns } from "./planInput";
 
@@ -39,7 +40,7 @@ export async function updatePlan(
   patch: PlanPatch,
 ): Promise<void> {
   const current = await getPlan(accessId);
-  if (!current) throw new Error(`Unknown plan: ${accessId}`);
+  if (!current) throw new PlanError(`Unknown plan: ${accessId}`);
 
   const merged: NewPlan = {
     track: current.track,

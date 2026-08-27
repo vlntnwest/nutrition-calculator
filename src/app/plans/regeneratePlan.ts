@@ -14,6 +14,7 @@ import { productSnapshots } from "@/db/schema/productSnapshots";
 import { servings } from "@/db/schema/servings";
 import { tracks } from "@/db/schema/tracks";
 import { warnings } from "@/db/schema/warnings";
+import { PlanError } from "./planError";
 
 /**
  * Recalcule le plan et réécrit tout le côté droit du modèle.
@@ -29,7 +30,7 @@ export async function regeneratePlan(accessId: string): Promise<void> {
     .innerJoin(planSettings, eq(planSettings.planId, plans.accessId))
     .where(eq(plans.accessId, accessId));
 
-  if (!row) throw new Error(`Unknown plan: ${accessId}`);
+  if (!row) throw new PlanError(`Unknown plan: ${accessId}`);
 
   const [flaskRows, aidRows, snapshots, overrideRows] = await Promise.all([
     db
@@ -52,7 +53,7 @@ export async function regeneratePlan(accessId: string): Promise<void> {
   const settings = row.plan_settings;
 
   if (settings.massKg === null || settings.targetTimeS === null) {
-    throw new Error(`Plan not ready: missing mass or target time`);
+    throw new PlanError(`Plan not ready: missing mass or target time`);
   }
 
   const runner = {
