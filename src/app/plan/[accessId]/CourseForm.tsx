@@ -3,26 +3,49 @@
 import { useState, useTransition } from "react";
 import { savePlan } from "@/app/plans/actions";
 import type { NewAidStation, NewPlan } from "@/app/plans/planInput";
+import { nombre, toClock, toSeconds } from "./champs";
 
-/** `13500` → `03:45`. Ce que l'écran montre, pas ce que la base garde. */
-function toClock(seconds: number | undefined): string {
-  if (seconds === undefined) return "";
-  const h = Math.floor(seconds / 3600);
-  const m = Math.round((seconds % 3600) / 60);
+/**
+ * Un ravito en cours de saisie.
+ *
+ * Le texte tapé, pas la valeur : repasser par un nombre à chaque frappe
+ * effacerait le séparateur décimal, qu'on ne pourrait alors jamais entrer.
+ * La conversion attend l'enregistrement.
+ */
+type Ligne = { name: string; km: string; stopMin: string };
 
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+function toLigne(aid: NewAidStation): Ligne {
+  return {
+    name: aid.name,
+    km: String(aid.distanceM / 1000),
+    stopMin: aid.stopS === undefined ? "" : String(aid.stopS / 60),
+  };
 }
 
-/** `03:45` → `13500`. Rend `undefined` sur une saisie inexploitable. */
-function toSeconds(clock: string): number | undefined {
-  const [h, m] = clock.split(":").map(Number);
-  if (!Number.isFinite(h) || !Number.isFinite(m)) return undefined;
+/** Les ravitos saisis, ou le premier reproche à faire à l'utilisateur. */
+function toStations(lignes: Ligne[]): NewAidStation[] | string {
+  const stations: NewAidStation[] = [];
 
-  return h * 3600 + m * 60;
+  for (const ligne of lignes) {
+    const km = nombre(ligne.km);
+    if (km === undefined) {
+      return `Ravito « ${ligne.name} » : indique sa distance en kilomètres.`;
+    }
+
+    const stop = nombre(ligne.stopMin);
+    if (ligne.stopMin.trim() !== "" && stop === undefined) {
+      return `Ravito « ${ligne.name} » : l'arrêt n'est pas un nombre de minutes.`;
+    }
+
+    stations.push({
+      name: ligne.name,
+      distanceM: km * 1000,
+      stopS: stop === undefined ? undefined : stop * 60,
+    });
+  }
+
+  return stations;
 }
-
-const nombre = (v: string): number | undefined =>
-  v.trim() === "" || !Number.isFinite(Number(v)) ? undefined : Number(v);
 
 export function CourseForm({
   accessId,
@@ -33,11 +56,18 @@ export function CourseForm({
 }) {
   const [chrono, setChrono] = useState(toClock(plan.settings.targetTimeS));
   const [masse, setMasse] = useState(String(plan.settings.massKg ?? ""));
-  const [stations, setStations] = useState<NewAidStation[]>(plan.aidStations);
+  const [lignes, setLignes] = useState<Ligne[]>(plan.aidStations.map(toLigne));
   const [message, setMessage] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
   function submit() {
+    const stations = toStations(lignes);
+    if (typeof stations === "string") {
+      setMessage(stations);
+
+      return;
+    }
+
     setMessage(null);
     start(async () => {
       const result = await savePlan(accessId, {
@@ -48,8 +78,8 @@ export function CourseForm({
     });
   }
 
-  function edit(i: number, patch: Partial<NewAidStation>) {
-    setStations(stations.map((s, j) => (j === i ? { ...s, ...patch } : s)));
+  function edit(i: number, patch: Partial<Ligne>) {
+    setLignes(lignes.map((l, j) => (j === i ? { ...l, ...patch } : l)));
   }
 
   return (
@@ -78,11 +108,11 @@ export function CourseForm({
       <div className="flex flex-col gap-2">
         <h2 className="font-semibold">Ravitaillements</h2>
 
-        {stations.length === 0 && (
+        {lignes.length === 0 && (
           <p className="text-sm">Aucun pour l'instant.</p>
         )}
 
-        {stations.map((station, i) => (
+        {lignes.map((ligne, i) => (
           // Rien d'unique et de stable à quoi s'accrocher : deux ravitos
           // peuvent partager un nom, et leur position change en cours de saisie.
           // biome-ignore lint/suspicious/noArrayIndexKey: le rang est l'identité
@@ -91,7 +121,7 @@ export function CourseForm({
               <span className="text-sm">Nom</span>
               <input
                 className="border px-2 py-1"
-                value={station.name}
+                value={ligne.name}
                 onChange={(e) => edit(i, { name: e.target.value })}
               />
             </label>
@@ -99,27 +129,25 @@ export function CourseForm({
               <span className="text-sm">km</span>
               <input
                 className="w-20 border px-2 py-1"
-                value={station.distanceM / 1000}
-                onChange={(e) =>
-                  edit(i, { distanceM: (nombre(e.target.value) ?? 0) * 1000 })
-                }
+                inputMode="decimal"
+                value={ligne.km}
+                placeholder="9,8"
+                onChange={(e) => edit(i, { km: e.target.value })}
               />
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-sm">Arrêt (min)</span>
               <input
                 className="w-24 border px-2 py-1"
-                value={station.stopS === undefined ? "" : station.stopS / 60}
-                onChange={(e) => {
-                  const min = nombre(e.target.value);
-                  edit(i, { stopS: min === undefined ? undefined : min * 60 });
-                }}
+                inputMode="decimal"
+                value={ligne.stopMin}
+                onChange={(e) => edit(i, { stopMin: e.target.value })}
               />
             </label>
             <button
               type="button"
               className="border px-2 py-1"
-              onClick={() => setStations(stations.filter((_, j) => j !== i))}
+              onClick={() => setLignes(lignes.filter((_, j) => j !== i))}
             >
               Retirer
             </button>
@@ -130,9 +158,9 @@ export function CourseForm({
           type="button"
           className="self-start border px-2 py-1"
           onClick={() =>
-            setStations([
-              ...stations,
-              { name: `Ravito ${stations.length + 1}`, distanceM: 0 },
+            setLignes([
+              ...lignes,
+              { name: `Ravito ${lignes.length + 1}`, km: "", stopMin: "" },
             ])
           }
         >
