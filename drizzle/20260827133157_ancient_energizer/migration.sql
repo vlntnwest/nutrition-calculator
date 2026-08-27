@@ -1,0 +1,1 @@
+ALTER TABLE "plan_settings" ALTER COLUMN "pace_split" SET DEFAULT '0';
