@@ -10,7 +10,7 @@ import { productSnapshots } from "@/db/schema/productSnapshots";
 import { products } from "@/db/schema/products";
 import { tracks } from "@/db/schema/tracks";
 import { warnings } from "@/db/schema/warnings";
-import type { NewPlan } from "./createPlan";
+import type { NewPlan } from "./planInput";
 
 /** Relit un plan par son identifiant d'accès. */
 export async function getPlan(accessId: string): Promise<NewPlan | null> {

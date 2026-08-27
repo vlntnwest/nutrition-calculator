@@ -10,3 +10,6 @@ if (!DATABASE_URL) {
 }
 
 export const db = drizzle(DATABASE_URL);
+
+/** La poignée d'une transaction, telle que `db.transaction` la passe. */
+export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];

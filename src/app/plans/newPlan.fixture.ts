@@ -1,4 +1,4 @@
-import type { NewPlan } from "./createPlan";
+import type { NewPlan } from "./planInput";
 
 // On teste la persistance, pas le noyau — mais les ravitos tombent sur des
 // points : une durée imposée ne se tient qu'à la résolution de la trace, et

@@ -257,3 +257,54 @@ test("un kilomètre pile suffit", async () => {
 
   expect(accessId).toBeTruthy();
 });
+
+/**
+ * Le cas du plan nu, créé à l'import : `undefined` ne se lie pas, il disparaît
+ * du SQL et laisse `greatest(now(), ::timestamptz)`.
+ */
+test("un plan sans date de course garde six mois à compter de l'enregistrement", async () => {
+  const accessId = await createPlan({
+    ...input,
+    settings: { ...input.settings, raceDate: undefined },
+  });
+  written.push(accessId);
+
+  const [plan] = await db
+    .select()
+    .from(plans)
+    .where(eq(plans.accessId, accessId));
+
+  expect(plan.expiresAt.getTime()).toBeGreaterThan(Date.now());
+});
+
+/**
+ * Le plan nu, celui de l'import : on n'a que la trace. Tout ce qui se saisit
+ * plus tard attend son écran, et la base porte les défauts.
+ */
+test("un plan réduit à sa trace s'écrit", async () => {
+  const accessId = await createPlan({
+    track: input.track,
+    settings: {},
+    flasks: [],
+    aidStations: [],
+    legOverrides: [],
+    productCodes: [],
+  });
+  written.push(accessId);
+
+  const [settings] = await db
+    .select()
+    .from(planSettings)
+    .where(eq(planSettings.planId, accessId));
+
+  expect(settings).toMatchObject({
+    massKg: null,
+    targetTimeS: null,
+    // Une course linéaire : `paceDrift` rend 1 partout.
+    paceSplit: 0,
+    climbIntensity: 0.25,
+    targetCarbsGH: 30,
+    targetFluidMlH: 500,
+    targetSodiumMgL: 500,
+  });
+});
