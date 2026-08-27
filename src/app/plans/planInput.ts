@@ -59,6 +59,56 @@ export type NewPlan = {
   productCodes: string[];
 };
 
+/** Arrondit ce qui existe, laisse absent ce qui l'est. */
+function whole(value: number | undefined): number | undefined {
+  return value === undefined ? undefined : Math.round(value);
+}
+
+/**
+ * Ramène aux entiers ce que la base stocke en entiers.
+ *
+ * Mètres, secondes et millilitres : une trace réelle ne tombe pas sur des
+ * mètres ronds — `analyzeTrack` rend 28 350,401 m pour Saverne — et un
+ * ravito posé au clic sur le profil pas davantage.
+ *
+ * Se fait **avant** la validation, jamais après : deux ravitos à 9 800,4 et
+ * 10 000,2 s'écriraient à mille mètres l'un de l'autre, il serait absurde de
+ * les refuser sur un écart de 999,8.
+ */
+export function normalise(input: NewPlan): NewPlan {
+  return {
+    track: {
+      ...input.track,
+      distanceM: Math.round(input.track.distanceM),
+      ascentM: Math.round(input.track.ascentM),
+    },
+    settings: {
+      ...input.settings,
+      targetTimeS: whole(input.settings.targetTimeS),
+      targets: input.settings.targets && {
+        carbsGH: Math.round(input.settings.targets.carbsGH),
+        fluidMlH: Math.round(input.settings.targets.fluidMlH),
+        sodiumMgL: Math.round(input.settings.targets.sodiumMgL),
+      },
+    },
+    flasks: input.flasks.map((flask) => ({
+      ...flask,
+      volumeMl: Math.round(flask.volumeMl),
+    })),
+    aidStations: input.aidStations.map((aid) => ({
+      ...aid,
+      distanceM: Math.round(aid.distanceM),
+      stopS: whole(aid.stopS),
+    })),
+    legOverrides: input.legOverrides.map((o) => ({
+      ...o,
+      endPositionM: Math.round(o.endPositionM),
+      durationS: whole(o.durationS),
+    })),
+    productCodes: input.productCodes,
+  };
+}
+
 /**
  * L'écart minimal entre deux bornes d'un secteur, en mètres.
  *

@@ -12,7 +12,12 @@ import { warnings } from "@/db/schema/warnings";
 import { getPlan } from "./getPlan";
 import { PlanError } from "./planError";
 import type { NewPlan } from "./planInput";
-import { assertValid, insertSnapshots, settingsColumns } from "./planInput";
+import {
+  assertValid,
+  insertSnapshots,
+  normalise,
+  settingsColumns,
+} from "./planInput";
 
 /**
  * Ce qu'un écran renvoie d'un plan déjà écrit.
@@ -42,14 +47,14 @@ export async function updatePlan(
   const current = await getPlan(accessId);
   if (!current) throw new PlanError(`Unknown plan: ${accessId}`);
 
-  const merged: NewPlan = {
+  const merged: NewPlan = normalise({
     track: current.track,
     settings: { ...current.settings, ...patch.settings },
     flasks: patch.flasks ?? current.flasks,
     aidStations: patch.aidStations ?? current.aidStations,
     legOverrides: patch.legOverrides ?? current.legOverrides,
     productCodes: patch.productCodes ?? current.productCodes,
-  };
+  });
 
   // Sur le plan entier, jamais sur le patch : déplacer un ravito peut faire
   // tomber à côté une consigne que le patch ne porte même pas.

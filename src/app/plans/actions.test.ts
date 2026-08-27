@@ -128,3 +128,26 @@ test("parcours complet : import, écrans, calcul", async () => {
     .where(eq(plans.accessId, accessId));
   expect(row.generatedAt).not.toBeNull();
 });
+
+/**
+ * Une trace réelle ne tombe pas sur des mètres ronds : `analyzeTrack` rend
+ * 28 350,401 m pour Saverne, et les colonnes sont des entiers.
+ */
+test("une trace aux mesures fractionnaires s'écrit quand même", async () => {
+  const created = await importTrack({
+    ...input.track,
+    name: "Saverne Trail",
+    distanceM: 28350.401004093896,
+    ascentM: 1314.4472135955,
+  });
+
+  expect(created.ok).toBe(true);
+  if (!created.ok) return;
+  written.push(created.value);
+
+  const relu = await loadPlan(created.value);
+  expect(relu.ok && relu.value.track).toMatchObject({
+    distanceM: 28350,
+    ascentM: 1314,
+  });
+});

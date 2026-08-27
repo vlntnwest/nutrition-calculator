@@ -7,10 +7,16 @@ import { planSettings } from "@/db/schema/planSettings";
 import { plans } from "@/db/schema/plans";
 import { tracks } from "@/db/schema/tracks";
 import type { NewPlan } from "./planInput";
-import { assertValid, insertSnapshots, settingsColumns } from "./planInput";
+import {
+  assertValid,
+  insertSnapshots,
+  normalise,
+  settingsColumns,
+} from "./planInput";
 
 /** Écrit un plan et rend son identifiant d'accès. */
-export async function createPlan(input: NewPlan): Promise<string> {
+export async function createPlan(raw: NewPlan): Promise<string> {
+  const input = normalise(raw);
   assertValid(input);
 
   return db.transaction(async (tx) => {
