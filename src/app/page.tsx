@@ -1,7 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { TrackAnalysis } from "@/core/type";
 import { analyzeGpx } from "./import/analyzeGpx";
 import { importTrack } from "./plans/actions";
 import { rememberPlan } from "./plans/stored";
@@ -9,7 +9,6 @@ import { rememberPlan } from "./plans/stored";
 type State =
   | { kind: "vide" }
   | { kind: "lecture" }
-  | { kind: "ouvert"; analysis: TrackAnalysis; accessId: string; ms: number }
   | { kind: "erreur"; message: string };
 
 /**
@@ -19,10 +18,10 @@ type State =
  */
 export default function Page() {
   const [state, setState] = useState<State>({ kind: "vide" });
+  const router = useRouter();
 
   async function read(file: File) {
     setState({ kind: "lecture" });
-    const started = performance.now();
     try {
       const analysis = await analyzeGpx(await file.text());
       const created = await importTrack({
@@ -39,12 +38,9 @@ export default function Page() {
       }
 
       rememberPlan(created.value);
-      setState({
-        kind: "ouvert",
-        analysis,
-        accessId: created.value,
-        ms: performance.now() - started,
-      });
+      // L'état reste sur « lecture » : la navigation remplace l'écran, et
+      // repasser par « vide » ferait clignoter le formulaire au départ.
+      router.push(`/plan/${created.value}`);
     } catch (error) {
       setState({
         kind: "erreur",
@@ -73,27 +69,6 @@ export default function Page() {
 
       {state.kind === "erreur" && (
         <p role="alert">Import impossible — {state.message}</p>
-      )}
-
-      {state.kind === "ouvert" && (
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-1">
-          <dt>Plan</dt>
-          <dd data-testid="access-id">{state.accessId}</dd>
-          <dt>Nom</dt>
-          <dd>{state.analysis.name ?? "sans nom"}</dd>
-          <dt>Distance</dt>
-          <dd>{(state.analysis.distanceM / 1000).toFixed(1)} km</dd>
-          <dt>Dénivelé positif</dt>
-          <dd>{Math.round(state.analysis.ascentM)} m</dd>
-          <dt>Points bruts</dt>
-          <dd>{state.analysis.rawPoints}</dd>
-          <dt>Points conservés</dt>
-          <dd>{state.analysis.points.length}</dd>
-          <dt>Tronçons</dt>
-          <dd>{state.analysis.segments.length}</dd>
-          <dt>Import et écriture</dt>
-          <dd>{Math.round(state.ms)} ms</dd>
-        </dl>
       )}
     </main>
   );
