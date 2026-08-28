@@ -1103,3 +1103,46 @@ test("un secteur ne porte qu'une seule demi-dose au plus", () => {
     ).toHaveLength(fractions.length > 0 ? 1 : 0);
   }
 });
+
+/**
+ * On ne mélange pas deux poudres. Le cas se produit sans flasque déclarée :
+ * plus rien ne borne le liquide, et deux sachets tiennent dans un secteur
+ * long. Une flasque ne porte qu'une chose, un secteur non plus.
+ */
+test("un secteur ne porte qu'une seule boisson", () => {
+  const deux = [
+    productById("naak-drink-ultra"),
+    productById("naak-drink-salted-soup"),
+    productById("naak-bar-ultra"),
+  ] as Product[];
+
+  const plan = nutritionPlan(
+    flatTrack(108, 12.5),
+    [
+      { name: "R1", distanceM: 22600 },
+      { name: "R2", distanceM: 63000 },
+    ],
+    // Aucune flasque : c'est le cas qui déclenchait le mélange.
+    { massKg: 77, flasks: [] },
+    TARGETS,
+    deux,
+  );
+
+  for (const [i, leg] of plan.legs.entries()) {
+    const boissons = leg.servings.filter((s) => s.product.fluidMl > 0);
+
+    expect(
+      boissons.map((s) => s.product.name),
+      `secteur ${i + 1}`,
+    ).toHaveLength(boissons.length > 0 ? 1 : 0);
+  }
+
+  // Les deux boissons servent quand même sur la course : n'en garder qu'une
+  // reviendrait à ignorer un produit que le coureur a choisi.
+  const servies = new Set(
+    plan.legs.flatMap((l) =>
+      l.servings.filter((s) => s.product.fluidMl > 0).map((s) => s.product.id),
+    ),
+  );
+  expect(servies.size).toBe(2);
+});

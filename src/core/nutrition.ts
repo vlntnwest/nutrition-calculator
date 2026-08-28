@@ -427,41 +427,52 @@ function provision(
   // quantité. On arrondit vers le bas pour ne jamais dépasser la cible — le
   // reste se boit en eau claire.
   const capacityMl = drinkCapacityMl(runner);
+
+  // La part visée de chaque boisson, cumulée depuis le départ, et ce qu'elle a
+  // reçu. C'est leur écart qui désigne la boisson du secteur suivant : sans ce
+  // suivi, la même l'emporterait à chaque fois et l'autre ne servirait jamais.
+  const idealMl = drinks.map(() => 0);
+  const givenMl = drinks.map(() => 0);
+
   const drinkSteps = needs.map((need) => {
     const availableMl =
       capacityMl === null ? need.fluidMl : Math.min(need.fluidMl, capacityMl);
-    const ideal = share(drinks, availableMl);
+    for (const [i, ml] of share(drinks, availableMl).entries()) {
+      idealMl[i] += ml;
+    }
+
     const steps = drinks.map(() => 0);
 
-    // Des doses entières : on ne prépare pas un demi-sachet, et une flasque
-    // ne porte qu'une poudre. On sert celui qui est le plus loin de sa part
-    // tant que le budget d'hydratation laisse passer une dose complète — ce
-    // qui concentre naturellement un secteur sur une seule boisson.
-    let leftMl = availableMl;
-    for (;;) {
-      const vide = steps.every((n) => n === 0);
-      let chosen = -1;
-      let worst = 0;
-      for (const [i, k] of drinks.entries()) {
-        // La **première** dose s'arrondit au plus proche : un secteur qui
-        // réclame 478 mL n'aurait pas droit à un sachet de 500 et partirait
-        // sans boisson du tout. Les suivantes exigent la place entière, sans
-        // quoi la boisson couvrirait tous les glucides et il ne resterait
-        // rien à manger — le défaut qu'on cherche justement à corriger.
-        const place = vide ? leftMl * 2 : leftMl;
-        if (k.product.fluidMl > place) continue;
-        const pouredMl = (steps[i] / stepsOf(k.product)) * k.product.fluidMl;
-        const gap = ideal[i] - pouredMl;
-        if (gap > worst) {
-          worst = gap;
-          chosen = i;
-        }
+    // Une seule boisson par secteur : on ne mélange pas deux poudres, pas plus
+    // dans une flasque que dans un gobelet. La retardataire passe devant.
+    //
+    // Une dose entière : la première s'arrondit au plus proche, sans quoi un
+    // secteur réclamant 478 mL n'aurait pas droit à un sachet de 500 et
+    // partirait sans rien. Les suivantes exigent la place entière — au plus
+    // proche partout, la boisson couvrirait tous les glucides et il ne
+    // resterait plus rien à manger.
+    let chosen = -1;
+    let worst = Number.NEGATIVE_INFINITY;
+    for (const [i, k] of drinks.entries()) {
+      if (k.product.fluidMl > availableMl * 2) continue;
+      const gap = idealMl[i] - givenMl[i];
+      if (gap > worst) {
+        worst = gap;
+        chosen = i;
       }
-      if (chosen < 0) break;
-
-      steps[chosen] += stepsOf(drinks[chosen].product);
-      leftMl -= drinks[chosen].product.fluidMl;
     }
+    if (chosen < 0) return steps;
+
+    const product = drinks[chosen].product;
+    let doses = 1;
+    let leftMl = availableMl - product.fluidMl;
+    while (product.fluidMl <= leftMl) {
+      doses++;
+      leftMl -= product.fluidMl;
+    }
+
+    steps[chosen] = doses * stepsOf(product);
+    givenMl[chosen] += doses * product.fluidMl;
 
     return steps;
   });
