@@ -44,6 +44,11 @@ export type RoadbookLeg = {
   /** Les glucides visés sur ce secteur : la cible horaire fois sa durée. */
   needG: number;
   /**
+   * Ce qu'il faut **boire** sur le secteur. À ne pas confondre avec les
+   * volumes des flasques, qui partent pleines : on emporte souvent plus.
+   */
+  needFluidMl: number;
+  /**
    * L'écart aux glucides visés, **signé** : un secteur peut passer sous son
    * besoin propre, la répartition se faisant sur toute la course.
    */
@@ -158,6 +163,7 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
       VIDE,
     );
     const needG = (targets.carbsGH * leg.durationS) / 3600;
+    const needFluidMl = (targets.fluidMlH * leg.durationS) / 3600;
 
     return {
       rank: leg.rank,
@@ -177,6 +183,7 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
       })),
       supply,
       needG,
+      needFluidMl,
       marginG: supply.carbsG - needG,
       warnings: warningRows
         .filter((w) => w.legRank === leg.rank)

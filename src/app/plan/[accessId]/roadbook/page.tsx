@@ -83,12 +83,16 @@ export default async function Page(
                   {Math.round(leg.supply.fluidMl)} mL de boisson
                 </p>
 
+                <p className="text-sm">
+                  À boire : {Math.round(leg.needFluidMl)} mL
+                </p>
+
                 {leg.fills.length > 0 && (
                   <ul className="text-sm">
                     {leg.fills.map((f) => (
                       <li key={f.flaskRank}>
-                        Flasque {f.flaskRank} : {f.volumeMl} ml
-                        {f.product === null ? " d'eau" : ` — ${f.product}`}
+                        Flasque {f.flaskRank} pleine — {f.volumeMl} mL
+                        {f.product === null ? " d'eau" : ` de ${f.product}`}
                       </li>
                     ))}
                   </ul>

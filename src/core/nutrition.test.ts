@@ -476,7 +476,12 @@ test("chaque flasque porte une seule chose", () => {
   expect(bare.refillMl).toBe(0);
 });
 
-test("la dernière flasque n'est remplie que de ce qu'il reste", () => {
+/**
+ * On ne part pas avec un fond de flasque : on la remplit, et on emporte du
+ * rab plutôt que de risquer d'en manquer. Ce qu'il faut boire est dit à
+ * part, par `need.fluidMl`.
+ */
+test("une flasque emportée part pleine", () => {
   const runner: Runner = {
     massKg: 70,
     flasks: [
@@ -485,8 +490,8 @@ test("la dernière flasque n'est remplie que de ce qu'il reste", () => {
       { volumeMl: 500, onlyWater: true },
     ],
   };
-  // 1 h 30 à 500 mL/h = 750 mL : une flasque de boisson, un fond d'eau, et la
-  // troisième reste au sac.
+  // 1 h 30 à 500 mL/h = 750 mL : une flasque de boisson, une d'eau pleine —
+  // 1 000 mL portés pour 750 à boire — et la troisième reste au sac.
   const leg = nutritionPlan(flatTrack(12, 1.5), [], runner, TARGETS, [
     gel,
     drink,
@@ -494,9 +499,29 @@ test("la dernière flasque n'est remplie que de ce qu'il reste", () => {
 
   expect(leg.fills).toEqual([
     { flaskIndex: 0, product: drink, volumeMl: 500 },
-    { flaskIndex: 1, product: null, volumeMl: 250 },
+    { flaskIndex: 1, product: null, volumeMl: 500 },
   ]);
   expect(leg.refillMl).toBe(0);
+  // Ce qu'il faut boire, lui, ne bouge pas : 1 h 30 à 500 mL/h.
+  expect(leg.need.fluidMl).toBeCloseTo(750, 6);
+});
+
+/**
+ * Une flasque plus grande que le sachet part pleine quand même : la boisson
+ * est diluée, et c'est un choix — mieux vaut de la boisson faible que rien à
+ * boire. Le noyau le dit par la contenance versée.
+ */
+test("un sachet trop petit pour la flasque la remplit quand même", () => {
+  const runner: Runner = {
+    massKg: 70,
+    flasks: [{ volumeMl: 750, onlyWater: false }],
+  };
+  const leg = nutritionPlan(flatTrack(12, 1.5), [], runner, TARGETS, [
+    gel,
+    drink,
+  ]).legs[0];
+
+  expect(leg.fills[0]).toMatchObject({ flaskIndex: 0, volumeMl: 750 });
 });
 
 /**
@@ -1038,4 +1063,43 @@ test("l'alerte porte l'écart, pas une phrase", () => {
 test("un dépassement de rangement ne déclenche rien", () => {
   // Les produits sont discrets : un gel de trop suffit à dépasser de peu.
   expect(CARBS_OVERSHOOT_MAX).toBe(1.3);
+});
+
+/**
+ * Le défaut du plan UTHK : quatre produits divisibles par deux, et une
+ * demi-dose de chacun dans le même secteur. Arithmétiquement juste,
+ * inapplicable — on ne coupe pas quatre emballages à un ravito.
+ *
+ * Une fraction par secteur reste utile : c'est l'ajustement final, celui qui
+ * évite de dépasser la cible d'une unité entière.
+ */
+test("un secteur ne porte qu'une seule demi-dose au plus", () => {
+  const quatre = [
+    productById("naak-waffle-citron"),
+    productById("naak-bar-ultra"),
+    productById("naak-drink-ultra"),
+    productById("naak-drink-salted-soup"),
+  ] as Product[];
+
+  const plan = nutritionPlan(
+    flatTrack(108, 12.5),
+    [
+      { name: "R1", distanceM: 22600 },
+      { name: "R2", distanceM: 39800 },
+      { name: "R3", distanceM: 63000 },
+      { name: "R4", distanceM: 82200 },
+    ],
+    { massKg: 77, flasks: [{ volumeMl: 500, onlyWater: false }] },
+    TARGETS,
+    quatre,
+  );
+
+  for (const [i, leg] of plan.legs.entries()) {
+    const fractions = leg.servings.filter((s) => s.units % 1 !== 0);
+
+    expect(
+      fractions.map((s) => `${s.units} × ${s.product.name}`),
+      `secteur ${i + 1}`,
+    ).toHaveLength(fractions.length > 0 ? 1 : 0);
+  }
 });

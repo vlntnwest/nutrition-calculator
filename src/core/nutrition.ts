@@ -430,12 +430,40 @@ function provision(
   const drinkSteps = needs.map((need) => {
     const availableMl =
       capacityMl === null ? need.fluidMl : Math.min(need.fluidMl, capacityMl);
+    const ideal = share(drinks, availableMl);
+    const steps = drinks.map(() => 0);
 
-    return share(drinks, availableMl).map((shareMl, i) =>
-      Math.floor(
-        shareMl / (drinks[i].product.fluidMl / stepsOf(drinks[i].product)),
-      ),
-    );
+    // Des doses entières : on ne prépare pas un demi-sachet, et une flasque
+    // ne porte qu'une poudre. On sert celui qui est le plus loin de sa part
+    // tant que le budget d'hydratation laisse passer une dose complète — ce
+    // qui concentre naturellement un secteur sur une seule boisson.
+    let leftMl = availableMl;
+    for (;;) {
+      const vide = steps.every((n) => n === 0);
+      let chosen = -1;
+      let worst = 0;
+      for (const [i, k] of drinks.entries()) {
+        // La **première** dose s'arrondit au plus proche : un secteur qui
+        // réclame 478 mL n'aurait pas droit à un sachet de 500 et partirait
+        // sans boisson du tout. Les suivantes exigent la place entière, sans
+        // quoi la boisson couvrirait tous les glucides et il ne resterait
+        // rien à manger — le défaut qu'on cherche justement à corriger.
+        const place = vide ? leftMl * 2 : leftMl;
+        if (k.product.fluidMl > place) continue;
+        const pouredMl = (steps[i] / stepsOf(k.product)) * k.product.fluidMl;
+        const gap = ideal[i] - pouredMl;
+        if (gap > worst) {
+          worst = gap;
+          chosen = i;
+        }
+      }
+      if (chosen < 0) break;
+
+      steps[chosen] += stepsOf(drinks[chosen].product);
+      leftMl -= drinks[chosen].product.fluidMl;
+    }
+
+    return steps;
   });
 
   if (solids.length === 0) {
@@ -489,6 +517,8 @@ function provision(
       loaded[l].push({ product: k.product, steps });
     }
   }
+
+  consolidate(loaded, deficits);
 
   return fillSpans(
     raws.map((raw, l) => assemble(raw, needs[l], loaded[l])),
@@ -643,6 +673,12 @@ function fill(
   const fills: Fill[] = [];
   const free = flasks.map((_, i) => i);
 
+  // Une flasque qu'on emporte part pleine : on ne court pas avec un fond, et
+  // mieux vaut du rab que d'en manquer. Ce qu'il **faut** boire est dit à
+  // part, par `need.fluidMl` — le volume versé ne le remplace pas.
+  //
+  // Un sachet qui ne remplit pas sa flasque la remplit quand même : la
+  // boisson est alors plus diluée que nominale. C'est un choix assumé.
   for (const r of drinks) {
     let leftMl = r.units * r.product.fluidMl;
     while (leftMl > 0) {
@@ -650,24 +686,81 @@ function fill(
       if (at < 0) break;
 
       const [i] = free.splice(at, 1);
-      const volumeMl = Math.min(leftMl, flasks[i].volumeMl);
-      fills.push({ flaskIndex: i, product: r.product, volumeMl });
-      leftMl -= volumeMl;
+      fills.push({
+        flaskIndex: i,
+        product: r.product,
+        volumeMl: flasks[i].volumeMl,
+      });
+      leftMl -= flasks[i].volumeMl;
     }
   }
 
   let waterMl = Math.max(totalMl - sum(fills, (f) => f.volumeMl), 0);
   while (waterMl > 0 && free.length > 0) {
     const i = free.shift() as number;
-    const volumeMl = Math.min(waterMl, flasks[i].volumeMl);
-    fills.push({ flaskIndex: i, product: null, volumeMl });
-    waterMl -= volumeMl;
+    fills.push({ flaskIndex: i, product: null, volumeMl: flasks[i].volumeMl });
+    waterMl -= flasks[i].volumeMl;
   }
 
   return {
     fills: fills.sort((a, b) => a.flaskIndex - b.flaskIndex),
     refillMl: Math.max(totalMl - sum(fills, (f) => f.volumeMl), 0),
   };
+}
+
+/**
+ * Regroupe les fractions pour qu'un secteur n'en porte qu'une au plus.
+ *
+ * Une répartition en pas laisse des comptes impairs un peu partout : quatre
+ * produits divisibles par deux, et le coureur se retrouve à couper quatre
+ * emballages au même ravito. Arithmétiquement juste, inapplicable.
+ *
+ * Deux secteurs qui portent chacun une moitié du **même** produit peuvent
+ * l'échanger : un pas déplacé les rend tous deux entiers, et la somme est
+ * conservée — on ne crée ni ne détruit de ration. C'est le **besoin** qui
+ * décide du sens : le secteur le plus en déficit reçoit l'unité entière.
+ * Trancher sur le nombre de fractions viderait le secteur qui en porte le
+ * plus, ce qui n'a rien à voir avec ce qu'il faut y manger.
+ *
+ * Il reste une moitié quand le total de pas d'un produit est impair : elle ne
+ * peut s'apparier avec rien. C'est l'ajustement final, celui qui évite de
+ * dépasser la cible d'une unité entière.
+ */
+function consolidate(loaded: Loaded[][], weights: number[]): void {
+  const produits = loaded[0]?.length ?? 0;
+  // Combien de fractions chaque secteur porte déjà : c'est ce compte, tenu
+  // d'un produit à l'autre, qui empêche les moitiés orphelines de s'empiler
+  // toutes au même endroit.
+  const portees = loaded.map(() => 0);
+
+  for (let i = 0; i < produits; i++) {
+    // Un produit indivisible n'a rien à regrouper. Une boisson non plus : sa
+    // quantité est commandée par l'hydratation du secteur, pas par ses
+    // glucides — la déplacer ailleurs ferait boire au mauvais endroit.
+    const p = loaded[0][i].product;
+    if (stepsOf(p) === 1 || p.fluidMl > 0) continue;
+
+    const porteurs = loaded
+      .map((_, l) => l)
+      .filter((l) => loaded[l][i].steps % stepsOf(loaded[l][i].product) !== 0)
+      // Le plus affamé d'abord : il gardera l'unité entière.
+      .sort((a, b) => weights[b] - weights[a] || a - b);
+
+    // Nombre impair de porteurs : l'un d'eux gardera sa moitié. On la laisse
+    // à un secteur encore net, sinon au plus affamé.
+    if (porteurs.length % 2 === 1) {
+      const at = porteurs.findIndex((l) => portees[l] === 0);
+      const [garde] = porteurs.splice(at < 0 ? 0 : at, 1);
+      portees[garde] += 1;
+    }
+
+    // Les autres s'apparient par les deux bouts : le plus en déficit reçoit
+    // l'unité entière, le moins en déficit cède la sienne.
+    for (let haut = 0, bas = porteurs.length - 1; haut < bas; haut++, bas--) {
+      loaded[porteurs[haut]][i].steps += 1;
+      loaded[porteurs[bas]][i].steps -= 1;
+    }
+  }
 }
 
 /** Un secteur chargé : les pas deviennent des unités, et on somme. */

@@ -62,6 +62,14 @@ const STATIONS: Record<string, AidStation[]> = {
 // fichier, objectif (s), durées par secteur (s), portées de liquide,
 // glucides (g), liquide (mL), avertissements, sac au départ
 // Mesuré le 25 août 2026 avec les REGLAGES de pipeline.ts.
+//
+// Saverne rejaugé le 28 août : les doses de boisson sont devenues entières, et
+// un secteur porte donc un sachet là où il en prenait la moitié. Les durées et
+// les portées n'ont pas bougé — le calcul d'allure n'est pas en cause — et les
+// glucides non plus, 219 g avant comme après. Ce qui change est la forme du
+// sac (3 boissons et 2 gels au lieu de 2,5 et 3), le liquide qui suit, et
+// l'avertissement `leg-fluid-above-target` que ce sachet entier déclenche.
+// andlau et uthk sont inchangés.
 const EXPECTED: Array<
   [string, number, number[], number[][], number, number, number, string]
 > = [
@@ -71,9 +79,9 @@ const EXPECTED: Array<
     [4530, 4914, 3516],
     [[0], [1], [2]],
     219,
-    1250,
-    0,
-    "naak-drink-ultra:2.5 naak-gel-ultra:3",
+    1500,
+    1,
+    "naak-drink-ultra:3 naak-gel-ultra:2",
   ],
   [
     "andlau.gpx",
