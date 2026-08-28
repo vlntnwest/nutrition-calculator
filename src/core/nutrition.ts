@@ -28,6 +28,16 @@ export const CARBS_SINGLE_SOURCE_MAX_G_H = 60;
 export const CARBS_GUIDE_G_H = 90;
 
 /**
+ * L'écart toléré entre ce qu'on sert et ce qu'on vise, en glucides.
+ *
+ * Une boisson concentrée traîne ses glucides avec le liquide : viser bas en
+ * glucides tout en buvant beaucoup dépasse la cible sans qu'on l'ait demandé,
+ * et le solide n'a plus sa place. On tolère le rangement — les produits sont
+ * discrets, un gel de trop dépasse de quelques pour cent — pas le structurel.
+ */
+export const CARBS_OVERSHOOT_MAX = 1.3;
+
+/**
  * Repère d'hydratation. Boire plus qu'on ne transpire dilue le sodium sanguin
  * — c'est l'hyponatrémie d'effort. On alerte, on n'écrête pas : changer une
  * valeur saisie sans le dire est pire que de ne rien faire.
@@ -72,15 +82,33 @@ export function nutritionPlan(
   runner: Runner,
   targets: Targets,
   products: Product[],
-  parts?: number[],
+  /**
+   * `parts` : la part de chaque produit. `finishTargets` : les cibles du
+   * dernier secteur, qu'aucun ravito ne clôt et qui se règle donc à part.
+   */
+  options:
+    | number[]
+    | { parts?: number[]; finishTargets?: Partial<Targets> } = {},
 ): NutritionPlan {
+  const { parts, finishTargets } = Array.isArray(options)
+    ? { parts: options, finishTargets: undefined }
+    : options;
   const raws = splitByAidStation(points, aidStations, runner);
   const endM = points.length > 0 ? points[points.length - 1].d : 0;
   const spans = {
     liquid: carrySpans(aidStations, endM, raws.length, (a) => a.providesLiquid),
     solid: carrySpans(aidStations, endM, raws.length, (a) => a.providesSolid),
   };
-  const legs = provision(raws, targets, products, runner, spans.liquid, parts);
+  const legs = provision(
+    raws,
+    aidStations,
+    targets,
+    products,
+    runner,
+    spans.liquid,
+    parts,
+    finishTargets,
+  );
 
   const units = new Map<string, number>();
   for (const s of legs) {
@@ -395,11 +423,13 @@ function share(items: Weighted[], amount: number): number[] {
  */
 function provision(
   raws: RawLeg[],
+  aidStations: AidStation[],
   targets: Targets,
   products: Product[],
   runner: Runner,
   spans: number[][],
   parts?: number[],
+  finishTargets?: Partial<Targets>,
 ): Leg[] {
   // La part est lue sur la position d'origine, avant le filtrage : sinon un
   // produit sans glucides décale en silence toutes les parts qui le suivent.
@@ -409,7 +439,14 @@ function provision(
 
   const drinks = kept.filter((k) => k.product.fluidMl > 0);
   const solids = kept.filter((k) => k.product.fluidMl === 0);
-  const needs = raws.map((raw) => needOf(raw, targets));
+  // Une cible imposée se range sur le ravito qui clôt le secteur, et à part
+  // pour l'arrivée. Partielle, elle ne remplace que ce qu'elle donne.
+  const imposed = new Map(aidStations.map((a) => [a.name, a.legTargets]));
+  const legTargets = raws.map((raw) => ({
+    ...targets,
+    ...(raw.to === null ? finishTargets : imposed.get(raw.to)),
+  }));
+  const needs = raws.map((raw, l) => needOf(raw, legTargets[l]));
   const loaded: Loaded[][] = raws.map(() => []);
 
   // Passe 1. Le bidon délivre un flux continu commandé par l'hydratation : ce
@@ -417,15 +454,54 @@ function provision(
   // quantité. On arrondit vers le bas pour ne jamais dépasser la cible — le
   // reste se boit en eau claire.
   const capacityMl = drinkCapacityMl(runner);
+
+  // La part visée de chaque boisson, cumulée depuis le départ, et ce qu'elle a
+  // reçu. C'est leur écart qui désigne la boisson du secteur suivant : sans ce
+  // suivi, la même l'emporterait à chaque fois et l'autre ne servirait jamais.
+  const idealMl = drinks.map(() => 0);
+  const givenMl = drinks.map(() => 0);
+
   const drinkSteps = needs.map((need) => {
     const availableMl =
       capacityMl === null ? need.fluidMl : Math.min(need.fluidMl, capacityMl);
+    for (const [i, ml] of share(drinks, availableMl).entries()) {
+      idealMl[i] += ml;
+    }
 
-    return share(drinks, availableMl).map((shareMl, i) =>
-      Math.floor(
-        shareMl / (drinks[i].product.fluidMl / stepsOf(drinks[i].product)),
-      ),
-    );
+    const steps = drinks.map(() => 0);
+
+    // Une seule boisson par secteur : on ne mélange pas deux poudres, pas plus
+    // dans une flasque que dans un gobelet. La retardataire passe devant.
+    //
+    // Une dose entière : la première s'arrondit au plus proche, sans quoi un
+    // secteur réclamant 478 mL n'aurait pas droit à un sachet de 500 et
+    // partirait sans rien. Les suivantes exigent la place entière — au plus
+    // proche partout, la boisson couvrirait tous les glucides et il ne
+    // resterait plus rien à manger.
+    let chosen = -1;
+    let worst = Number.NEGATIVE_INFINITY;
+    for (const [i, k] of drinks.entries()) {
+      if (k.product.fluidMl > availableMl * 2) continue;
+      const gap = idealMl[i] - givenMl[i];
+      if (gap > worst) {
+        worst = gap;
+        chosen = i;
+      }
+    }
+    if (chosen < 0) return steps;
+
+    const product = drinks[chosen].product;
+    let doses = 1;
+    let leftMl = availableMl - product.fluidMl;
+    while (product.fluidMl <= leftMl) {
+      doses++;
+      leftMl -= product.fluidMl;
+    }
+
+    steps[chosen] = doses * stepsOf(product);
+    givenMl[chosen] += doses * product.fluidMl;
+
+    return steps;
   });
 
   if (solids.length === 0) {
@@ -474,11 +550,23 @@ function provision(
   // que la boisson couvre déjà — l'arrondi à la dose entière fait qu'elle ne
   // les couvre pas proportionnellement.
   const deficits = needs.map((n, l) => Math.max(n.carbsG - drinkCarbs[l], 0));
+
+  // Le déficit se consomme d'un produit à l'autre. Le laisser entier à chaque
+  // fois le compterait autant de fois qu'il y a de solides : un secteur
+  // recevrait beaucoup de gaufres **et** beaucoup de barres pendant qu'un
+  // autre n'aurait ni l'une ni l'autre.
   for (const [i, k] of solids.entries()) {
+    const stepG = k.product.carbsG / stepsOf(k.product);
+
     for (const [l, steps] of apportion(solidSteps[i], deficits).entries()) {
       loaded[l].push({ product: k.product, steps });
+      deficits[l] = Math.max(deficits[l] - steps * stepG, 0);
     }
   }
+
+  const carbNeeds = needs.map((n) => n.carbsG);
+  consolidate(loaded, carbNeeds);
+  rebalance(loaded, carbNeeds);
 
   return fillSpans(
     raws.map((raw, l) => assemble(raw, needs[l], loaded[l])),
@@ -633,6 +721,12 @@ function fill(
   const fills: Fill[] = [];
   const free = flasks.map((_, i) => i);
 
+  // Une flasque qu'on emporte part pleine : on ne court pas avec un fond, et
+  // mieux vaut du rab que d'en manquer. Ce qu'il **faut** boire est dit à
+  // part, par `need.fluidMl` — le volume versé ne le remplace pas.
+  //
+  // Un sachet qui ne remplit pas sa flasque la remplit quand même : la
+  // boisson est alors plus diluée que nominale. C'est un choix assumé.
   for (const r of drinks) {
     let leftMl = r.units * r.product.fluidMl;
     while (leftMl > 0) {
@@ -640,24 +734,179 @@ function fill(
       if (at < 0) break;
 
       const [i] = free.splice(at, 1);
-      const volumeMl = Math.min(leftMl, flasks[i].volumeMl);
-      fills.push({ flaskIndex: i, product: r.product, volumeMl });
-      leftMl -= volumeMl;
+      fills.push({
+        flaskIndex: i,
+        product: r.product,
+        volumeMl: flasks[i].volumeMl,
+      });
+      leftMl -= flasks[i].volumeMl;
     }
   }
 
   let waterMl = Math.max(totalMl - sum(fills, (f) => f.volumeMl), 0);
   while (waterMl > 0 && free.length > 0) {
     const i = free.shift() as number;
-    const volumeMl = Math.min(waterMl, flasks[i].volumeMl);
-    fills.push({ flaskIndex: i, product: null, volumeMl });
-    waterMl -= volumeMl;
+    fills.push({ flaskIndex: i, product: null, volumeMl: flasks[i].volumeMl });
+    waterMl -= flasks[i].volumeMl;
   }
 
   return {
     fills: fills.sort((a, b) => a.flaskIndex - b.flaskIndex),
     refillMl: Math.max(totalMl - sum(fills, (f) => f.volumeMl), 0),
   };
+}
+
+/**
+ * Ramène chaque secteur à **une** fraction au plus.
+ *
+ * Une répartition en pas laisse des comptes impairs un peu partout : quatre
+ * produits divisibles par deux, et le coureur coupe quatre emballages au même
+ * ravito. Une moitié reste utile — c'est l'ajustement qui évite de dépasser
+ * la cible d'une unité entière — mais une seule, et par secteur.
+ *
+ * Deux secteurs portant chacun une moitié du **même** produit peuvent
+ * l'échanger : un pas déplacé les rend tous deux entiers, et la somme est
+ * conservée. C'est le manque **du moment** qui décide du sens — ce qu'il
+ * reste à couvrir une fois compté ce que le secteur porte déjà, et non le
+ * déficit d'avant répartition, qui laisserait un secteur bien servi
+ * continuer de recevoir.
+ *
+ * On ne touche qu'aux secteurs qui en portent plusieurs. Regrouper au-delà
+ * déplacerait des rations hors des secteurs qui en ont besoin.
+ */
+function consolidate(loaded: Loaded[][], needsG: number[]): void {
+  // Une boisson n'a rien à regrouper ici : sa quantité est commandée par
+  // l'hydratation du secteur, pas par ses glucides.
+  const divisible = (i: number) =>
+    stepsOf(loaded[0][i].product) > 1 && loaded[0][i].product.fluidMl === 0;
+  const fraction = (l: number, i: number) =>
+    loaded[l][i].steps % stepsOf(loaded[l][i].product) !== 0;
+  const combien = (l: number) =>
+    loaded[l].reduce(
+      (n, _, i) => n + (divisible(i) && fraction(l, i) ? 1 : 0),
+      0,
+    );
+  // Ce qu'il reste à couvrir, recalculé à chaque échange : c'est lui qui
+  // désigne le receveur, pas une estimation faite avant la répartition — un
+  // secteur déjà bien servi continuerait sinon de recevoir.
+  const manque = (l: number) =>
+    needsG[l] -
+    loaded[l].reduce(
+      (g, x) => g + (x.steps * x.product.carbsG) / stepsOf(x.product),
+      0,
+    );
+
+  const bloques = new Set<number>();
+
+  for (;;) {
+    // Le secteur le plus encombré d'abord, et lui seul : ceux qui n'en
+    // portent qu'une gardent la leur.
+    let charge = -1;
+    let pire = 1;
+    for (let l = 0; l < loaded.length; l++) {
+      if (bloques.has(l)) continue;
+      const n = combien(l);
+      if (n > pire) {
+        pire = n;
+        charge = l;
+      }
+    }
+    if (charge < 0) break;
+
+    // Une de ses fractions, appariée avec un autre secteur qui porte une
+    // moitié du même produit — de préférence un autre encombré, qu'on soulage
+    // du même coup.
+    let echange = false;
+    for (let i = 0; i < loaded[charge].length && !echange; i++) {
+      if (!divisible(i) || !fraction(charge, i)) continue;
+
+      const partenaire = loaded
+        .map((_, m) => m)
+        .filter((m) => m !== charge && fraction(m, i))
+        .sort((a, b) => combien(b) - combien(a) || manque(b) - manque(a))[0];
+      if (partenaire === undefined) continue;
+
+      const [recoit, cede] =
+        manque(charge) >= manque(partenaire)
+          ? [charge, partenaire]
+          : [partenaire, charge];
+      loaded[recoit][i].steps += 1;
+      loaded[cede][i].steps -= 1;
+      echange = true;
+    }
+
+    // Aucune de ses moitiés n'a de partenaire : on ne peut rien pour lui.
+    if (!echange) bloques.add(charge);
+  }
+}
+
+/**
+ * Rapproche chaque secteur de sa cible, un pas à la fois.
+ *
+ * Le regroupement ne fait que supprimer des fractions ; il ne casse jamais une
+ * unité entière, même quand ce serait la bonne chose à faire. Un secteur à
+ * +12 g portant une gaufre entière peut en céder la moitié à celui qui est à
+ * −10 : les deux se rapprochent de zéro, et le compte de fractions ne monte
+ * nulle part au-delà d'une.
+ *
+ * On déplace un pas du plus servi vers le plus démuni tant que la somme de
+ * leurs écarts absolus diminue — ce qui borne la boucle : cette somme décroît
+ * strictement et ne peut pas passer sous zéro.
+ */
+function rebalance(loaded: Loaded[][], needsG: number[]): void {
+  const divisible = (i: number) =>
+    stepsOf(loaded[0][i].product) > 1 && loaded[0][i].product.fluidMl === 0;
+  const fractions = (l: number, sauf = -1, delta = 0) =>
+    loaded[l].reduce((n, x, i) => {
+      const steps = x.steps + (i === sauf ? delta : 0);
+      const impair = divisible(i) && steps % stepsOf(x.product) !== 0;
+
+      return n + (impair ? 1 : 0);
+    }, 0);
+  const ecart = (l: number, sauf = -1, delta = 0) =>
+    loaded[l].reduce(
+      (g, x, i) =>
+        g +
+        ((x.steps + (i === sauf ? delta : 0)) * x.product.carbsG) /
+          stepsOf(x.product),
+      0,
+    ) - needsG[l];
+
+  // On cherche le meilleur déplacement sur **toutes** les paires, pas
+  // seulement sur les deux extrêmes : le secteur le plus servi n'a pas
+  // toujours de quoi céder au plus démuni sans lui donner deux fractions.
+  for (;;) {
+    // Un seuil plutôt que zéro : un gain issu du bruit flottant relancerait la
+    // boucle indéfiniment, et un dixième de gramme ne veut rien dire ici.
+    let gain = 0.1;
+    let move: [number, number, number] | null = null;
+
+    for (let a = 0; a < loaded.length; a++) {
+      for (let b = 0; b < loaded.length; b++) {
+        if (a === b) continue;
+
+        for (let i = 0; i < loaded[a].length; i++) {
+          if (!divisible(i) || loaded[a][i].steps < 1) continue;
+
+          const avant = Math.abs(ecart(a)) + Math.abs(ecart(b));
+          const apres = Math.abs(ecart(a, i, -1)) + Math.abs(ecart(b, i, 1));
+          if (avant - apres <= gain) continue;
+
+          // La règle tient des deux côtés : une fraction par secteur, pas plus.
+          if (fractions(a, i, -1) > 1 || fractions(b, i, 1) > 1) continue;
+
+          gain = avant - apres;
+          move = [a, b, i];
+        }
+      }
+    }
+
+    if (move === null) return;
+
+    const [a, b, i] = move;
+    loaded[a][i].steps -= 1;
+    loaded[b][i].steps += 1;
+  }
 }
 
 /** Un secteur chargé : les pas deviennent des unités, et on somme. */
@@ -739,6 +988,14 @@ function warnings(
       carbsGH: targets.carbsGH,
       maxGH: CARBS_SINGLE_SOURCE_MAX_G_H,
       multiShare: multi / supplied,
+    });
+  }
+
+  const carbNeed = sum(legs, (s) => s.need.carbsG);
+  if (carbNeed > 0 && supplied > carbNeed * CARBS_OVERSHOOT_MAX) {
+    messages.push({
+      code: "carbs-above-target",
+      share: supplied / carbNeed,
     });
   }
 

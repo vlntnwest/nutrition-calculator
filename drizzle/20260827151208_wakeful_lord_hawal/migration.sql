@@ -1,0 +1,1 @@
+ALTER TYPE "warning" ADD VALUE 'carbs-above-target' BEFORE 'fluid-above-guide';

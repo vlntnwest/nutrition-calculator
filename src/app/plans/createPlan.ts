@@ -36,6 +36,7 @@ export async function createPlan(raw: NewPlan): Promise<string> {
       distanceM: input.track.distanceM,
       ascentM: input.track.ascentM,
       points: input.track.points,
+      profile: input.track.profile,
     });
 
     await tx.insert(planSettings).values({
@@ -75,6 +76,9 @@ export async function createPlan(raw: NewPlan): Promise<string> {
           planId: plan.accessId,
           endPositionM: o.endPositionM,
           durationOverrideS: o.durationS ?? null,
+          carbsOverrideG_H: o.targets?.carbsGH ?? null,
+          fluidOverrideMl_L: o.targets?.fluidMlH ?? null,
+          sodiumOverrideMg_L: o.targets?.sodiumMgL ?? null,
         })),
       );
     }

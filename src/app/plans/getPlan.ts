@@ -59,6 +59,7 @@ export async function getPlan(accessId: string): Promise<NewPlan | null> {
       distanceM: row.tracks.distanceM,
       ascentM: row.tracks.ascentM,
       points: row.tracks.points,
+      profile: row.tracks.profile,
     },
     settings: {
       massKg: settings.massKg ?? undefined,
@@ -68,11 +69,18 @@ export async function getPlan(accessId: string): Promise<NewPlan | null> {
       raceDate: settings.raceDate ?? undefined,
       // La base rend `HH:MM:SS`, le contrat d'entrée est `HH:MM`.
       startTime: settings.startTime?.slice(0, 5),
-      targets: {
-        carbsGH: settings.targetCarbsGH,
-        fluidMlH: settings.targetFluidMlH,
-        sodiumMgL: settings.targetSodiumMgL,
-      },
+      // Les trois s'écrivent ensemble : nulles, la question ne s'est pas
+      // encore posée — ce n'est pas la même chose que d'avoir répondu bas.
+      targets:
+        settings.targetCarbsGH === null ||
+        settings.targetFluidMlH === null ||
+        settings.targetSodiumMgL === null
+          ? undefined
+          : {
+              carbsGH: settings.targetCarbsGH,
+              fluidMlH: settings.targetFluidMlH,
+              sodiumMgL: settings.targetSodiumMgL,
+            },
     },
     flasks: flaskRows.map((flask) => ({
       volumeMl: flask.volumeMl,
@@ -92,6 +100,24 @@ export async function getPlan(accessId: string): Promise<NewPlan | null> {
     legOverrides: overrideRows.map((o) => ({
       endPositionM: o.endPositionM,
       durationS: o.durationOverrideS ?? undefined,
+      // Absent plutôt que vide : trois colonnes nulles veulent dire « aucune
+      // cible imposée », pas « des cibles vides ».
+      targets:
+        o.carbsOverrideG_H === null &&
+        o.fluidOverrideMl_L === null &&
+        o.sodiumOverrideMg_L === null
+          ? undefined
+          : {
+              ...(o.carbsOverrideG_H === null
+                ? {}
+                : { carbsGH: o.carbsOverrideG_H }),
+              ...(o.fluidOverrideMl_L === null
+                ? {}
+                : { fluidMlH: o.fluidOverrideMl_L }),
+              ...(o.sodiumOverrideMg_L === null
+                ? {}
+                : { sodiumMgL: o.sodiumOverrideMg_L }),
+            },
     })),
   };
 }

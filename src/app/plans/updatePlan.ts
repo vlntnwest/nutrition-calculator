@@ -112,6 +112,9 @@ export async function updatePlan(
             planId: accessId,
             endPositionM: o.endPositionM,
             durationOverrideS: o.durationS ?? null,
+            carbsOverrideG_H: o.targets?.carbsGH ?? null,
+            fluidOverrideMl_L: o.targets?.fluidMlH ?? null,
+            sodiumOverrideMg_L: o.targets?.sodiumMgL ?? null,
           })),
         );
       }

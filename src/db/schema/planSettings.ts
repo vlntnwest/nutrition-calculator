@@ -26,9 +26,9 @@ export const planSettings = snakeCase.table(
       .default(0),
     raceDate: date(),
     startTime: time(),
-    targetCarbsGH: integer("target_carbs_g_h").notNull().default(30),
-    targetFluidMlH: integer().notNull().default(500),
-    targetSodiumMgL: integer().notNull().default(500),
+    targetCarbsGH: integer("target_carbs_g_h"),
+    targetFluidMlH: integer(),
+    targetSodiumMgL: integer(),
   },
   (table) => [
     primaryKey({

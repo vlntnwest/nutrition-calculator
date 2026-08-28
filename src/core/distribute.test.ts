@@ -144,8 +144,6 @@ test("la géométrie traverse la fonction sans être touchée", () => {
   const result = distributeTime(points, 600, EVEN);
 
   for (const [i, p] of result.entries()) {
-    expect(p.lat).toBe(points[i].lat);
-    expect(p.lon).toBe(points[i].lon);
     expect(p.d).toBe(points[i].d);
     expect(p.ele).toBe(points[i].ele);
   }
@@ -156,8 +154,6 @@ function flatTrack(km: number, hours: number): TimedPoint[] {
   const points: TimedPoint[] = [];
   for (let i = 0; i <= km * 100; i++) {
     points.push({
-      lat: 0,
-      lon: 0,
       d: i * 10,
       ele: 0,
       t: (i / (km * 100)) * hours * 3600,
@@ -247,7 +243,7 @@ test("la géométrie du tronçon traverse sans être touchée", () => {
  * avec un seul, la lecture de la borne haute levait une exception.
  */
 test("timeAt survit à une trace d'un seul point", () => {
-  const alone: TimedPoint[] = [{ lat: 0, lon: 0, d: 0, ele: 100, t: 42 }];
+  const alone: TimedPoint[] = [{ d: 0, ele: 100, t: 42 }];
 
   expect(timeAt(alone, 0)).toBe(42);
   expect(timeAt(alone, 5000)).toBe(42);

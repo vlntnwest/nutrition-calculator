@@ -2,6 +2,7 @@ import fc from "fast-check";
 import { expect, test } from "vitest";
 import { pacingIssue } from "./distribute";
 import {
+  CARBS_OVERSHOOT_MAX,
   CARBS_SINGLE_SOURCE_MAX_G_H,
   FLUID_GUIDE_ML_H,
   fixedSpans,
@@ -29,8 +30,6 @@ function flatTrack(km: number, hours: number): TimedPoint[] {
   const points: TimedPoint[] = [];
   for (let i = 0; i <= km * 100; i++) {
     points.push({
-      lat: 0,
-      lon: 0,
       d: i * 10,
       ele: 0,
       t: (i / (km * 100)) * hours * 3600,
@@ -477,7 +476,12 @@ test("chaque flasque porte une seule chose", () => {
   expect(bare.refillMl).toBe(0);
 });
 
-test("la dernière flasque n'est remplie que de ce qu'il reste", () => {
+/**
+ * On ne part pas avec un fond de flasque : on la remplit, et on emporte du
+ * rab plutôt que de risquer d'en manquer. Ce qu'il faut boire est dit à
+ * part, par `need.fluidMl`.
+ */
+test("une flasque emportée part pleine", () => {
   const runner: Runner = {
     massKg: 70,
     flasks: [
@@ -486,8 +490,8 @@ test("la dernière flasque n'est remplie que de ce qu'il reste", () => {
       { volumeMl: 500, onlyWater: true },
     ],
   };
-  // 1 h 30 à 500 mL/h = 750 mL : une flasque de boisson, un fond d'eau, et la
-  // troisième reste au sac.
+  // 1 h 30 à 500 mL/h = 750 mL : une flasque de boisson, une d'eau pleine —
+  // 1 000 mL portés pour 750 à boire — et la troisième reste au sac.
   const leg = nutritionPlan(flatTrack(12, 1.5), [], runner, TARGETS, [
     gel,
     drink,
@@ -495,9 +499,29 @@ test("la dernière flasque n'est remplie que de ce qu'il reste", () => {
 
   expect(leg.fills).toEqual([
     { flaskIndex: 0, product: drink, volumeMl: 500 },
-    { flaskIndex: 1, product: null, volumeMl: 250 },
+    { flaskIndex: 1, product: null, volumeMl: 500 },
   ]);
   expect(leg.refillMl).toBe(0);
+  // Ce qu'il faut boire, lui, ne bouge pas : 1 h 30 à 500 mL/h.
+  expect(leg.need.fluidMl).toBeCloseTo(750, 6);
+});
+
+/**
+ * Une flasque plus grande que le sachet part pleine quand même : la boisson
+ * est diluée, et c'est un choix — mieux vaut de la boisson faible que rien à
+ * boire. Le noyau le dit par la contenance versée.
+ */
+test("un sachet trop petit pour la flasque la remplit quand même", () => {
+  const runner: Runner = {
+    massKg: 70,
+    flasks: [{ volumeMl: 750, onlyWater: false }],
+  };
+  const leg = nutritionPlan(flatTrack(12, 1.5), [], runner, TARGETS, [
+    gel,
+    drink,
+  ]).legs[0];
+
+  expect(leg.fills[0]).toMatchObject({ flaskIndex: 0, volumeMl: 750 });
 });
 
 /**
@@ -593,7 +617,7 @@ test("la dépense monte avec le dénivelé, l'apport ne la couvre pas", () => {
   // dépense est une propriété des allures de course, pas une identité.
   const climbing: TimedPoint[] = [];
   for (let i = 0; i <= 1000; i++) {
-    climbing.push({ lat: 0, lon: 0, d: i * 10, ele: i * 0.5, t: i * 5.4 });
+    climbing.push({ d: i * 10, ele: i * 0.5, t: i * 5.4 });
   }
 
   const relief = nutritionPlan(climbing, [], RUNNER, TARGETS, [gel]);
@@ -1001,4 +1025,260 @@ test("sans mention contraire, chaque ravito rouvre les deux", () => {
 
   expect(plan.spans.liquid).toEqual([[0], [1], [2]]);
   expect(plan.spans.solid).toEqual([[0], [1], [2]]);
+});
+
+/**
+ * Le cas du plan trop sucré sans l'avoir demandé.
+ *
+ * Une boisson à 55 g pour 500 ml apporte 55 g/h dès qu'on vise 500 ml/h :
+ * viser 30 g/h de glucides est alors dépassé avant d'avoir rien mangé. Rien
+ * ne le signalait — `carbs-above-guide` juge la **cible**, pas ce qui est
+ * réellement servi.
+ */
+test("alerte quand le plan sert bien plus de glucides que demandé", () => {
+  const points = flatTrack(40, 5);
+  const bas: Targets = { carbsGH: 30, fluidMlH: 500, sodiumMgL: 600 };
+
+  const trop = nutritionPlan(points, [], RUNNER, bas, [drink]);
+  const juste = nutritionPlan(points, [], RUNNER, TARGETS, [gel, drink]);
+
+  expect(trop.warnings.some((w) => w.code === "carbs-above-target")).toBe(true);
+  expect(juste.warnings.some((w) => w.code === "carbs-above-target")).toBe(
+    false,
+  );
+});
+
+test("l'alerte porte l'écart, pas une phrase", () => {
+  const bas: Targets = { carbsGH: 30, fluidMlH: 500, sodiumMgL: 600 };
+  const plan = nutritionPlan(flatTrack(40, 5), [], RUNNER, bas, [drink]);
+  const alerte = plan.warnings.find((w) => w.code === "carbs-above-target");
+
+  expect(alerte).toMatchObject({ code: "carbs-above-target" });
+  // Le rapport servi/visé : au-delà de 1, et au-delà du seuil toléré.
+  expect(alerte && "share" in alerte ? alerte.share : 0).toBeGreaterThan(
+    CARBS_OVERSHOOT_MAX,
+  );
+});
+
+test("un dépassement de rangement ne déclenche rien", () => {
+  // Les produits sont discrets : un gel de trop suffit à dépasser de peu.
+  expect(CARBS_OVERSHOOT_MAX).toBe(1.3);
+});
+
+/**
+ * Le défaut du plan UTHK : quatre produits divisibles par deux, et une
+ * demi-dose de chacun dans le même secteur. Arithmétiquement juste,
+ * inapplicable — on ne coupe pas quatre emballages à un ravito.
+ *
+ * Une fraction par secteur reste utile : c'est l'ajustement final, celui qui
+ * évite de dépasser la cible d'une unité entière.
+ */
+test("un secteur ne porte qu'une seule demi-dose au plus", () => {
+  const quatre = [
+    productById("naak-waffle-citron"),
+    productById("naak-bar-ultra"),
+    productById("naak-drink-ultra"),
+    productById("naak-drink-salted-soup"),
+  ] as Product[];
+
+  const plan = nutritionPlan(
+    flatTrack(108, 12.5),
+    [
+      { name: "R1", distanceM: 22600 },
+      { name: "R2", distanceM: 39800 },
+      { name: "R3", distanceM: 63000 },
+      { name: "R4", distanceM: 82200 },
+    ],
+    { massKg: 77, flasks: [{ volumeMl: 500, onlyWater: false }] },
+    TARGETS,
+    quatre,
+  );
+
+  for (const [i, leg] of plan.legs.entries()) {
+    const fractions = leg.servings.filter((s) => s.units % 1 !== 0);
+
+    expect(
+      fractions.map((s) => `${s.units} × ${s.product.name}`),
+      `secteur ${i + 1}`,
+    ).toHaveLength(fractions.length > 0 ? 1 : 0);
+  }
+});
+
+/**
+ * On ne mélange pas deux poudres. Le cas se produit sans flasque déclarée :
+ * plus rien ne borne le liquide, et deux sachets tiennent dans un secteur
+ * long. Une flasque ne porte qu'une chose, un secteur non plus.
+ */
+test("un secteur ne porte qu'une seule boisson", () => {
+  const deux = [
+    productById("naak-drink-ultra"),
+    productById("naak-drink-salted-soup"),
+    productById("naak-bar-ultra"),
+  ] as Product[];
+
+  const plan = nutritionPlan(
+    flatTrack(108, 12.5),
+    [
+      { name: "R1", distanceM: 22600 },
+      { name: "R2", distanceM: 63000 },
+    ],
+    // Aucune flasque : c'est le cas qui déclenchait le mélange.
+    { massKg: 77, flasks: [] },
+    TARGETS,
+    deux,
+  );
+
+  for (const [i, leg] of plan.legs.entries()) {
+    const boissons = leg.servings.filter((s) => s.product.fluidMl > 0);
+
+    expect(
+      boissons.map((s) => s.product.name),
+      `secteur ${i + 1}`,
+    ).toHaveLength(boissons.length > 0 ? 1 : 0);
+  }
+
+  // Les deux boissons servent quand même sur la course : n'en garder qu'une
+  // reviendrait à ignorer un produit que le coureur a choisi.
+  const servies = new Set(
+    plan.legs.flatMap((l) =>
+      l.servings.filter((s) => s.product.fluidMl > 0).map((s) => s.product.id),
+    ),
+  );
+  expect(servies.size).toBe(2);
+});
+
+/**
+ * Le critère, plus fort qu'un seuil chiffré : un écart qui reste doit être
+ * **irréductible**. On ne cherche pas zéro partout — les produits sont
+ * discrets — mais aucun déplacement d'une ration d'un secteur à l'autre ne
+ * doit pouvoir rapprocher les deux de leur cible. S'il en existe un, c'est un
+ * oubli, pas un arrondi.
+ */
+test("aucun déplacement ne peut encore améliorer le plan", () => {
+  const plan = nutritionPlan(
+    flatTrack(108, 12.5),
+    [22600, 39800, 63000, 82200].map((distanceM, i) => ({
+      name: `R${i + 1}`,
+      distanceM,
+    })),
+    { massKg: 77, flasks: [] },
+    TARGETS,
+    ["naak-waffle-citron", "naak-bar-ultra", "naak-drink-ultra"].map(
+      (c) => productById(c) as Product,
+    ),
+  );
+
+  /** Les unités par produit, telles que le secteur les porte. */
+  const held = plan.legs.map((leg) => {
+    const m = new Map<string, number>();
+    for (const s of leg.servings) m.set(s.product.id, s.units);
+
+    return m;
+  });
+  // Dédoublonné : le même produit revient dans plusieurs secteurs.
+  const solids = [
+    ...new Map(
+      plan.legs
+        .flatMap((l) => l.servings.map((s) => s.product))
+        .filter((p) => p.fluidMl === 0 && p.divisibleBy > 1)
+        .map((p) => [p.id, p] as const),
+    ).values(),
+  ];
+
+  /**
+   * Combien de fractions le secteur porterait avec `delta` unités de `p`.
+   *
+   * On pose la clé avant de compter : un produit que le secteur ne porte pas
+   * encore est absent de la table, et la moitié qu'on lui ajoute passerait
+   * inaperçue.
+   */
+  const fractions = (l: number, id: string, delta: number) => {
+    const apres = new Map(held[l]);
+    apres.set(id, (apres.get(id) ?? 0) + delta);
+
+    return [...apres.values()].filter((units) => units % 1 !== 0).length;
+  };
+
+  const ameliorations: string[] = [];
+
+  for (const p of solids) {
+    const pas = p.carbsG / p.divisibleBy;
+
+    for (let a = 0; a < plan.legs.length; a++) {
+      if ((held[a].get(p.id) ?? 0) < 1 / p.divisibleBy) continue;
+
+      for (let b = 0; b < plan.legs.length; b++) {
+        if (a === b) continue;
+
+        const avant =
+          Math.abs(plan.legs[a].marginG) + Math.abs(plan.legs[b].marginG);
+        const apres =
+          Math.abs(plan.legs[a].marginG - pas) +
+          Math.abs(plan.legs[b].marginG + pas);
+        if (avant - apres <= 0.1) continue;
+
+        // Le déplacement doit rester licite : une fraction par secteur.
+        // Passer de 1,5 à 2 en **retire** une, ce n'est donc pas bloquant.
+        if (fractions(a, p.id, -1 / p.divisibleBy) > 1) continue;
+        if (fractions(b, p.id, 1 / p.divisibleBy) > 1) continue;
+
+        ameliorations.push(
+          `${p.name} : s${a + 1} (${plan.legs[a].marginG.toFixed(1)} g) → ` +
+            `s${b + 1} (${plan.legs[b].marginG.toFixed(1)} g)`,
+        );
+      }
+    }
+  }
+
+  expect(ameliorations).toEqual([]);
+});
+
+/**
+ * Une cible imposée à un secteur : « celui-ci mérite plus ».
+ *
+ * Elle se range sur le ravito qui **clôt** le secteur, comme la durée
+ * imposée, et à part pour l'arrivée qu'aucun ravito ne ferme. C'est une
+ * entrée, pas un ajustement du calcul : elle survit à chaque régénération.
+ */
+test("une cible imposée à un secteur relève son besoin", () => {
+  const points = flatTrack(40, 5);
+  const stations: AidStation[] = [{ name: "R1", distanceM: 20000 }];
+
+  const nominal = nutritionPlan(points, stations, RUNNER, TARGETS, [gel]);
+  const force = nutritionPlan(
+    points,
+    [{ ...stations[0], legTargets: { carbsGH: 90 } }],
+    RUNNER,
+    TARGETS,
+    [gel],
+  );
+
+  // Le premier secteur vise 90 g/h au lieu de 60 : son besoin monte de moitié.
+  expect(force.legs[0].need.carbsG).toBeCloseTo(
+    nominal.legs[0].need.carbsG * 1.5,
+    6,
+  );
+  // Le second n'a pas bougé, la consigne ne vise que son secteur.
+  expect(force.legs[1].need.carbsG).toBeCloseTo(nominal.legs[1].need.carbsG, 6);
+  // Et le sac suit : on emporte davantage.
+  expect(force.total.carbsG).toBeGreaterThan(nominal.total.carbsG);
+});
+
+test("l'arrivée se règle à part, aucun ravito ne la ferme", () => {
+  const points = flatTrack(40, 5);
+  const stations: AidStation[] = [{ name: "R1", distanceM: 20000 }];
+
+  const nominal = nutritionPlan(points, stations, RUNNER, TARGETS, [gel]);
+  const force = nutritionPlan(points, stations, RUNNER, TARGETS, [gel], {
+    finishTargets: { fluidMlH: 900 },
+  });
+
+  expect(force.legs[1].need.fluidMl).toBeCloseTo(
+    (nominal.legs[1].need.fluidMl * 900) / TARGETS.fluidMlH,
+    6,
+  );
+  expect(force.legs[0].need.fluidMl).toBeCloseTo(
+    nominal.legs[0].need.fluidMl,
+    6,
+  );
 });

@@ -15,6 +15,7 @@ import { servings } from "@/db/schema/servings";
 import { tracks } from "@/db/schema/tracks";
 import { warnings } from "@/db/schema/warnings";
 import { PlanError } from "./planError";
+import { resolveTargets } from "./targets";
 
 /**
  * Recalcule le plan et réécrit tout le côté droit du modèle.
@@ -68,11 +69,28 @@ export async function regeneratePlan(accessId: string): Promise<void> {
   const imposed = new Map(
     overrideRows.map((o) => [o.endPositionM, o.durationOverrideS ?? undefined]),
   );
+  // Les cibles imposées se rangent sur la même abscisse que les durées : la
+  // borne de fin du secteur. Partielles — on ne remplace que ce qui est donné.
+  const imposedTargets = new Map(
+    overrideRows.map((o) => [
+      o.endPositionM,
+      {
+        ...(o.carbsOverrideG_H === null ? {} : { carbsGH: o.carbsOverrideG_H }),
+        ...(o.fluidOverrideMl_L === null
+          ? {}
+          : { fluidMlH: o.fluidOverrideMl_L }),
+        ...(o.sodiumOverrideMg_L === null
+          ? {}
+          : { sodiumMgL: o.sodiumOverrideMg_L }),
+      },
+    ]),
+  );
   const stations = aidRows.map((a) => ({
     name: a.name,
     distanceM: a.positionM,
     stopS: a.stopDurationS ?? undefined,
     legDurationS: imposed.get(a.positionM),
+    legTargets: imposedTargets.get(a.positionM),
     providesLiquid: a.providesLiquid,
     providesSolid: a.providesSolid,
   }));
@@ -90,25 +108,19 @@ export async function regeneratePlan(accessId: string): Promise<void> {
     divisibleBy: s.divisibleBy,
   }));
 
-  const points = row.tracks.points;
+  const profile = row.tracks.profile;
   const totalM = row.tracks.distanceM;
   const timed = distributeTime(
-    points,
+    profile,
     movingTimeS(settings.targetTimeS, stations, totalM),
     { climbIntensity: settings.climbIntensity, split: settings.paceSplit },
     fixedSpans(stations, totalM, imposed.get(totalM)),
   );
-  const plan = nutritionPlan(
-    timed,
-    stations,
-    runner,
-    {
-      carbsGH: settings.targetCarbsGH,
-      fluidMlH: settings.targetFluidMlH,
-      sodiumMgL: settings.targetSodiumMgL,
-    },
-    products,
-  );
+  const targets = resolveTargets(settings, runner, settings.targetTimeS);
+  const plan = nutritionPlan(timed, stations, runner, targets, products, {
+    // L'arrivée n'est fermée par aucun ravito : sa consigne passe à part.
+    finishTargets: imposedTargets.get(totalM),
+  });
 
   await write(accessId, plan);
 }

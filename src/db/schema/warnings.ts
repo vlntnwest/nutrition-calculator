@@ -15,6 +15,7 @@ export const warningEnum = pgEnum("warning", [
   "no-carb-product",
   "carbs-above-guide",
   "carbs-single-source",
+  "carbs-above-target",
   "fluid-above-guide",
   "sodium-below-target",
   "leg-fluid-above-target",

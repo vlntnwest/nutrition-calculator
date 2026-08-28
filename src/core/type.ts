@@ -47,13 +47,18 @@ export type RawPoint = {
   ele: number | null; // null = absent, JAMAIS 0
 };
 
+export type ProfilePoint = {
+  d: number;
+  ele: number;
+};
+
 export type RoutePoint = RawPoint & { d: number };
 
 /** Toutes les altitudes sont renseignées : les trous ont été interpolés. */
 export type ResolvedPoint = RoutePoint & { ele: number };
 
 /** `t` est le temps cumulé depuis le départ, comme `d` est la distance. */
-export type TimedPoint = ResolvedPoint & { t: number };
+export type TimedPoint = ProfilePoint & { t: number };
 
 /**
  * Une source de points du fichier : **un** `<trk>` ou **un** `<rte>`, pris
@@ -228,6 +233,11 @@ export type TrackAnalysis = {
    */
   points: ResolvedPoint[];
   /**
+   * Le profil du parcours : distance et altitude cumulées, utilisé pour le
+   * calcul du temps de course.
+   */
+  profile: ProfilePoint[];
+  /**
    * Le parcours découpé en morceaux de pente homogène. Comme le D+, ils sont
    * lus sur la trace pleine résolution, jamais sur la simplifiée.
    */
@@ -316,6 +326,14 @@ export type AidStation = {
    * les secteurs se règlent donc, mais pas tous par le même chemin.
    */
   legDurationS?: number;
+  /**
+   * Les cibles imposées au secteur qui **se termine** ici. Absentes, celles
+   * du plan s'appliquent ; partielles, seules les valeurs données remplacent.
+   *
+   * C'est une saisie, pas un ajustement du calcul : « ce secteur mérite plus »
+   * est une décision du coureur, et elle survit à chaque régénération.
+   */
+  legTargets?: Partial<Targets>;
   /**
    * Y trouve-t-on de l'eau ? Absent vaut **oui** : c'est le cas courant, et
    * c'est aussi ce que le noyau supposait partout avant d'avoir ce drapeau.
@@ -467,6 +485,8 @@ export type Warning =
     }
   | { code: "fluid-above-guide"; fluidMlH: number; guideMlH: number }
   | { code: "sodium-below-target"; share: number }
+  /** Le plan sert bien plus de glucides que visé. `share` = servi / visé. */
+  | { code: "carbs-above-target"; share: number }
   | {
       code: "leg-fluid-above-target";
       /** Position du secteur dans `NutritionPlan.legs`. */
