@@ -5,7 +5,7 @@ import type {
   FixedSpan,
   PacingIssue,
   PacingProfile,
-  ResolvedPoint,
+  ProfilePoint,
   Segment,
   TimedPoint,
   TimedSegment,
@@ -45,7 +45,7 @@ export function pacingIssue(error: unknown): PacingIssue | null {
  *   d'autant.
  */
 export function distributeTime(
-  points: ResolvedPoint[],
+  points: ProfilePoint[],
   targetTimeS: number,
   profile: PacingProfile,
   fixed: FixedSpan[] = [],

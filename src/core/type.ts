@@ -47,13 +47,18 @@ export type RawPoint = {
   ele: number | null; // null = absent, JAMAIS 0
 };
 
+export type ProfilePoint = {
+  d: number;
+  ele: number;
+};
+
 export type RoutePoint = RawPoint & { d: number };
 
 /** Toutes les altitudes sont renseignées : les trous ont été interpolés. */
 export type ResolvedPoint = RoutePoint & { ele: number };
 
 /** `t` est le temps cumulé depuis le départ, comme `d` est la distance. */
-export type TimedPoint = ResolvedPoint & { t: number };
+export type TimedPoint = ProfilePoint & { t: number };
 
 /**
  * Une source de points du fichier : **un** `<trk>` ou **un** `<rte>`, pris
@@ -227,6 +232,11 @@ export type TrackAnalysis = {
    * la carte et le profil.
    */
   points: ResolvedPoint[];
+  /**
+   * Le profil du parcours : distance et altitude cumulées, utilisé pour le
+   * calcul du temps de course.
+   */
+  profile: ProfilePoint[];
   /**
    * Le parcours découpé en morceaux de pente homogène. Comme le D+, ils sont
    * lus sur la trace pleine résolution, jamais sur la simplifiée.

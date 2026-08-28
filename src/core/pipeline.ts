@@ -91,6 +91,7 @@ export function analyzeTrack(
       settings.simplifyMapDeg,
       settings.simplifyProfileM,
     ),
+    profile: smoothed.map(({ d, ele }) => ({ d, ele })),
     segments: splitBySlope(
       smoothed,
       settings.splitToleranceM,

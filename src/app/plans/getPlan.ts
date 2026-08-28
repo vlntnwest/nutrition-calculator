@@ -59,6 +59,7 @@ export async function getPlan(accessId: string): Promise<NewPlan | null> {
       distanceM: row.tracks.distanceM,
       ascentM: row.tracks.ascentM,
       points: row.tracks.points,
+      profile: row.tracks.profile,
     },
     settings: {
       massKg: settings.massKg ?? undefined,

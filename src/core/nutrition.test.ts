@@ -30,8 +30,6 @@ function flatTrack(km: number, hours: number): TimedPoint[] {
   const points: TimedPoint[] = [];
   for (let i = 0; i <= km * 100; i++) {
     points.push({
-      lat: 0,
-      lon: 0,
       d: i * 10,
       ele: 0,
       t: (i / (km * 100)) * hours * 3600,
@@ -594,7 +592,7 @@ test("la dépense monte avec le dénivelé, l'apport ne la couvre pas", () => {
   // dépense est une propriété des allures de course, pas une identité.
   const climbing: TimedPoint[] = [];
   for (let i = 0; i <= 1000; i++) {
-    climbing.push({ lat: 0, lon: 0, d: i * 10, ele: i * 0.5, t: i * 5.4 });
+    climbing.push({ d: i * 10, ele: i * 0.5, t: i * 5.4 });
   }
 
   const relief = nutritionPlan(climbing, [], RUNNER, TARGETS, [gel]);

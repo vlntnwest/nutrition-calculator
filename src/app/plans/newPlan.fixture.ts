@@ -15,6 +15,13 @@ export const newPlan = {
       { d: 20800, lat: 48.7455, lon: 7.3662, ele: 300 },
       { d: 28350, lat: 48.7411, lon: 7.3623, ele: 210 },
     ],
+    profile: [
+      { d: 0, ele: 200 },
+      { d: 9800, ele: 380 },
+      { d: 14175, ele: 420 },
+      { d: 20800, ele: 300 },
+      { d: 28350, ele: 210 },
+    ],
   },
   settings: {
     massKg: 70,

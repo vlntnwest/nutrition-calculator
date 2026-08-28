@@ -29,6 +29,7 @@ export default function Page() {
         distanceM: analysis.distanceM,
         ascentM: Math.round(analysis.ascentM),
         points: analysis.points,
+        profile: analysis.profile,
       });
 
       if (!created.ok) {

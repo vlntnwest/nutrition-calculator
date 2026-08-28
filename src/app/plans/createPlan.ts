@@ -36,6 +36,7 @@ export async function createPlan(raw: NewPlan): Promise<string> {
       distanceM: input.track.distanceM,
       ascentM: input.track.ascentM,
       points: input.track.points,
+      profile: input.track.profile,
     });
 
     await tx.insert(planSettings).values({

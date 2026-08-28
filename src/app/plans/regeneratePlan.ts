@@ -91,10 +91,10 @@ export async function regeneratePlan(accessId: string): Promise<void> {
     divisibleBy: s.divisibleBy,
   }));
 
-  const points = row.tracks.points;
+  const profile = row.tracks.profile;
   const totalM = row.tracks.distanceM;
   const timed = distributeTime(
-    points,
+    profile,
     movingTimeS(settings.targetTimeS, stations, totalM),
     { climbIntensity: settings.climbIntensity, split: settings.paceSplit },
     fixedSpans(stations, totalM, imposed.get(totalM)),

@@ -1,6 +1,6 @@
 "use server";
 
-import type { ResolvedPoint } from "@/core/type";
+import type { ProfilePoint, ResolvedPoint } from "@/core/type";
 import { createPlan } from "./createPlan";
 import { getPlan } from "./getPlan";
 import { PlanError } from "./planError";
@@ -25,6 +25,7 @@ export type ImportedTrack = {
   distanceM: number;
   ascentM: number;
   points: ResolvedPoint[];
+  profile: ProfilePoint[];
 };
 
 /**

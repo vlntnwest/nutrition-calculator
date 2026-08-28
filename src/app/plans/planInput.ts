@@ -1,5 +1,5 @@
 import { eq, inArray } from "drizzle-orm";
-import type { Flask, ResolvedPoint, Targets } from "@/core/type";
+import type { Flask, ProfilePoint, ResolvedPoint, Targets } from "@/core/type";
 import type { Tx } from "@/db";
 import { brands } from "@/db/schema/brands";
 import { formats } from "@/db/schema/formats";
@@ -36,6 +36,7 @@ export type NewPlan = {
     distanceM: number;
     ascentM: number;
     points: ResolvedPoint[];
+    profile: ProfilePoint[];
   };
   settings: {
     massKg?: number;
