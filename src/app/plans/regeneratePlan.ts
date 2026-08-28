@@ -69,11 +69,28 @@ export async function regeneratePlan(accessId: string): Promise<void> {
   const imposed = new Map(
     overrideRows.map((o) => [o.endPositionM, o.durationOverrideS ?? undefined]),
   );
+  // Les cibles imposées se rangent sur la même abscisse que les durées : la
+  // borne de fin du secteur. Partielles — on ne remplace que ce qui est donné.
+  const imposedTargets = new Map(
+    overrideRows.map((o) => [
+      o.endPositionM,
+      {
+        ...(o.carbsOverrideG_H === null ? {} : { carbsGH: o.carbsOverrideG_H }),
+        ...(o.fluidOverrideMl_L === null
+          ? {}
+          : { fluidMlH: o.fluidOverrideMl_L }),
+        ...(o.sodiumOverrideMg_L === null
+          ? {}
+          : { sodiumMgL: o.sodiumOverrideMg_L }),
+      },
+    ]),
+  );
   const stations = aidRows.map((a) => ({
     name: a.name,
     distanceM: a.positionM,
     stopS: a.stopDurationS ?? undefined,
     legDurationS: imposed.get(a.positionM),
+    legTargets: imposedTargets.get(a.positionM),
     providesLiquid: a.providesLiquid,
     providesSolid: a.providesSolid,
   }));
@@ -100,7 +117,10 @@ export async function regeneratePlan(accessId: string): Promise<void> {
     fixedSpans(stations, totalM, imposed.get(totalM)),
   );
   const targets = resolveTargets(settings, runner, settings.targetTimeS);
-  const plan = nutritionPlan(timed, stations, runner, targets, products);
+  const plan = nutritionPlan(timed, stations, runner, targets, products, {
+    // L'arrivée n'est fermée par aucun ravito : sa consigne passe à part.
+    finishTargets: imposedTargets.get(totalM),
+  });
 
   await write(accessId, plan);
 }

@@ -100,6 +100,24 @@ export async function getPlan(accessId: string): Promise<NewPlan | null> {
     legOverrides: overrideRows.map((o) => ({
       endPositionM: o.endPositionM,
       durationS: o.durationOverrideS ?? undefined,
+      // Absent plutôt que vide : trois colonnes nulles veulent dire « aucune
+      // cible imposée », pas « des cibles vides ».
+      targets:
+        o.carbsOverrideG_H === null &&
+        o.fluidOverrideMl_L === null &&
+        o.sodiumOverrideMg_L === null
+          ? undefined
+          : {
+              ...(o.carbsOverrideG_H === null
+                ? {}
+                : { carbsGH: o.carbsOverrideG_H }),
+              ...(o.fluidOverrideMl_L === null
+                ? {}
+                : { fluidMlH: o.fluidOverrideMl_L }),
+              ...(o.sodiumOverrideMg_L === null
+                ? {}
+                : { sodiumMgL: o.sodiumOverrideMg_L }),
+            },
     })),
   };
 }

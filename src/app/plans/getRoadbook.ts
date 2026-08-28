@@ -2,11 +2,13 @@ import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { fill } from "@/db/schema/fill";
 import { flasks } from "@/db/schema/flasks";
+import { legOverrides } from "@/db/schema/legOverrides";
 import { legs } from "@/db/schema/legs";
 import { planSettings } from "@/db/schema/planSettings";
 import { plans } from "@/db/schema/plans";
 import { productSnapshots } from "@/db/schema/productSnapshots";
 import { servings } from "@/db/schema/servings";
+import { tracks } from "@/db/schema/tracks";
 import { warnings } from "@/db/schema/warnings";
 import { resolveTargets } from "./targets";
 
@@ -84,6 +86,7 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
     .select()
     .from(plans)
     .innerJoin(planSettings, eq(planSettings.planId, plans.accessId))
+    .innerJoin(tracks, eq(tracks.planId, plans.accessId))
     .where(eq(plans.accessId, accessId));
 
   const settings = row?.plan_settings;
@@ -95,7 +98,7 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
     return null;
   }
 
-  const [legRows, servingRows, fillRows, warningRows, flaskRows] =
+  const [legRows, servingRows, fillRows, warningRows, flaskRows, overrideRows] =
     await Promise.all([
       db
         .select()
@@ -137,6 +140,7 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
         .orderBy(asc(fill.legRank), asc(fill.flaskRank)),
       db.select().from(warnings).where(eq(warnings.planId, accessId)),
       db.select().from(flasks).where(eq(flasks.planId, accessId)),
+      db.select().from(legOverrides).where(eq(legOverrides.planId, accessId)),
     ]);
 
   const runner = {
@@ -147,6 +151,20 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
     })),
   };
   const targets = resolveTargets(settings, runner, settings.targetTimeS);
+  // Les cibles imposées valent aussi ici : le besoin affiché doit être celui
+  // que le calcul a visé, sans quoi l'écart montré serait faux.
+  const imposed = new Map(
+    overrideRows.map((o) => [
+      o.endPositionM,
+      {
+        carbsGH: o.carbsOverrideG_H ?? targets.carbsGH,
+        fluidMlH: o.fluidOverrideMl_L ?? targets.fluidMlH,
+      },
+    ]),
+  );
+  // Le dernier secteur s'achève à l'arrivée, qu'aucun ravito ne borne.
+  const boundOf = (endPositionM: number | null) =>
+    endPositionM ?? row.tracks.distanceM;
 
   const byLeg = <T extends { legRank: number }>(rows: T[], rank: number) =>
     rows.filter((r) => r.legRank === rank);
@@ -162,8 +180,9 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
       }),
       VIDE,
     );
-    const needG = (targets.carbsGH * leg.durationS) / 3600;
-    const needFluidMl = (targets.fluidMlH * leg.durationS) / 3600;
+    const cible = imposed.get(boundOf(leg.endPositionM)) ?? targets;
+    const needG = (cible.carbsGH * leg.durationS) / 3600;
+    const needFluidMl = (cible.fluidMlH * leg.durationS) / 3600;
 
     return {
       rank: leg.rank,

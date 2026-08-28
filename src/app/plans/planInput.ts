@@ -27,6 +27,11 @@ export type NewAidStation = {
 export type LegOverride = {
   endPositionM: number;
   durationS?: number;
+  /**
+   * Les cibles imposées à ce secteur. Partielles : seules celles qui sont
+   * données remplacent celles du plan.
+   */
+  targets?: Partial<Targets>;
 };
 
 /** Le côté saisie d'un plan. Le calculé naît de la régénération. */
@@ -119,6 +124,17 @@ export function normalise(input: NewPlan): NewPlan {
       ...o,
       endPositionM: Math.round(o.endPositionM),
       durationS: whole(o.durationS),
+      targets: o.targets && {
+        ...(o.targets.carbsGH === undefined
+          ? {}
+          : { carbsGH: Math.round(o.targets.carbsGH) }),
+        ...(o.targets.fluidMlH === undefined
+          ? {}
+          : { fluidMlH: Math.round(o.targets.fluidMlH) }),
+        ...(o.targets.sodiumMgL === undefined
+          ? {}
+          : { sodiumMgL: Math.round(o.targets.sodiumMgL) }),
+      },
     })),
     productCodes: input.productCodes,
   };

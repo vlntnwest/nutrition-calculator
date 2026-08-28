@@ -82,15 +82,33 @@ export function nutritionPlan(
   runner: Runner,
   targets: Targets,
   products: Product[],
-  parts?: number[],
+  /**
+   * `parts` : la part de chaque produit. `finishTargets` : les cibles du
+   * dernier secteur, qu'aucun ravito ne clôt et qui se règle donc à part.
+   */
+  options:
+    | number[]
+    | { parts?: number[]; finishTargets?: Partial<Targets> } = {},
 ): NutritionPlan {
+  const { parts, finishTargets } = Array.isArray(options)
+    ? { parts: options, finishTargets: undefined }
+    : options;
   const raws = splitByAidStation(points, aidStations, runner);
   const endM = points.length > 0 ? points[points.length - 1].d : 0;
   const spans = {
     liquid: carrySpans(aidStations, endM, raws.length, (a) => a.providesLiquid),
     solid: carrySpans(aidStations, endM, raws.length, (a) => a.providesSolid),
   };
-  const legs = provision(raws, targets, products, runner, spans.liquid, parts);
+  const legs = provision(
+    raws,
+    aidStations,
+    targets,
+    products,
+    runner,
+    spans.liquid,
+    parts,
+    finishTargets,
+  );
 
   const units = new Map<string, number>();
   for (const s of legs) {
@@ -405,11 +423,13 @@ function share(items: Weighted[], amount: number): number[] {
  */
 function provision(
   raws: RawLeg[],
+  aidStations: AidStation[],
   targets: Targets,
   products: Product[],
   runner: Runner,
   spans: number[][],
   parts?: number[],
+  finishTargets?: Partial<Targets>,
 ): Leg[] {
   // La part est lue sur la position d'origine, avant le filtrage : sinon un
   // produit sans glucides décale en silence toutes les parts qui le suivent.
@@ -419,7 +439,14 @@ function provision(
 
   const drinks = kept.filter((k) => k.product.fluidMl > 0);
   const solids = kept.filter((k) => k.product.fluidMl === 0);
-  const needs = raws.map((raw) => needOf(raw, targets));
+  // Une cible imposée se range sur le ravito qui clôt le secteur, et à part
+  // pour l'arrivée. Partielle, elle ne remplace que ce qu'elle donne.
+  const imposed = new Map(aidStations.map((a) => [a.name, a.legTargets]));
+  const legTargets = raws.map((raw) => ({
+    ...targets,
+    ...(raw.to === null ? finishTargets : imposed.get(raw.to)),
+  }));
+  const needs = raws.map((raw, l) => needOf(raw, legTargets[l]));
   const loaded: Loaded[][] = raws.map(() => []);
 
   // Passe 1. Le bidon délivre un flux continu commandé par l'hydratation : ce

@@ -327,6 +327,14 @@ export type AidStation = {
    */
   legDurationS?: number;
   /**
+   * Les cibles imposées au secteur qui **se termine** ici. Absentes, celles
+   * du plan s'appliquent ; partielles, seules les valeurs données remplacent.
+   *
+   * C'est une saisie, pas un ajustement du calcul : « ce secteur mérite plus »
+   * est une décision du coureur, et elle survit à chaque régénération.
+   */
+  legTargets?: Partial<Targets>;
+  /**
    * Y trouve-t-on de l'eau ? Absent vaut **oui** : c'est le cas courant, et
    * c'est aussi ce que le noyau supposait partout avant d'avoir ce drapeau.
    *

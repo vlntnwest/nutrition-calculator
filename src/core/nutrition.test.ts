@@ -1232,3 +1232,53 @@ test("aucun déplacement ne peut encore améliorer le plan", () => {
 
   expect(ameliorations).toEqual([]);
 });
+
+/**
+ * Une cible imposée à un secteur : « celui-ci mérite plus ».
+ *
+ * Elle se range sur le ravito qui **clôt** le secteur, comme la durée
+ * imposée, et à part pour l'arrivée qu'aucun ravito ne ferme. C'est une
+ * entrée, pas un ajustement du calcul : elle survit à chaque régénération.
+ */
+test("une cible imposée à un secteur relève son besoin", () => {
+  const points = flatTrack(40, 5);
+  const stations: AidStation[] = [{ name: "R1", distanceM: 20000 }];
+
+  const nominal = nutritionPlan(points, stations, RUNNER, TARGETS, [gel]);
+  const force = nutritionPlan(
+    points,
+    [{ ...stations[0], legTargets: { carbsGH: 90 } }],
+    RUNNER,
+    TARGETS,
+    [gel],
+  );
+
+  // Le premier secteur vise 90 g/h au lieu de 60 : son besoin monte de moitié.
+  expect(force.legs[0].need.carbsG).toBeCloseTo(
+    nominal.legs[0].need.carbsG * 1.5,
+    6,
+  );
+  // Le second n'a pas bougé, la consigne ne vise que son secteur.
+  expect(force.legs[1].need.carbsG).toBeCloseTo(nominal.legs[1].need.carbsG, 6);
+  // Et le sac suit : on emporte davantage.
+  expect(force.total.carbsG).toBeGreaterThan(nominal.total.carbsG);
+});
+
+test("l'arrivée se règle à part, aucun ravito ne la ferme", () => {
+  const points = flatTrack(40, 5);
+  const stations: AidStation[] = [{ name: "R1", distanceM: 20000 }];
+
+  const nominal = nutritionPlan(points, stations, RUNNER, TARGETS, [gel]);
+  const force = nutritionPlan(points, stations, RUNNER, TARGETS, [gel], {
+    finishTargets: { fluidMlH: 900 },
+  });
+
+  expect(force.legs[1].need.fluidMl).toBeCloseTo(
+    (nominal.legs[1].need.fluidMl * 900) / TARGETS.fluidMlH,
+    6,
+  );
+  expect(force.legs[0].need.fluidMl).toBeCloseTo(
+    nominal.legs[0].need.fluidMl,
+    6,
+  );
+});
