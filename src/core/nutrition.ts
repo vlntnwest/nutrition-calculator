@@ -529,7 +529,10 @@ function provision(
     }
   }
 
-  consolidate(loaded, deficits);
+  consolidate(
+    loaded,
+    needs.map((n) => n.carbsG),
+  );
 
   return fillSpans(
     raws.map((raw, l) => assemble(raw, needs[l], loaded[l])),
@@ -720,57 +723,86 @@ function fill(
 }
 
 /**
- * Regroupe les fractions pour qu'un secteur n'en porte qu'une au plus.
+ * Ramène chaque secteur à **une** fraction au plus.
  *
  * Une répartition en pas laisse des comptes impairs un peu partout : quatre
- * produits divisibles par deux, et le coureur se retrouve à couper quatre
- * emballages au même ravito. Arithmétiquement juste, inapplicable.
+ * produits divisibles par deux, et le coureur coupe quatre emballages au même
+ * ravito. Une moitié reste utile — c'est l'ajustement qui évite de dépasser
+ * la cible d'une unité entière — mais une seule, et par secteur.
  *
- * Deux secteurs qui portent chacun une moitié du **même** produit peuvent
+ * Deux secteurs portant chacun une moitié du **même** produit peuvent
  * l'échanger : un pas déplacé les rend tous deux entiers, et la somme est
- * conservée — on ne crée ni ne détruit de ration. C'est le **besoin** qui
- * décide du sens : le secteur le plus en déficit reçoit l'unité entière.
- * Trancher sur le nombre de fractions viderait le secteur qui en porte le
- * plus, ce qui n'a rien à voir avec ce qu'il faut y manger.
+ * conservée. C'est le manque **du moment** qui décide du sens — ce qu'il
+ * reste à couvrir une fois compté ce que le secteur porte déjà, et non le
+ * déficit d'avant répartition, qui laisserait un secteur bien servi
+ * continuer de recevoir.
  *
- * Il reste une moitié quand le total de pas d'un produit est impair : elle ne
- * peut s'apparier avec rien. C'est l'ajustement final, celui qui évite de
- * dépasser la cible d'une unité entière.
+ * On ne touche qu'aux secteurs qui en portent plusieurs. Regrouper au-delà
+ * déplacerait des rations hors des secteurs qui en ont besoin.
  */
-function consolidate(loaded: Loaded[][], weights: number[]): void {
-  const produits = loaded[0]?.length ?? 0;
-  // Combien de fractions chaque secteur porte déjà : c'est ce compte, tenu
-  // d'un produit à l'autre, qui empêche les moitiés orphelines de s'empiler
-  // toutes au même endroit.
-  const portees = loaded.map(() => 0);
+function consolidate(loaded: Loaded[][], needsG: number[]): void {
+  // Une boisson n'a rien à regrouper ici : sa quantité est commandée par
+  // l'hydratation du secteur, pas par ses glucides.
+  const divisible = (i: number) =>
+    stepsOf(loaded[0][i].product) > 1 && loaded[0][i].product.fluidMl === 0;
+  const fraction = (l: number, i: number) =>
+    loaded[l][i].steps % stepsOf(loaded[l][i].product) !== 0;
+  const combien = (l: number) =>
+    loaded[l].reduce(
+      (n, _, i) => n + (divisible(i) && fraction(l, i) ? 1 : 0),
+      0,
+    );
+  // Ce qu'il reste à couvrir, recalculé à chaque échange : c'est lui qui
+  // désigne le receveur, pas une estimation faite avant la répartition — un
+  // secteur déjà bien servi continuerait sinon de recevoir.
+  const manque = (l: number) =>
+    needsG[l] -
+    loaded[l].reduce(
+      (g, x) => g + (x.steps * x.product.carbsG) / stepsOf(x.product),
+      0,
+    );
 
-  for (let i = 0; i < produits; i++) {
-    // Un produit indivisible n'a rien à regrouper. Une boisson non plus : sa
-    // quantité est commandée par l'hydratation du secteur, pas par ses
-    // glucides — la déplacer ailleurs ferait boire au mauvais endroit.
-    const p = loaded[0][i].product;
-    if (stepsOf(p) === 1 || p.fluidMl > 0) continue;
+  const bloques = new Set<number>();
 
-    const porteurs = loaded
-      .map((_, l) => l)
-      .filter((l) => loaded[l][i].steps % stepsOf(loaded[l][i].product) !== 0)
-      // Le plus affamé d'abord : il gardera l'unité entière.
-      .sort((a, b) => weights[b] - weights[a] || a - b);
+  for (;;) {
+    // Le secteur le plus encombré d'abord, et lui seul : ceux qui n'en
+    // portent qu'une gardent la leur.
+    let charge = -1;
+    let pire = 1;
+    for (let l = 0; l < loaded.length; l++) {
+      if (bloques.has(l)) continue;
+      const n = combien(l);
+      if (n > pire) {
+        pire = n;
+        charge = l;
+      }
+    }
+    if (charge < 0) break;
 
-    // Nombre impair de porteurs : l'un d'eux gardera sa moitié. On la laisse
-    // à un secteur encore net, sinon au plus affamé.
-    if (porteurs.length % 2 === 1) {
-      const at = porteurs.findIndex((l) => portees[l] === 0);
-      const [garde] = porteurs.splice(at < 0 ? 0 : at, 1);
-      portees[garde] += 1;
+    // Une de ses fractions, appariée avec un autre secteur qui porte une
+    // moitié du même produit — de préférence un autre encombré, qu'on soulage
+    // du même coup.
+    let echange = false;
+    for (let i = 0; i < loaded[charge].length && !echange; i++) {
+      if (!divisible(i) || !fraction(charge, i)) continue;
+
+      const partenaire = loaded
+        .map((_, m) => m)
+        .filter((m) => m !== charge && fraction(m, i))
+        .sort((a, b) => combien(b) - combien(a) || manque(b) - manque(a))[0];
+      if (partenaire === undefined) continue;
+
+      const [recoit, cede] =
+        manque(charge) >= manque(partenaire)
+          ? [charge, partenaire]
+          : [partenaire, charge];
+      loaded[recoit][i].steps += 1;
+      loaded[cede][i].steps -= 1;
+      echange = true;
     }
 
-    // Les autres s'apparient par les deux bouts : le plus en déficit reçoit
-    // l'unité entière, le moins en déficit cède la sienne.
-    for (let haut = 0, bas = porteurs.length - 1; haut < bas; haut++, bas--) {
-      loaded[porteurs[haut]][i].steps += 1;
-      loaded[porteurs[bas]][i].steps -= 1;
-    }
+    // Aucune de ses moitiés n'a de partenaire : on ne peut rien pour lui.
+    if (!echange) bloques.add(charge);
   }
 }
 
