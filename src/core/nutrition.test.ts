@@ -1146,3 +1146,89 @@ test("un secteur ne porte qu'une seule boisson", () => {
   );
   expect(servies.size).toBe(2);
 });
+
+/**
+ * Le critère, plus fort qu'un seuil chiffré : un écart qui reste doit être
+ * **irréductible**. On ne cherche pas zéro partout — les produits sont
+ * discrets — mais aucun déplacement d'une ration d'un secteur à l'autre ne
+ * doit pouvoir rapprocher les deux de leur cible. S'il en existe un, c'est un
+ * oubli, pas un arrondi.
+ */
+test("aucun déplacement ne peut encore améliorer le plan", () => {
+  const plan = nutritionPlan(
+    flatTrack(108, 12.5),
+    [22600, 39800, 63000, 82200].map((distanceM, i) => ({
+      name: `R${i + 1}`,
+      distanceM,
+    })),
+    { massKg: 77, flasks: [] },
+    TARGETS,
+    ["naak-waffle-citron", "naak-bar-ultra", "naak-drink-ultra"].map(
+      (c) => productById(c) as Product,
+    ),
+  );
+
+  /** Les unités par produit, telles que le secteur les porte. */
+  const held = plan.legs.map((leg) => {
+    const m = new Map<string, number>();
+    for (const s of leg.servings) m.set(s.product.id, s.units);
+
+    return m;
+  });
+  // Dédoublonné : le même produit revient dans plusieurs secteurs.
+  const solids = [
+    ...new Map(
+      plan.legs
+        .flatMap((l) => l.servings.map((s) => s.product))
+        .filter((p) => p.fluidMl === 0 && p.divisibleBy > 1)
+        .map((p) => [p.id, p] as const),
+    ).values(),
+  ];
+
+  /**
+   * Combien de fractions le secteur porterait avec `delta` unités de `p`.
+   *
+   * On pose la clé avant de compter : un produit que le secteur ne porte pas
+   * encore est absent de la table, et la moitié qu'on lui ajoute passerait
+   * inaperçue.
+   */
+  const fractions = (l: number, id: string, delta: number) => {
+    const apres = new Map(held[l]);
+    apres.set(id, (apres.get(id) ?? 0) + delta);
+
+    return [...apres.values()].filter((units) => units % 1 !== 0).length;
+  };
+
+  const ameliorations: string[] = [];
+
+  for (const p of solids) {
+    const pas = p.carbsG / p.divisibleBy;
+
+    for (let a = 0; a < plan.legs.length; a++) {
+      if ((held[a].get(p.id) ?? 0) < 1 / p.divisibleBy) continue;
+
+      for (let b = 0; b < plan.legs.length; b++) {
+        if (a === b) continue;
+
+        const avant =
+          Math.abs(plan.legs[a].marginG) + Math.abs(plan.legs[b].marginG);
+        const apres =
+          Math.abs(plan.legs[a].marginG - pas) +
+          Math.abs(plan.legs[b].marginG + pas);
+        if (avant - apres <= 0.1) continue;
+
+        // Le déplacement doit rester licite : une fraction par secteur.
+        // Passer de 1,5 à 2 en **retire** une, ce n'est donc pas bloquant.
+        if (fractions(a, p.id, -1 / p.divisibleBy) > 1) continue;
+        if (fractions(b, p.id, 1 / p.divisibleBy) > 1) continue;
+
+        ameliorations.push(
+          `${p.name} : s${a + 1} (${plan.legs[a].marginG.toFixed(1)} g) → ` +
+            `s${b + 1} (${plan.legs[b].marginG.toFixed(1)} g)`,
+        );
+      }
+    }
+  }
+
+  expect(ameliorations).toEqual([]);
+});

@@ -523,16 +523,23 @@ function provision(
   // que la boisson couvre déjà — l'arrondi à la dose entière fait qu'elle ne
   // les couvre pas proportionnellement.
   const deficits = needs.map((n, l) => Math.max(n.carbsG - drinkCarbs[l], 0));
+
+  // Le déficit se consomme d'un produit à l'autre. Le laisser entier à chaque
+  // fois le compterait autant de fois qu'il y a de solides : un secteur
+  // recevrait beaucoup de gaufres **et** beaucoup de barres pendant qu'un
+  // autre n'aurait ni l'une ni l'autre.
   for (const [i, k] of solids.entries()) {
+    const stepG = k.product.carbsG / stepsOf(k.product);
+
     for (const [l, steps] of apportion(solidSteps[i], deficits).entries()) {
       loaded[l].push({ product: k.product, steps });
+      deficits[l] = Math.max(deficits[l] - steps * stepG, 0);
     }
   }
 
-  consolidate(
-    loaded,
-    needs.map((n) => n.carbsG),
-  );
+  const carbNeeds = needs.map((n) => n.carbsG);
+  consolidate(loaded, carbNeeds);
+  rebalance(loaded, carbNeeds);
 
   return fillSpans(
     raws.map((raw, l) => assemble(raw, needs[l], loaded[l])),
@@ -803,6 +810,75 @@ function consolidate(loaded: Loaded[][], needsG: number[]): void {
 
     // Aucune de ses moitiés n'a de partenaire : on ne peut rien pour lui.
     if (!echange) bloques.add(charge);
+  }
+}
+
+/**
+ * Rapproche chaque secteur de sa cible, un pas à la fois.
+ *
+ * Le regroupement ne fait que supprimer des fractions ; il ne casse jamais une
+ * unité entière, même quand ce serait la bonne chose à faire. Un secteur à
+ * +12 g portant une gaufre entière peut en céder la moitié à celui qui est à
+ * −10 : les deux se rapprochent de zéro, et le compte de fractions ne monte
+ * nulle part au-delà d'une.
+ *
+ * On déplace un pas du plus servi vers le plus démuni tant que la somme de
+ * leurs écarts absolus diminue — ce qui borne la boucle : cette somme décroît
+ * strictement et ne peut pas passer sous zéro.
+ */
+function rebalance(loaded: Loaded[][], needsG: number[]): void {
+  const divisible = (i: number) =>
+    stepsOf(loaded[0][i].product) > 1 && loaded[0][i].product.fluidMl === 0;
+  const fractions = (l: number, sauf = -1, delta = 0) =>
+    loaded[l].reduce((n, x, i) => {
+      const steps = x.steps + (i === sauf ? delta : 0);
+      const impair = divisible(i) && steps % stepsOf(x.product) !== 0;
+
+      return n + (impair ? 1 : 0);
+    }, 0);
+  const ecart = (l: number, sauf = -1, delta = 0) =>
+    loaded[l].reduce(
+      (g, x, i) =>
+        g +
+        ((x.steps + (i === sauf ? delta : 0)) * x.product.carbsG) /
+          stepsOf(x.product),
+      0,
+    ) - needsG[l];
+
+  // On cherche le meilleur déplacement sur **toutes** les paires, pas
+  // seulement sur les deux extrêmes : le secteur le plus servi n'a pas
+  // toujours de quoi céder au plus démuni sans lui donner deux fractions.
+  for (;;) {
+    // Un seuil plutôt que zéro : un gain issu du bruit flottant relancerait la
+    // boucle indéfiniment, et un dixième de gramme ne veut rien dire ici.
+    let gain = 0.1;
+    let move: [number, number, number] | null = null;
+
+    for (let a = 0; a < loaded.length; a++) {
+      for (let b = 0; b < loaded.length; b++) {
+        if (a === b) continue;
+
+        for (let i = 0; i < loaded[a].length; i++) {
+          if (!divisible(i) || loaded[a][i].steps < 1) continue;
+
+          const avant = Math.abs(ecart(a)) + Math.abs(ecart(b));
+          const apres = Math.abs(ecart(a, i, -1)) + Math.abs(ecart(b, i, 1));
+          if (avant - apres <= gain) continue;
+
+          // La règle tient des deux côtés : une fraction par secteur, pas plus.
+          if (fractions(a, i, -1) > 1 || fractions(b, i, 1) > 1) continue;
+
+          gain = avant - apres;
+          move = [a, b, i];
+        }
+      }
+    }
+
+    if (move === null) return;
+
+    const [a, b, i] = move;
+    loaded[a][i].steps -= 1;
+    loaded[b][i].steps += 1;
   }
 }
 
