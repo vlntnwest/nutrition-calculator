@@ -82,6 +82,20 @@ export function normalise(input: NewPlan): NewPlan {
       ...input.track,
       distanceM: Math.round(input.track.distanceM),
       ascentM: Math.round(input.track.ascentM),
+      // Réduits à leurs clés : `jsonb` accepte n'importe quelle forme et
+      // `$type<>` s'efface à la compilation. Rien d'autre ne peut le tenir.
+      //
+      // L'accès est optionnel parce que la normalisation précède la
+      // validation : sur une entrée de travers elle doit rendre la main à
+      // `assertTrack`, pas lever une exception brute que l'écran ne saurait
+      // pas montrer.
+      points: input.track.points.map((p) => ({
+        d: p?.d,
+        lat: p?.lat,
+        lon: p?.lon,
+        ele: p?.ele,
+      })),
+      profile: input.track.profile.map((p) => ({ d: p?.d, ele: p?.ele })),
     },
     settings: {
       ...input.settings,
@@ -139,12 +153,53 @@ function tooClose(input: NewPlan): [number, number] | null {
   return null;
 }
 
+/** Un nombre exploitable : ni `NaN`, ni infini, ni autre chose qu'un nombre. */
+function fini(v: unknown): v is number {
+  return typeof v === "number" && Number.isFinite(v);
+}
+
+/**
+ * Ce qu'aucune colonne `jsonb` ne peut refuser.
+ *
+ * Postgres n'y vérifie que la validité du JSON, et le `$type<>` de Drizzle
+ * s'efface à la compilation : une action est une route POST ouverte, donc
+ * c'est ici — et nulle part ailleurs — qu'une trace de travers s'arrête.
+ */
+function assertTrack(track: NewPlan["track"]): void {
+  if (track.points.length === 0 || track.profile.length === 0) {
+    throw new PlanError("Track is empty: points and profile are both required");
+  }
+
+  for (const [i, p] of track.points.entries()) {
+    if (!fini(p?.d) || !fini(p?.lat) || !fini(p?.lon) || !fini(p?.ele)) {
+      throw new PlanError(`Malformed track points at index ${i}`);
+    }
+  }
+
+  let precedent = Number.NEGATIVE_INFINITY;
+  for (const [i, p] of track.profile.entries()) {
+    if (!fini(p?.d) || !fini(p?.ele)) {
+      throw new PlanError(`Malformed track profile at index ${i}`);
+    }
+    // Le calcul lit le profil comme une fonction de la distance : un retour
+    // en arrière inverserait une pente et fausserait ce qui en découle.
+    if (p.d <= precedent) {
+      throw new PlanError(
+        `Track profile is not increasing at index ${i}: ${p.d} after ${precedent}`,
+      );
+    }
+    precedent = p.d;
+  }
+}
+
 /**
  * Ce qu'aucune contrainte de la base ne peut tenir. Les deux écritures s'y
  * soumettent, sur un plan entier : une mise à jour partielle se fusionne avec
  * l'existant avant de passer ici.
  */
 export function assertValid(input: NewPlan): void {
+  assertTrack(input.track);
+
   const collees = tooClose(input);
   if (collees) {
     throw new PlanError(
