@@ -15,7 +15,11 @@ export default async function Page(
 
   return (
     <section className="flex flex-col gap-6">
-      <Calculer accessId={accessId} calcule={roadbook !== null} />
+      <Calculer
+        accessId={accessId}
+        calcule={roadbook !== null}
+        edited={roadbook?.edited ?? false}
+      />
 
       {roadbook === null ? (
         <p>

@@ -6,6 +6,7 @@ import { createPlan } from "./createPlan";
 import { getRoadbook } from "./getRoadbook";
 import { newPlan as input } from "./newPlan.fixture";
 import { regeneratePlan } from "./regeneratePlan";
+import { saveRoadbook } from "./saveRoadbook";
 
 const written: string[] = [];
 
@@ -107,4 +108,45 @@ test("le total est la somme des secteurs", async () => {
   );
   // Le sac : combien de chaque produit, tous secteurs confondus.
   expect(roadbook?.total.units.length).toBe(input.productCodes.length);
+});
+
+test("un plan sortant du calcul n'est pas marqué retouché", async () => {
+  const accessId = await createPlan(input);
+  written.push(accessId);
+  await regeneratePlan(accessId);
+
+  expect((await getRoadbook(accessId))?.edited).toBe(false);
+});
+
+test("le roadbook signale un plan retouché", async () => {
+  const accessId = await createPlan(input);
+  written.push(accessId);
+  await regeneratePlan(accessId);
+  const roadbook = await getRoadbook(accessId);
+  if (!roadbook) throw new Error("Le plan devait être calculé");
+
+  await saveRoadbook(accessId, {
+    servings: roadbook.legs.map(() => []),
+    fills: roadbook.legs.map(() => []),
+  });
+
+  expect((await getRoadbook(accessId))?.edited).toBe(true);
+});
+
+test("le roadbook porte de quoi retoucher", async () => {
+  const accessId = await createPlan(input);
+  written.push(accessId);
+  await regeneratePlan(accessId);
+
+  const roadbook = await getRoadbook(accessId);
+
+  // Le catalogue du plan, ses contenants, et de quoi désigner chaque ration.
+  expect(roadbook?.catalogue.length).toBe(input.productCodes.length);
+  expect(roadbook?.flasks.map((f) => f.rank)).toEqual([1, 2]);
+  for (const leg of roadbook?.legs ?? []) {
+    for (const s of leg.servings) {
+      expect(s.productSnapshotId).toMatch(/^[0-9a-f-]{36}$/);
+      expect([1, 2]).toContain(s.divisibleBy);
+    }
+  }
 });
