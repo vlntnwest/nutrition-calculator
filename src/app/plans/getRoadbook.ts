@@ -13,15 +13,20 @@ import { warnings } from "@/db/schema/warnings";
 import { resolveTargets } from "./targets";
 
 export type RoadbookServing = {
+  /** Ce que l'écran renvoie pour désigner la ration qu'il retouche. */
+  productSnapshotId: string;
   name: string;
   brandName: string | null;
   quantity: number;
+  /** Le pas de retouche : 1 pour ce qui ne se coupe pas, 2 pour le reste. */
+  divisibleBy: number;
 };
 
 export type RoadbookFill = {
   flaskRank: number;
   /** Absent : de l'eau claire. */
   product: string | null;
+  productSnapshotId: string | null;
   volumeMl: number;
 };
 
@@ -60,6 +65,18 @@ export type RoadbookLeg = {
 
 export type Roadbook = {
   legs: RoadbookLeg[];
+  /** Les produits retenus pour ce plan — de quoi poser ce que le calcul n'a
+   * pas proposé. */
+  catalogue: {
+    id: string;
+    name: string;
+    brandName: string | null;
+    divisibleBy: number;
+  }[];
+  /** Les contenants déclarés, pour retoucher les remplissages. */
+  flasks: { rank: number; volumeMl: number; onlyWater: boolean }[];
+  /** Le plan a été retouché à la main depuis son dernier calcul. */
+  edited: boolean;
   /** Le sac complet, et ce qu'il apporte. */
   total: Supply & {
     marginG: number;
@@ -98,50 +115,70 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
     return null;
   }
 
-  const [legRows, servingRows, fillRows, warningRows, flaskRows, overrideRows] =
-    await Promise.all([
-      db
-        .select()
-        .from(legs)
-        .where(eq(legs.planId, accessId))
-        .orderBy(asc(legs.rank)),
-      db
-        .select({
-          legRank: servings.legRank,
-          quantity: servings.quantity,
-          name: productSnapshots.name,
-          brandName: productSnapshots.brandName,
-          carbsG: productSnapshots.carbsG,
-          energyKcal: productSnapshots.energyKcal,
-          sodiumMg: productSnapshots.sodiumMg,
-          fluidMl: productSnapshots.fluidMl,
-        })
-        .from(servings)
-        .innerJoin(
-          productSnapshots,
-          eq(servings.productSnapshotId, productSnapshots.id),
-        )
-        .where(eq(servings.planId, accessId))
-        .orderBy(asc(servings.legRank), asc(productSnapshots.name)),
-      db
-        .select({
-          legRank: fill.legRank,
-          flaskRank: fill.flaskRank,
-          volumeMl: fill.volumeMl,
-          product: productSnapshots.name,
-        })
-        .from(fill)
-        // `leftJoin` : un remplissage sans produit, c'est de l'eau claire.
-        .leftJoin(
-          productSnapshots,
-          eq(fill.productSnapshotId, productSnapshots.id),
-        )
-        .where(eq(fill.planId, accessId))
-        .orderBy(asc(fill.legRank), asc(fill.flaskRank)),
-      db.select().from(warnings).where(eq(warnings.planId, accessId)),
-      db.select().from(flasks).where(eq(flasks.planId, accessId)),
-      db.select().from(legOverrides).where(eq(legOverrides.planId, accessId)),
-    ]);
+  const [
+    legRows,
+    servingRows,
+    fillRows,
+    warningRows,
+    flaskRows,
+    overrideRows,
+    catalogue,
+  ] = await Promise.all([
+    db
+      .select()
+      .from(legs)
+      .where(eq(legs.planId, accessId))
+      .orderBy(asc(legs.rank)),
+    db
+      .select({
+        legRank: servings.legRank,
+        quantity: servings.quantity,
+        productSnapshotId: servings.productSnapshotId,
+        divisibleBy: productSnapshots.divisibleBy,
+        name: productSnapshots.name,
+        brandName: productSnapshots.brandName,
+        carbsG: productSnapshots.carbsG,
+        energyKcal: productSnapshots.energyKcal,
+        sodiumMg: productSnapshots.sodiumMg,
+        fluidMl: productSnapshots.fluidMl,
+      })
+      .from(servings)
+      .innerJoin(
+        productSnapshots,
+        eq(servings.productSnapshotId, productSnapshots.id),
+      )
+      .where(eq(servings.planId, accessId))
+      .orderBy(asc(servings.legRank), asc(productSnapshots.name)),
+    db
+      .select({
+        legRank: fill.legRank,
+        flaskRank: fill.flaskRank,
+        volumeMl: fill.volumeMl,
+        productSnapshotId: fill.productSnapshotId,
+        product: productSnapshots.name,
+      })
+      .from(fill)
+      // `leftJoin` : un remplissage sans produit, c'est de l'eau claire.
+      .leftJoin(
+        productSnapshots,
+        eq(fill.productSnapshotId, productSnapshots.id),
+      )
+      .where(eq(fill.planId, accessId))
+      .orderBy(asc(fill.legRank), asc(fill.flaskRank)),
+    db.select().from(warnings).where(eq(warnings.planId, accessId)),
+    db.select().from(flasks).where(eq(flasks.planId, accessId)),
+    db.select().from(legOverrides).where(eq(legOverrides.planId, accessId)),
+    db
+      .select({
+        id: productSnapshots.id,
+        name: productSnapshots.name,
+        brandName: productSnapshots.brandName,
+        divisibleBy: productSnapshots.divisibleBy,
+      })
+      .from(productSnapshots)
+      .where(eq(productSnapshots.planId, accessId))
+      .orderBy(asc(productSnapshots.name)),
+  ]);
 
   const runner = {
     massKg: settings.massKg,
@@ -191,13 +228,16 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
       descentM: leg.descentM,
       durationS: leg.durationS,
       servings: rations.map((s) => ({
+        productSnapshotId: s.productSnapshotId,
         name: s.name,
         brandName: s.brandName,
         quantity: s.quantity,
+        divisibleBy: s.divisibleBy,
       })),
       fills: byLeg(fillRows, leg.rank).map((f) => ({
         flaskRank: f.flaskRank,
         product: f.product,
+        productSnapshotId: f.productSnapshotId,
         volumeMl: f.volumeMl,
       })),
       supply,
@@ -222,6 +262,13 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
 
   return {
     legs: legsOut,
+    catalogue,
+    flasks: flaskRows.map((f) => ({
+      rank: f.rank,
+      volumeMl: f.volumeMl,
+      onlyWater: f.onlyWater,
+    })),
+    edited: row.plans.editedAt !== null,
     total: {
       carbsG: legsOut.reduce((t, l) => t + l.supply.carbsG, 0),
       energyKcal: legsOut.reduce((t, l) => t + l.supply.energyKcal, 0),
