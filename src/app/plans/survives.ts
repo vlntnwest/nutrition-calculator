@@ -34,34 +34,34 @@ function same(a: unknown, b: unknown): boolean {
  * Les réglages séparés en trois : ce que le calcul ne lit pas, le poids, et
  * tout le reste.
  *
- * Le rest fait la liste blanche : un réglage ajouté demain tombe dans `lus`
+ * Le rest fait la liste blanche : un réglage ajouté demain tombe dans `read`
  * sans qu'on y pense, et condamnera le calcul faute d'avoir été déclaré
  * inoffensif ici. L'oubli fait recalculer pour rien — l'inverse afficherait
  * un roadbook périmé en le disant à jour.
  */
-function reglages(settings: NewPlan["settings"]) {
-  const { raceDate: _date, startTime: _heure, massKg, ...lus } = settings;
+function splitSettings(settings: NewPlan["settings"]) {
+  const { raceDate: _date, startTime: _heure, massKg, ...read } = settings;
 
-  return { massKg, lus };
+  return { massKg, read };
 }
 
 /** Un ravito tel que le calcul le voit : le nom n'en fait pas partie. */
-function calculable({ name: _nom, ...reste }: NewAidStation) {
+function withoutName({ name: _nom, ...reste }: NewAidStation) {
   return reste;
 }
 
 /** Les ravitos rangés sur l'abscisse : la saisie peut les donner mêlés. */
-function ordonnes(list: NewAidStation[]) {
+function byPosition(list: NewAidStation[]) {
   return [...list].sort((a, b) => a.distanceM - b.distanceM);
 }
 
 /** Les mêmes, réduits à ce que le calcul en lit. */
-function ravitos(list: NewAidStation[]) {
-  return ordonnes(list).map(calculable);
+function asComputed(list: NewAidStation[]) {
+  return byPosition(list).map(withoutName);
 }
 
 /** Les consignes rangées sur leur borne, pour la même raison. */
-function consignes(list: LegOverride[]) {
+function byBoundary(list: LegOverride[]) {
   return [...list].sort((a, b) => a.endPositionM - b.endPositionM);
 }
 
@@ -74,17 +74,17 @@ function consignes(list: LegOverride[]) {
  * `PlanPatch` ne permet pas d'y toucher.
  */
 export function survives(before: NewPlan, after: NewPlan): boolean {
-  const avant = reglages(before.settings);
-  const apres = reglages(after.settings);
+  const avant = splitSettings(before.settings);
+  const apres = splitSettings(after.settings);
 
   return (
     // Cibles saisies, `massKg` ne sert plus qu'à la dépense en calories, que
     // le plan ne stocke pas. Vides, il fixe `suggestedTargets` : il compte.
-    (apres.lus.targets !== undefined || avant.massKg === apres.massKg) &&
-    same(avant.lus, apres.lus) &&
-    same(ravitos(before.aidStations), ravitos(after.aidStations)) &&
+    (apres.read.targets !== undefined || avant.massKg === apres.massKg) &&
+    same(avant.read, apres.read) &&
+    same(asComputed(before.aidStations), asComputed(after.aidStations)) &&
     same(before.flasks, after.flasks) &&
-    same(consignes(before.legOverrides), consignes(after.legOverrides)) &&
+    same(byBoundary(before.legOverrides), byBoundary(after.legOverrides)) &&
     // Une sélection est un ensemble : `getPlan` la rend triée, pas la saisie.
     same([...before.productCodes].sort(), [...after.productCodes].sort())
   );
@@ -116,12 +116,12 @@ export function changed(before: NewPlan, after: NewPlan): Changed {
     settings: !same(before.settings, after.settings),
     flasks: !same(before.flasks, after.flasks),
     aidStations: !same(
-      ordonnes(before.aidStations),
-      ordonnes(after.aidStations),
+      byPosition(before.aidStations),
+      byPosition(after.aidStations),
     ),
     legOverrides: !same(
-      consignes(before.legOverrides),
-      consignes(after.legOverrides),
+      byBoundary(before.legOverrides),
+      byBoundary(after.legOverrides),
     ),
     products: !same(
       [...before.productCodes].sort(),
