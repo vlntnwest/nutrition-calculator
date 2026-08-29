@@ -458,13 +458,13 @@ function provision(
   // Une consigne rend les trois passes sans objet : il n'y a plus rien à
   // décider, seulement à sommer.
   if (given) {
-    return fillSpans(
-      raws.map((raw, l) =>
-        assemble(raw, needs[l], imposedOf(given, products, l)),
-      ),
-      spans,
-      runner.flasks,
+    const assembled = raws.map((raw, l) =>
+      assemble(raw, needs[l], imposedOf(given, products, l)),
     );
+
+    return given.fills
+      ? imposeFills(assembled, spans, given.fills, products)
+      : fillSpans(assembled, spans, runner.flasks);
   }
 
   const loaded: Loaded[][] = raws.map(() => []);
@@ -593,6 +593,53 @@ function provision(
     spans,
     runner.flasks,
   );
+}
+
+/**
+ * Les remplissages tels qu'on les impose.
+ *
+ * Ce qu'ils ne portent pas ressort en `refillMl`, au même endroit que dans
+ * `fillSpans` : à l'ouverture de la portée.
+ */
+function imposeFills(
+  legs: Omit<Leg, "fills" | "refillMl">[],
+  spans: number[][],
+  given: NonNullable<Imposed["fills"]>,
+  products: Product[],
+): Leg[] {
+  const byId = new Map(products.map((p) => [p.id, p]));
+  const filled = legs.map((leg, l) => ({
+    ...leg,
+    refillMl: 0,
+    fills: given[l].map((f) => {
+      if (f.productId === null) {
+        return {
+          flaskIndex: f.flaskIndex,
+          product: null,
+          volumeMl: f.volumeMl,
+        };
+      }
+
+      const product = byId.get(f.productId);
+      if (!product) throw new Error(`Unknown product: ${f.productId}`);
+
+      return { flaskIndex: f.flaskIndex, product, volumeMl: f.volumeMl };
+    }),
+  }));
+
+  for (const span of spans) {
+    const totalMl = span.reduce(
+      (s, l) => s + Math.max(legs[l].need.fluidMl, legs[l].supply.fluidMl),
+      0,
+    );
+    const carried = span.reduce(
+      (s, l) => s + sum(filled[l].fills, (f) => f.volumeMl),
+      0,
+    );
+    filled[span[0]].refillMl = Math.max(totalMl - carried, 0);
+  }
+
+  return filled;
 }
 
 /**

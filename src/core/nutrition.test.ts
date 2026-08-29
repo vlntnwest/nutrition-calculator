@@ -1339,3 +1339,62 @@ test("une ration imposée sous le demi-pas disparaît", () => {
 
   expect(impose.legs[0].servings).toEqual([]);
 });
+
+test("des remplissages imposés remplacent le calcul des flasques", () => {
+  const runner: Runner = {
+    massKg: 70,
+    flasks: [{ volumeMl: 500, onlyWater: false }],
+  };
+  const impose = nutritionPlan(flatTrack(20, 3), [], runner, TARGETS, [gel], {
+    imposed: {
+      servings: [[{ productId: gel.id, units: 2 }]],
+      // Le calcul, lui, part toujours flasque pleine : 200 ne peut venir
+      // que de la consigne.
+      fills: [[{ flaskIndex: 0, productId: null, volumeMl: 200 }]],
+    },
+  });
+
+  expect(impose.legs[0].fills).toEqual([
+    { flaskIndex: 0, product: null, volumeMl: 200 },
+  ]);
+});
+
+test("ce que les flasques imposées ne portent pas ressort en refillMl", () => {
+  const runner: Runner = {
+    massKg: 70,
+    flasks: [{ volumeMl: 500, onlyWater: false }],
+  };
+  const impose = nutritionPlan(flatTrack(20, 3), [], runner, TARGETS, [gel], {
+    imposed: {
+      servings: [[{ productId: gel.id, units: 2 }]],
+      fills: [[{ flaskIndex: 0, productId: null, volumeMl: 200 }]],
+    },
+  });
+
+  // 500 mL/h sur 3 h : 1500 mL à couvrir, la consigne en porte 200.
+  expect(impose.legs[0].refillMl).toBeCloseTo(1300);
+});
+
+test("une flasque qu'on impose vide reste vide", () => {
+  const runner: Runner = {
+    massKg: 70,
+    flasks: [{ volumeMl: 500, onlyWater: false }],
+  };
+  const impose = nutritionPlan(
+    flatTrack(20, 3),
+    [],
+    runner,
+    TARGETS,
+    [gel, drink],
+    {
+      // Le calcul remplirait la flasque de boisson ; on part sans.
+      imposed: {
+        servings: [[{ productId: drink.id, units: 1 }]],
+        fills: [[]],
+      },
+    },
+  );
+
+  expect(impose.legs[0].fills).toEqual([]);
+  expect(impose.legs[0].refillMl).toBeCloseTo(1500);
+});
