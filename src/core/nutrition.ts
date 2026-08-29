@@ -517,7 +517,7 @@ function provision(
     }
 
     return fillSpans(
-      raws.map((raw, l) => assemble(raw, needs[l], loaded[l])),
+      raws.map((raw, l) => assemble(raw, needs[l], servingsOf(loaded[l]))),
       spans,
       runner.flasks,
     );
@@ -569,7 +569,7 @@ function provision(
   rebalance(loaded, carbNeeds);
 
   return fillSpans(
-    raws.map((raw, l) => assemble(raw, needs[l], loaded[l])),
+    raws.map((raw, l) => assemble(raw, needs[l], servingsOf(loaded[l]))),
     spans,
     runner.flasks,
   );
@@ -909,16 +909,19 @@ function rebalance(loaded: Loaded[][], needsG: number[]): void {
   }
 }
 
-/** Un secteur chargé : les pas deviennent des unités, et on somme. */
+/** Les pas d'un secteur, devenus des unités. */
+function servingsOf(loaded: Loaded[]): Serving[] {
+  return loaded
+    .filter((x) => x.steps > 0)
+    .map((x) => ({ product: x.product, units: x.steps / stepsOf(x.product) }));
+}
+
+/** Un secteur chargé : on somme ce qu'il porte. */
 function assemble(
   raw: RawLeg,
   need: Leg["need"],
-  loaded: Loaded[],
+  servings: Serving[],
 ): Omit<Leg, "fills" | "refillMl"> {
-  const servings: Serving[] = loaded
-    .filter((x) => x.steps > 0)
-    .map((x) => ({ product: x.product, units: x.steps / stepsOf(x.product) }));
-
   const supply = servings.reduce(
     (s, r) => ({
       carbsG: s.carbsG + r.units * r.product.carbsG,
