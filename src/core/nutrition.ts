@@ -5,6 +5,7 @@ import type {
   Fill,
   FixedSpan,
   Flask,
+  Imposed,
   Leg,
   NutritionPlan,
   Product,
@@ -88,10 +89,14 @@ export function nutritionPlan(
    */
   options:
     | number[]
-    | { parts?: number[]; finishTargets?: Partial<Targets> } = {},
+    | {
+        parts?: number[];
+        finishTargets?: Partial<Targets>;
+        imposed?: Imposed;
+      } = {},
 ): NutritionPlan {
-  const { parts, finishTargets } = Array.isArray(options)
-    ? { parts: options, finishTargets: undefined }
+  const { parts, finishTargets, imposed } = Array.isArray(options)
+    ? { parts: options, finishTargets: undefined, imposed: undefined }
     : options;
   const raws = splitByAidStation(points, aidStations, runner);
   const endM = points.length > 0 ? points[points.length - 1].d : 0;
@@ -108,6 +113,7 @@ export function nutritionPlan(
     spans.liquid,
     parts,
     finishTargets,
+    imposed,
   );
 
   const units = new Map<string, number>();
@@ -430,6 +436,7 @@ function provision(
   spans: number[][],
   parts?: number[],
   finishTargets?: Partial<Targets>,
+  given?: Imposed,
 ): Leg[] {
   // La part est lue sur la position d'origine, avant le filtrage : sinon un
   // produit sans glucides décale en silence toutes les parts qui le suivent.
@@ -447,6 +454,19 @@ function provision(
     ...(raw.to === null ? finishTargets : imposed.get(raw.to)),
   }));
   const needs = raws.map((raw, l) => needOf(raw, legTargets[l]));
+
+  // Une consigne rend les trois passes sans objet : il n'y a plus rien à
+  // décider, seulement à sommer.
+  if (given) {
+    return fillSpans(
+      raws.map((raw, l) =>
+        assemble(raw, needs[l], imposedOf(given, products, l)),
+      ),
+      spans,
+      runner.flasks,
+    );
+  }
+
   const loaded: Loaded[][] = raws.map(() => []);
 
   // Passe 1. Le bidon délivre un flux continu commandé par l'hydratation : ce
@@ -914,6 +934,30 @@ function servingsOf(loaded: Loaded[]): Serving[] {
   return loaded
     .filter((x) => x.steps > 0)
     .map((x) => ({ product: x.product, units: x.steps / stepsOf(x.product) }));
+}
+
+/**
+ * Les rations imposées sur un secteur, rangées sur le pas de chaque produit.
+ *
+ * L'arrondi tient ici et pas chez l'appelant : c'est `Serving.units` qui porte
+ * l'invariant, et un demi-gel n'existe pas davantage parce qu'un humain l'a
+ * saisi. Ce qui tombe sous le demi-pas disparaît.
+ */
+function imposedOf(
+  given: Imposed,
+  products: Product[],
+  leg: number,
+): Serving[] {
+  const byId = new Map(products.map((p) => [p.id, p]));
+
+  return given.servings[leg].flatMap((r) => {
+    const product = byId.get(r.productId);
+    if (!product) throw new Error(`Unknown product: ${r.productId}`);
+
+    const steps = Math.round(r.units * stepsOf(product));
+
+    return steps > 0 ? [{ product, units: steps / stepsOf(product) }] : [];
+  });
 }
 
 /** Un secteur chargé : on somme ce qu'il porte. */

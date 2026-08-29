@@ -382,6 +382,19 @@ export type Fill = {
 };
 
 /**
+ * Ce qu'on impose au calcul plutôt que de le lui laisser décider — la retouche
+ * à la main. Un tableau par secteur, dans l'ordre des secteurs. ADR 011.
+ */
+export type Imposed = {
+  servings: { productId: string; units: number }[][];
+  fills?: {
+    flaskIndex: number;
+    productId: string | null;
+    volumeMl: number;
+  }[][];
+};
+
+/**
  * Ce qu'il y a entre deux ravitos — l'unité d'**affichage** du plan.
  *
  * Ce n'est plus l'unité de calcul : depuis l'ADR 007, les glucides solides se

@@ -1282,3 +1282,60 @@ test("l'arrivée se règle à part, aucun ravito ne la ferme", () => {
     6,
   );
 });
+
+test("des rations imposées remplacent la répartition", () => {
+  const impose = nutritionPlan(flatTrack(20, 3), [], RUNNER, TARGETS, [gel], {
+    imposed: { servings: [[{ productId: gel.id, units: 3 }]] },
+  });
+
+  // Sans ravito, un seul secteur : la consigne tient en un tableau.
+  expect(impose.legs).toHaveLength(1);
+  expect(impose.legs[0].servings).toEqual([{ product: gel, units: 3 }]);
+  expect(impose.legs[0].supply.carbsG).toBeCloseTo(3 * gel.carbsG);
+  expect(impose.legs[0].marginG).toBeCloseTo(
+    3 * gel.carbsG - impose.legs[0].need.carbsG,
+  );
+});
+
+test("les remarques se rejouent sur les rations imposées", () => {
+  const impose = nutritionPlan(flatTrack(20, 3), [], RUNNER, TARGETS, [gel], {
+    imposed: { servings: [[{ productId: gel.id, units: 20 }]] },
+  });
+
+  // 540 g sur 180 visés, très au-delà de CARBS_OVERSHOOT_MAX.
+  expect(impose.warnings.map((w) => w.code)).toContain("carbs-above-target");
+});
+
+test("une ration imposée se range sur le pas du produit", () => {
+  const impose = nutritionPlan(
+    flatTrack(20, 3),
+    [],
+    RUNNER,
+    TARGETS,
+    [gel, baouwBar],
+    {
+      imposed: {
+        servings: [
+          [
+            { productId: gel.id, units: 1.4 },
+            { productId: baouwBar.id, units: 1.4 },
+          ],
+        ],
+      },
+    },
+  );
+
+  // Le gel ne se coupe pas, la barre se coupe en deux.
+  expect(impose.legs[0].servings).toEqual([
+    { product: gel, units: 1 },
+    { product: baouwBar, units: 1.5 },
+  ]);
+});
+
+test("une ration imposée sous le demi-pas disparaît", () => {
+  const impose = nutritionPlan(flatTrack(20, 3), [], RUNNER, TARGETS, [gel], {
+    imposed: { servings: [[{ productId: gel.id, units: 0.3 }]] },
+  });
+
+  expect(impose.legs[0].servings).toEqual([]);
+});

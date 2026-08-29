@@ -61,10 +61,10 @@ Trois propriétés en découlent, plutôt que d'avoir à être décidées à par
 **Une quantité imposée se range sur le pas du produit.** `divisibleBy` décrit
 ce que le produit admet physiquement — entier, ou demi pour ce qui se coupe —
 et cette propriété ne dépend pas de qui décide de la quantité. Un demi-gel
-n'existe pas plus parce qu'un humain l'a saisi. L'enregistrement arrondit donc
-au multiple de `1 / divisibleBy` le plus proche avant de passer la consigne au
-noyau, et l'invariant de `Serving.units` tient sur un plan retouché comme sur
-un plan calculé.
+n'existe pas plus parce qu'un humain l'a saisi. Le noyau arrondit donc la
+consigne au multiple de `1 / divisibleBy` le plus proche — là où l'invariant de
+`Serving.units` est écrit, plutôt que chez chacun de ses appelants — et cet
+invariant tient sur un plan retouché comme sur un plan calculé.
 
 **`plans` gagne `editedAt`**, posée par l'enregistrement, effacée par une
 génération, dans la même transaction que l'écriture. Un recalcul sur un plan
