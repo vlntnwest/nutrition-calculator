@@ -1,9 +1,11 @@
 import { eq } from "drizzle-orm";
 import { afterEach, expect, test } from "vitest";
 import { db } from "@/db";
+import { fill } from "@/db/schema/fill";
 import { legs } from "@/db/schema/legs";
 import { plans } from "@/db/schema/plans";
 import { productSnapshots } from "@/db/schema/productSnapshots";
+import { servings } from "@/db/schema/servings";
 import { createPlan } from "./createPlan";
 import { getPlan } from "./getPlan";
 import { newPlan as input } from "./newPlan.fixture";
@@ -202,4 +204,101 @@ test("un plan inconnu est refusé", async () => {
       settings: { massKg: 62 },
     }),
   ).rejects.toThrow("Unknown plan");
+});
+
+/** Le calcul déjà écrit, en nombre de lignes de chaque côté du modèle. */
+async function calcul(accessId: string) {
+  const [secteurs, rations, remplissages] = await Promise.all([
+    db.select().from(legs).where(eq(legs.planId, accessId)),
+    db.select().from(servings).where(eq(servings.planId, accessId)),
+    db.select().from(fill).where(eq(fill.planId, accessId)),
+  ]);
+
+  return {
+    secteurs: secteurs.length,
+    rations: rations.length,
+    remplissages: remplissages.length,
+  };
+}
+
+/**
+ * Le nom d'un ravito n'entre dans aucun calcul : le jeter obligerait à
+ * recalculer pour une faute de frappe. `legs_end_position_fkey` retient la
+ * ligne, donc elle se met à jour sur place au lieu d'être refaite.
+ */
+test("renommer un ravito garde le calcul", async () => {
+  const accessId = await createPlan(input);
+  written.push(accessId);
+  await regeneratePlan(accessId);
+  const avant = await calcul(accessId);
+
+  await updatePlan(accessId, {
+    aidStations: [
+      { name: "Chalet du Haberacker", distanceM: 9800, stopS: 300 },
+      { name: "Ravito Ochsenstein", distanceM: 20800, stopS: 240 },
+    ],
+  });
+
+  const [plan] = await db
+    .select()
+    .from(plans)
+    .where(eq(plans.accessId, accessId));
+
+  expect(plan.generatedAt).not.toBeNull();
+  expect(await calcul(accessId)).toEqual(avant);
+  expect((await getPlan(accessId))?.aidStations[0].name).toBe(
+    "Chalet du Haberacker",
+  );
+});
+
+test("changer l'heure de départ garde le calcul", async () => {
+  const accessId = await createPlan(input);
+  written.push(accessId);
+  await regeneratePlan(accessId);
+  const avant = await calcul(accessId);
+
+  await updatePlan(accessId, { settings: { startTime: "06:30" } });
+
+  const [plan] = await db
+    .select()
+    .from(plans)
+    .where(eq(plans.accessId, accessId));
+
+  expect(plan.generatedAt).not.toBeNull();
+  expect(await calcul(accessId)).toEqual(avant);
+  expect((await getPlan(accessId))?.settings.startTime).toBe("06:30");
+});
+
+/**
+ * `fill_flask_fk` cascade : réécrire une fiole à l'identique emporterait les
+ * remplissages de secteurs que le calcul, lui, a gardés.
+ */
+test("réenregistrer une section à l'identique ne touche à rien", async () => {
+  const accessId = await createPlan(input);
+  written.push(accessId);
+  await regeneratePlan(accessId);
+  const avant = await calcul(accessId);
+
+  await updatePlan(accessId, {
+    flasks: input.flasks,
+    aidStations: input.aidStations,
+    productCodes: input.productCodes,
+  });
+
+  expect(await calcul(accessId)).toEqual(avant);
+});
+
+test("le poids seul garde le calcul quand les cibles sont saisies", async () => {
+  const accessId = await createPlan(input);
+  written.push(accessId);
+  await regeneratePlan(accessId);
+
+  await updatePlan(accessId, { settings: { massKg: 90 } });
+
+  const [plan] = await db
+    .select()
+    .from(plans)
+    .where(eq(plans.accessId, accessId));
+
+  expect(plan.generatedAt).not.toBeNull();
 });
