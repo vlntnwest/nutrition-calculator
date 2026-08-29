@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { saveEditedRoadbook } from "@/app/plans/actions";
 import type { Roadbook } from "@/app/plans/getRoadbook";
 import type { RoadbookEdit } from "@/app/plans/saveRoadbook";
-import { borne, duree, ecart } from "./format";
+import { borne, duree, ecart, excessif } from "./format";
 
 /** Le plan affiché, ramené à ce qui se retouche. */
 function editOf(roadbook: Roadbook): RoadbookEdit {
@@ -209,9 +209,17 @@ export function Retoucher({
 
               <p className={`text-sm ${vieux}`}>
                 Apport : {Math.round(leg.supply.carbsG)} g de glucides
-                {ecart(leg.marginG)} ·{" "}
-                {Math.round(leg.supply.energyKcal).toLocaleString("fr")} kcal ·{" "}
-                {Math.round(leg.supply.sodiumMg)} mg de sodium ·{" "}
+                <span
+                  className={
+                    excessif(leg.supply.carbsG, leg.needG)
+                      ? "text-red-600"
+                      : undefined
+                  }
+                >
+                  {ecart(leg.marginG)}
+                </span>{" "}
+                · {Math.round(leg.supply.energyKcal).toLocaleString("fr")} kcal
+                · {Math.round(leg.supply.sodiumMg)} mg de sodium ·{" "}
                 {Math.round(leg.supply.fluidMl)} mL de boisson
               </p>
 
@@ -304,8 +312,19 @@ export function Retoucher({
         </ul>
         <p className="text-sm">
           {Math.round(roadbook.total.carbsG)} g de glucides
-          {ecart(roadbook.total.marginG)} ·{" "}
-          {Math.round(roadbook.total.energyKcal).toLocaleString("fr")} kcal ·{" "}
+          <span
+            className={
+              excessif(
+                roadbook.total.carbsG,
+                roadbook.total.carbsG - roadbook.total.marginG,
+              )
+                ? "text-red-600"
+                : undefined
+            }
+          >
+            {ecart(roadbook.total.marginG)}
+          </span>{" "}
+          · {Math.round(roadbook.total.energyKcal).toLocaleString("fr")} kcal ·{" "}
           {Math.round(roadbook.total.sodiumMg)} mg de sodium ·{" "}
           {Math.round(roadbook.total.fluidMl)} mL de boisson
         </p>
