@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterEach, expect, test } from "vitest";
 import { db } from "@/db";
 import { fill } from "@/db/schema/fill";
@@ -301,4 +301,49 @@ test("le poids seul garde le calcul quand les cibles sont saisies", async () => 
     .where(eq(plans.accessId, accessId));
 
   expect(plan.generatedAt).not.toBeNull();
+});
+
+/** Marque le plan comme retouché, sans passer par l'enregistrement. */
+async function retoucher(accessId: string) {
+  await db
+    .update(plans)
+    .set({ editedAt: sql`now()` })
+    .where(eq(plans.accessId, accessId));
+}
+
+test("un calcul jeté emporte la marque de retouche", async () => {
+  const accessId = await createPlan(input);
+  written.push(accessId);
+  await regeneratePlan(accessId);
+  await retoucher(accessId);
+
+  // L'intensité en montée entre dans le calcul : il ne survit pas.
+  await updatePlan(accessId, { settings: { climbIntensity: 0.5 } });
+
+  const [plan] = await db
+    .select()
+    .from(plans)
+    .where(eq(plans.accessId, accessId));
+
+  expect(plan.generatedAt).toBeNull();
+  expect(plan.editedAt).toBeNull();
+});
+
+test("un calcul qui survit garde la marque de retouche", async () => {
+  const accessId = await createPlan(input);
+  written.push(accessId);
+  await regeneratePlan(accessId);
+  await retoucher(accessId);
+
+  // La date de course ne rentre pas dans le calcul : il survit, les
+  // retouches avec.
+  await updatePlan(accessId, { settings: { raceDate: "2027-06-12" } });
+
+  const [plan] = await db
+    .select()
+    .from(plans)
+    .where(eq(plans.accessId, accessId));
+
+  expect(plan.generatedAt).not.toBeNull();
+  expect(plan.editedAt).not.toBeNull();
 });

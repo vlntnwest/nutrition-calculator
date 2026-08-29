@@ -128,6 +128,8 @@ export async function updatePlan(
         lastSavedAt: sql`now()`,
         // `undefined` laisse la colonne où elle est : le calcul a survécu.
         generatedAt: garde ? undefined : null,
+        // Le calcul jeté emporte les retouches qui portaient dessus.
+        editedAt: garde ? undefined : null,
         expiresAt: sql`greatest(now(), ${merged.settings.raceDate ?? null}::timestamptz) + interval '6 months'`,
       })
       .where(eq(plans.accessId, accessId));

@@ -21,6 +21,14 @@ export const plans = snakeCase.table(
       precision: 6,
       withTimezone: true,
     }),
+    /**
+     * Quand le plan calculé a été retouché à la main. Nulle sur un plan qui
+     * sort du calcul : une génération l'efface. ADR 011.
+     */
+    editedAt: timestamp({
+      precision: 6,
+      withTimezone: true,
+    }),
     expiresAt: timestamp({ precision: 6, withTimezone: true })
       .notNull()
       .default(sql`now() + interval '6 months'`),
