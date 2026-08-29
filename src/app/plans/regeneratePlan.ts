@@ -18,7 +18,7 @@ export async function regeneratePlan(accessId: string): Promise<void> {
     finishTargets,
   });
 
-  await write(accessId, plan);
+  await write(accessId, plan, { edited: false });
 }
 
 /**
@@ -43,7 +43,11 @@ function integerDurations(plan: NutritionPlan): number[] {
   return out;
 }
 
-async function write(accessId: string, plan: NutritionPlan): Promise<void> {
+export async function write(
+  accessId: string,
+  plan: NutritionPlan,
+  { edited }: { edited: boolean },
+): Promise<void> {
   const durations = integerDurations(plan);
 
   await db.transaction(async (tx) => {
@@ -99,7 +103,11 @@ async function write(accessId: string, plan: NutritionPlan): Promise<void> {
 
     await tx
       .update(plans)
-      .set({ generatedAt: sql`now()`, lastSavedAt: sql`now()` })
+      .set({
+        generatedAt: sql`now()`,
+        lastSavedAt: sql`now()`,
+        editedAt: edited ? sql`now()` : null,
+      })
       .where(eq(plans.accessId, accessId));
   });
 }
