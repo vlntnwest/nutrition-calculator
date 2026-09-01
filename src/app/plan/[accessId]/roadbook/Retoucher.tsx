@@ -16,12 +16,16 @@ function editOf(roadbook: Roadbook): RoadbookEdit {
         quantity: s.quantity,
       })),
     ),
+    // Hors de l'ouverture d'une portée, il n'y a pas de contrôle : ne rien
+    // recopier là évite de renvoyer un remplissage que le noyau refuserait.
     fills: roadbook.legs.map((leg) =>
-      leg.fills.map((f) => ({
-        flaskRank: f.flaskRank,
-        productSnapshotId: f.productSnapshotId,
-        volumeMl: f.volumeMl,
-      })),
+      leg.opensLiquidSpan
+        ? leg.fills.map((f) => ({
+            flaskRank: f.flaskRank,
+            productSnapshotId: f.productSnapshotId,
+            volumeMl: f.volumeMl,
+          }))
+        : [],
     ),
   };
 }
@@ -36,10 +40,22 @@ export function Retoucher({
   totalM: number;
 }) {
   const router = useRouter();
+  const [rendu, setRendu] = useState(roadbook);
   const [edit, setEdit] = useState(() => editOf(roadbook));
   const [sale, setSale] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [pending, start] = useTransition();
+
+  // `router.refresh()` ne remonte pas le composant. Sans ce retour à la
+  // source, un recalcul rafraîchirait les agrégats en laissant les contrôles
+  // sur des retouches que le serveur vient de jeter — et l'enregistrement
+  // suivant les réimposerait, la confirmation de `Calculer` pour rien.
+  if (rendu !== roadbook) {
+    setRendu(roadbook);
+    setEdit(editOf(roadbook));
+    setSale(false);
+    setErreur(null);
+  }
 
   const produit = (id: string) => roadbook.catalogue.find((p) => p.id === id);
   const nomme = (id: string) => {
@@ -227,67 +243,75 @@ export function Retoucher({
                 À boire : {Math.round(leg.needFluidMl)} mL
               </p>
 
-              <ul className="text-sm">
-                {roadbook.flasks.map((flask) => {
-                  const verse = edit.fills[l].find(
-                    (f) => f.flaskRank === flask.rank,
-                  );
+              {leg.opensLiquidSpan ? (
+                <ul className="text-sm">
+                  {roadbook.flasks.map((flask) => {
+                    const verse = edit.fills[l].find(
+                      (f) => f.flaskRank === flask.rank,
+                    );
 
-                  return (
-                    <li
-                      key={flask.rank}
-                      className="flex items-center gap-2 py-0.5"
-                    >
-                      <span>
-                        Flasque {flask.rank} ({flask.volumeMl} mL)
-                      </span>
-                      <select
-                        className="border px-1"
-                        aria-label={`Flasque ${flask.rank} du secteur ${leg.rank}`}
-                        value={
-                          verse === undefined
-                            ? "vide"
-                            : (verse.productSnapshotId ?? "eau")
-                        }
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          if (v === "vide") return verser(l, flask.rank, null);
-
-                          verser(l, flask.rank, {
-                            productSnapshotId: v === "eau" ? null : v,
-                            volumeMl: verse?.volumeMl ?? flask.volumeMl,
-                          });
-                        }}
+                    return (
+                      <li
+                        key={flask.rank}
+                        className="flex items-center gap-2 py-0.5"
                       >
-                        <option value="vide">rien</option>
-                        <option value="eau">eau claire</option>
-                        {!flask.onlyWater &&
-                          roadbook.catalogue.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {`${p.brandName ?? ""} ${p.name}`.trim()}
-                            </option>
-                          ))}
-                      </select>
-                      {verse !== undefined && (
-                        <input
-                          type="number"
-                          className="w-20 border px-1"
-                          min={1}
-                          step={10}
-                          value={verse.volumeMl}
-                          aria-label={`Volume de la flasque ${flask.rank} au secteur ${leg.rank}`}
-                          onChange={(e) =>
-                            verser(l, flask.rank, {
-                              productSnapshotId: verse.productSnapshotId,
-                              volumeMl: Number(e.target.value),
-                            })
+                        <span>
+                          Flasque {flask.rank} ({flask.volumeMl} mL)
+                        </span>
+                        <select
+                          className="border px-1"
+                          aria-label={`Flasque ${flask.rank} du secteur ${leg.rank}`}
+                          value={
+                            verse === undefined
+                              ? "vide"
+                              : (verse.productSnapshotId ?? "eau")
                           }
-                        />
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (v === "vide")
+                              return verser(l, flask.rank, null);
+
+                            verser(l, flask.rank, {
+                              productSnapshotId: v === "eau" ? null : v,
+                              volumeMl: verse?.volumeMl ?? flask.volumeMl,
+                            });
+                          }}
+                        >
+                          <option value="vide">rien</option>
+                          <option value="eau">eau claire</option>
+                          {!flask.onlyWater &&
+                            roadbook.catalogue.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {`${p.brandName ?? ""} ${p.name}`.trim()}
+                              </option>
+                            ))}
+                        </select>
+                        {verse !== undefined && (
+                          <input
+                            type="number"
+                            className="w-20 border px-1"
+                            min={1}
+                            step={10}
+                            value={verse.volumeMl}
+                            aria-label={`Volume de la flasque ${flask.rank} au secteur ${leg.rank}`}
+                            onChange={(e) =>
+                              verser(l, flask.rank, {
+                                productSnapshotId: verse.productSnapshotId,
+                                volumeMl: Number(e.target.value),
+                              })
+                            }
+                          />
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <p className={`text-sm ${vieux}`}>
+                  Rien à verser ici : les flasques ont été remplies en amont, au
+                  dernier ravito qui donnait de l'eau.
+                </p>
+              )}
 
               <div className={vieux}>
                 {leg.warnings.map((w) => (

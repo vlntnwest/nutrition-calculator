@@ -1398,3 +1398,51 @@ test("une flasque qu'on impose vide reste vide", () => {
   expect(impose.legs[0].fills).toEqual([]);
   expect(impose.legs[0].refillMl).toBeCloseTo(1500);
 });
+
+test("un remplissage imposé hors de l'ouverture de la portée se refuse", () => {
+  // La portée [1, 2] s'ouvre au point d'eau : le passage sec ne rouvre rien.
+  // Verser sur le secteur 2, c'est remplir une flasque restée à la maison.
+  expect(() =>
+    nutritionPlan(
+      flatTrack(40, 4),
+      [WATER_STOP, DRY_STOP],
+      CARRIER,
+      TARGETS,
+      [gel, drink],
+      {
+        imposed: {
+          servings: [[], [], []],
+          fills: [
+            [{ flaskIndex: 0, productId: null, volumeMl: 500 }],
+            [{ flaskIndex: 0, productId: null, volumeMl: 500 }],
+            [{ flaskIndex: 0, productId: null, volumeMl: 500 }],
+          ],
+        },
+      },
+    ),
+  ).toThrow(/carry span/);
+});
+
+test("une portée ne porte que ce qu'elle a versé à son ouverture", () => {
+  const impose = nutritionPlan(
+    flatTrack(40, 4),
+    [WATER_STOP, DRY_STOP],
+    CARRIER,
+    TARGETS,
+    [gel, drink],
+    {
+      imposed: {
+        servings: [[], [], []],
+        fills: [
+          [{ flaskIndex: 0, productId: null, volumeMl: 500 }],
+          [{ flaskIndex: 0, productId: null, volumeMl: 500 }],
+          [],
+        ],
+      },
+    },
+  );
+
+  // La portée couvre 1 h puis 2 h, soit 1 500 mL, dont 500 portés au départ.
+  expect(impose.legs[1].refillMl).toBeCloseTo(1000);
+  expect(impose.legs[2].fills).toEqual([]);
+});

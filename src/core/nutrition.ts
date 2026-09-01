@@ -599,7 +599,8 @@ function provision(
  * Les remplissages tels qu'on les impose.
  *
  * Ce qu'ils ne portent pas ressort en `refillMl`, au même endroit que dans
- * `fillSpans` : à l'ouverture de la portée.
+ * `fillSpans` : à l'ouverture de la portée. On ne verse qu'à cette
+ * ouverture-là — une consigne posée plus loin dans la portée se refuse.
  */
 function imposeFills(
   legs: Omit<Leg, "fills" | "refillMl">[],
@@ -628,14 +629,20 @@ function imposeFills(
   }));
 
   for (const span of spans) {
+    // Une flasque se remplit là où l'on ravitaille. Versé plus loin dans la
+    // portée, le liquide ne serait jamais accessible mais compterait comme
+    // porté : il éteindrait en silence le `refillMl` qui le réclame.
+    for (const l of span.slice(1)) {
+      if (filled[l].fills.length > 0) {
+        throw new Error(`Fill outside the opening leg of a carry span: ${l}`);
+      }
+    }
+
     const totalMl = span.reduce(
       (s, l) => s + Math.max(legs[l].need.fluidMl, legs[l].supply.fluidMl),
       0,
     );
-    const carried = span.reduce(
-      (s, l) => s + sum(filled[l].fills, (f) => f.volumeMl),
-      0,
-    );
+    const carried = sum(filled[span[0]].fills, (f) => f.volumeMl);
     filled[span[0]].refillMl = Math.max(totalMl - carried, 0);
   }
 

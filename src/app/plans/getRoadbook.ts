@@ -1,5 +1,6 @@
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
+import { aidStations } from "@/db/schema/aidStations";
 import { fill } from "@/db/schema/fill";
 import { flasks } from "@/db/schema/flasks";
 import { legOverrides } from "@/db/schema/legOverrides";
@@ -47,6 +48,12 @@ export type RoadbookLeg = {
   durationS: number;
   servings: RoadbookServing[];
   fills: RoadbookFill[];
+  /**
+   * Le secteur ouvre-t-il une portée de liquide ? On ne remplit ses flasques
+   * qu'au départ ou en repartant d'une borne qui fournit de l'eau : ailleurs,
+   * il n'y a rien à verser. Même règle que `carrySpans`, côté noyau.
+   */
+  opensLiquidSpan: boolean;
   supply: Supply;
   /** Les glucides visés sur ce secteur : la cible horaire fois sa durée. */
   needG: number;
@@ -122,6 +129,7 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
     warningRows,
     flaskRows,
     overrideRows,
+    stationRows,
     catalogue,
   ] = await Promise.all([
     db
@@ -168,6 +176,7 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
     db.select().from(warnings).where(eq(warnings.planId, accessId)),
     db.select().from(flasks).where(eq(flasks.planId, accessId)),
     db.select().from(legOverrides).where(eq(legOverrides.planId, accessId)),
+    db.select().from(aidStations).where(eq(aidStations.planId, accessId)),
     db
       .select({
         id: productSnapshots.id,
@@ -206,7 +215,13 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
   const byLeg = <T extends { legRank: number }>(rows: T[], rank: number) =>
     rows.filter((r) => r.legRank === rank);
 
-  const legsOut = legRows.map((leg) => {
+  // Le secteur `i` part de la borne qui clôt le secteur `i - 1`. Une borne
+  // inconnue rouvre, comme au noyau.
+  const liquidAt = new Map(
+    stationRows.map((a) => [a.positionM, a.providesLiquid]),
+  );
+
+  const legsOut = legRows.map((leg, i) => {
     const rations = byLeg(servingRows, leg.rank);
     const supply = rations.reduce(
       (s, r) => ({
@@ -217,6 +232,7 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
       }),
       VIDE,
     );
+    const depuis = i === 0 ? null : legRows[i - 1].endPositionM;
     const cible = imposed.get(boundOf(leg.endPositionM)) ?? targets;
     const needG = (cible.carbsGH * leg.durationS) / 3600;
     const needFluidMl = (cible.fluidMlH * leg.durationS) / 3600;
@@ -234,6 +250,7 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
         quantity: s.quantity,
         divisibleBy: s.divisibleBy,
       })),
+      opensLiquidSpan: depuis === null || (liquidAt.get(depuis) ?? true),
       fills: byLeg(fillRows, leg.rank).map((f) => ({
         flaskRank: f.flaskRank,
         product: f.product,

@@ -150,3 +150,27 @@ test("le roadbook porte de quoi retoucher", async () => {
     }
   }
 });
+
+test("un secteur qui part d'une borne sans eau n'ouvre pas de portée", async () => {
+  // Le deuxième ravito ne donne pas d'eau : le secteur qui en repart boit ce
+  // qu'il a chargé au premier, il n'y a rien à y verser.
+  const accessId = await createPlan({
+    ...input,
+    aidStations: [
+      input.aidStations[0],
+      { ...input.aidStations[1], providesLiquid: false },
+    ],
+  });
+  written.push(accessId);
+  await regeneratePlan(accessId);
+
+  const roadbook = await getRoadbook(accessId);
+
+  expect(roadbook?.legs.map((l) => l.opensLiquidSpan)).toEqual([
+    true,
+    true,
+    false,
+  ]);
+  // Et le calcul n'y a effectivement rien versé.
+  expect(roadbook?.legs[2].fills).toEqual([]);
+});
