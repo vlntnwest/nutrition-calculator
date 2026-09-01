@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { nombre, toClock, toSeconds } from "./champs";
+import { toClock, toNumber, toSeconds } from "./fields";
 
 test.each([
   ["9", 9],
@@ -15,8 +15,8 @@ test.each([
   ["   ", undefined],
   ["abc", undefined],
   ["9 8", undefined],
-])("nombre(%o) → %o", (saisie, attendu) => {
-  expect(nombre(saisie)).toBe(attendu);
+])("toNumber(%o) → %o", (saisie, attendu) => {
+  expect(toNumber(saisie)).toBe(attendu);
 });
 
 test.each([

@@ -6,6 +6,7 @@ import { createPlan } from "./createPlan";
 import { getRoadbook } from "./getRoadbook";
 import { newPlan as input } from "./newPlan.fixture";
 import { regeneratePlan } from "./regeneratePlan";
+import { saveRoadbook } from "./saveRoadbook";
 
 const written: string[] = [];
 
@@ -107,4 +108,69 @@ test("le total est la somme des secteurs", async () => {
   );
   // Le sac : combien de chaque produit, tous secteurs confondus.
   expect(roadbook?.total.units.length).toBe(input.productCodes.length);
+});
+
+test("un plan sortant du calcul n'est pas marqué retouché", async () => {
+  const accessId = await createPlan(input);
+  written.push(accessId);
+  await regeneratePlan(accessId);
+
+  expect((await getRoadbook(accessId))?.edited).toBe(false);
+});
+
+test("le roadbook signale un plan retouché", async () => {
+  const accessId = await createPlan(input);
+  written.push(accessId);
+  await regeneratePlan(accessId);
+  const roadbook = await getRoadbook(accessId);
+  if (!roadbook) throw new Error("Le plan devait être calculé");
+
+  await saveRoadbook(accessId, {
+    servings: roadbook.legs.map(() => []),
+    fills: roadbook.legs.map(() => []),
+  });
+
+  expect((await getRoadbook(accessId))?.edited).toBe(true);
+});
+
+test("le roadbook porte de quoi retoucher", async () => {
+  const accessId = await createPlan(input);
+  written.push(accessId);
+  await regeneratePlan(accessId);
+
+  const roadbook = await getRoadbook(accessId);
+
+  // Le catalogue du plan, ses contenants, et de quoi désigner chaque ration.
+  expect(roadbook?.catalogue.length).toBe(input.productCodes.length);
+  expect(roadbook?.flasks.map((f) => f.rank)).toEqual([1, 2]);
+  for (const leg of roadbook?.legs ?? []) {
+    for (const s of leg.servings) {
+      expect(s.productSnapshotId).toMatch(/^[0-9a-f-]{36}$/);
+      expect([1, 2]).toContain(s.divisibleBy);
+    }
+  }
+});
+
+test("un secteur qui part d'une borne sans eau n'ouvre pas de portée", async () => {
+  // Le deuxième ravito ne donne pas d'eau : le secteur qui en repart boit ce
+  // qu'il a chargé au premier, il n'y a rien à y verser.
+  const accessId = await createPlan({
+    ...input,
+    aidStations: [
+      input.aidStations[0],
+      { ...input.aidStations[1], providesLiquid: false },
+    ],
+  });
+  written.push(accessId);
+  await regeneratePlan(accessId);
+
+  const roadbook = await getRoadbook(accessId);
+
+  expect(roadbook?.legs.map((l) => l.opensLiquidSpan)).toEqual([
+    true,
+    true,
+    false,
+  ]);
+  // Et le calcul n'y a effectivement rien versé.
+  expect(roadbook?.legs[2].fills).toEqual([]);
 });

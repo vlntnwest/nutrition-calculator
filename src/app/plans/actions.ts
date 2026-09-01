@@ -6,6 +6,8 @@ import { getPlan } from "./getPlan";
 import { PlanError } from "./planError";
 import type { NewPlan } from "./planInput";
 import { regeneratePlan } from "./regeneratePlan";
+import type { RoadbookEdit } from "./saveRoadbook";
+import { saveRoadbook } from "./saveRoadbook";
 import type { PlanPatch } from "./updatePlan";
 import { updatePlan } from "./updatePlan";
 
@@ -85,6 +87,21 @@ export async function savePlan(
 export async function computePlan(accessId: string): Promise<Result<null>> {
   return guard(async () => {
     await regeneratePlan(accessId);
+
+    return null;
+  }, accessId);
+}
+
+/**
+ * Écran 5 — enregistrer les retouches. Le calcul se rejoue avec elles pour
+ * consigne, donc les remarques ressortent justes.
+ */
+export async function saveEditedRoadbook(
+  accessId: string,
+  edit: RoadbookEdit,
+): Promise<Result<null>> {
+  return guard(async () => {
+    await saveRoadbook(accessId, edit);
 
     return null;
   }, accessId);

@@ -31,7 +31,7 @@ export function toSeconds(clock: string): number | undefined {
  * Lit un nombre, la virgule valant le point : un clavier français ne propose
  * pas autre chose, et `Number("9,8")` rend `NaN`.
  */
-export function nombre(texte: string): number | undefined {
+export function toNumber(texte: string): number | undefined {
   const propre = texte.trim().replace(",", ".");
   if (propre === "") return undefined;
 

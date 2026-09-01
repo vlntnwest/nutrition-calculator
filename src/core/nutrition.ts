@@ -5,6 +5,7 @@ import type {
   Fill,
   FixedSpan,
   Flask,
+  Imposed,
   Leg,
   NutritionPlan,
   Product,
@@ -88,10 +89,14 @@ export function nutritionPlan(
    */
   options:
     | number[]
-    | { parts?: number[]; finishTargets?: Partial<Targets> } = {},
+    | {
+        parts?: number[];
+        finishTargets?: Partial<Targets>;
+        imposed?: Imposed;
+      } = {},
 ): NutritionPlan {
-  const { parts, finishTargets } = Array.isArray(options)
-    ? { parts: options, finishTargets: undefined }
+  const { parts, finishTargets, imposed } = Array.isArray(options)
+    ? { parts: options, finishTargets: undefined, imposed: undefined }
     : options;
   const raws = splitByAidStation(points, aidStations, runner);
   const endM = points.length > 0 ? points[points.length - 1].d : 0;
@@ -108,6 +113,7 @@ export function nutritionPlan(
     spans.liquid,
     parts,
     finishTargets,
+    imposed,
   );
 
   const units = new Map<string, number>();
@@ -430,6 +436,7 @@ function provision(
   spans: number[][],
   parts?: number[],
   finishTargets?: Partial<Targets>,
+  given?: Imposed,
 ): Leg[] {
   // La part est lue sur la position d'origine, avant le filtrage : sinon un
   // produit sans glucides décale en silence toutes les parts qui le suivent.
@@ -447,6 +454,19 @@ function provision(
     ...(raw.to === null ? finishTargets : imposed.get(raw.to)),
   }));
   const needs = raws.map((raw, l) => needOf(raw, legTargets[l]));
+
+  // Une consigne rend les trois passes sans objet : il n'y a plus rien à
+  // décider, seulement à sommer.
+  if (given) {
+    const assembled = raws.map((raw, l) =>
+      assemble(raw, needs[l], imposedOf(given, products, l)),
+    );
+
+    return given.fills
+      ? imposeFills(assembled, spans, given.fills, products)
+      : fillSpans(assembled, spans, runner.flasks);
+  }
+
   const loaded: Loaded[][] = raws.map(() => []);
 
   // Passe 1. Le bidon délivre un flux continu commandé par l'hydratation : ce
@@ -517,7 +537,7 @@ function provision(
     }
 
     return fillSpans(
-      raws.map((raw, l) => assemble(raw, needs[l], loaded[l])),
+      raws.map((raw, l) => assemble(raw, needs[l], servingsOf(loaded[l]))),
       spans,
       runner.flasks,
     );
@@ -569,10 +589,64 @@ function provision(
   rebalance(loaded, carbNeeds);
 
   return fillSpans(
-    raws.map((raw, l) => assemble(raw, needs[l], loaded[l])),
+    raws.map((raw, l) => assemble(raw, needs[l], servingsOf(loaded[l]))),
     spans,
     runner.flasks,
   );
+}
+
+/**
+ * Les remplissages tels qu'on les impose.
+ *
+ * Ce qu'ils ne portent pas ressort en `refillMl`, au même endroit que dans
+ * `fillSpans` : à l'ouverture de la portée. On ne verse qu'à cette
+ * ouverture-là — une consigne posée plus loin dans la portée se refuse.
+ */
+function imposeFills(
+  legs: Omit<Leg, "fills" | "refillMl">[],
+  spans: number[][],
+  given: NonNullable<Imposed["fills"]>,
+  products: Product[],
+): Leg[] {
+  const byId = new Map(products.map((p) => [p.id, p]));
+  const filled = legs.map((leg, l) => ({
+    ...leg,
+    refillMl: 0,
+    fills: given[l].map((f) => {
+      if (f.productId === null) {
+        return {
+          flaskIndex: f.flaskIndex,
+          product: null,
+          volumeMl: f.volumeMl,
+        };
+      }
+
+      const product = byId.get(f.productId);
+      if (!product) throw new Error(`Unknown product: ${f.productId}`);
+
+      return { flaskIndex: f.flaskIndex, product, volumeMl: f.volumeMl };
+    }),
+  }));
+
+  for (const span of spans) {
+    // Une flasque se remplit là où l'on ravitaille. Versé plus loin dans la
+    // portée, le liquide ne serait jamais accessible mais compterait comme
+    // porté : il éteindrait en silence le `refillMl` qui le réclame.
+    for (const l of span.slice(1)) {
+      if (filled[l].fills.length > 0) {
+        throw new Error(`Fill outside the opening leg of a carry span: ${l}`);
+      }
+    }
+
+    const totalMl = span.reduce(
+      (s, l) => s + Math.max(legs[l].need.fluidMl, legs[l].supply.fluidMl),
+      0,
+    );
+    const carried = sum(filled[span[0]].fills, (f) => f.volumeMl);
+    filled[span[0]].refillMl = Math.max(totalMl - carried, 0);
+  }
+
+  return filled;
 }
 
 /**
@@ -781,7 +855,7 @@ function consolidate(loaded: Loaded[][], needsG: number[]): void {
     stepsOf(loaded[0][i].product) > 1 && loaded[0][i].product.fluidMl === 0;
   const fraction = (l: number, i: number) =>
     loaded[l][i].steps % stepsOf(loaded[l][i].product) !== 0;
-  const combien = (l: number) =>
+  const fractionalCount = (l: number) =>
     loaded[l].reduce(
       (n, _, i) => n + (divisible(i) && fraction(l, i) ? 1 : 0),
       0,
@@ -789,7 +863,7 @@ function consolidate(loaded: Loaded[][], needsG: number[]): void {
   // Ce qu'il reste à couvrir, recalculé à chaque échange : c'est lui qui
   // désigne le receveur, pas une estimation faite avant la répartition — un
   // secteur déjà bien servi continuerait sinon de recevoir.
-  const manque = (l: number) =>
+  const shortfall = (l: number) =>
     needsG[l] -
     loaded[l].reduce(
       (g, x) => g + (x.steps * x.product.carbsG) / stepsOf(x.product),
@@ -805,7 +879,7 @@ function consolidate(loaded: Loaded[][], needsG: number[]): void {
     let pire = 1;
     for (let l = 0; l < loaded.length; l++) {
       if (bloques.has(l)) continue;
-      const n = combien(l);
+      const n = fractionalCount(l);
       if (n > pire) {
         pire = n;
         charge = l;
@@ -823,11 +897,15 @@ function consolidate(loaded: Loaded[][], needsG: number[]): void {
       const partenaire = loaded
         .map((_, m) => m)
         .filter((m) => m !== charge && fraction(m, i))
-        .sort((a, b) => combien(b) - combien(a) || manque(b) - manque(a))[0];
+        .sort(
+          (a, b) =>
+            fractionalCount(b) - fractionalCount(a) ||
+            shortfall(b) - shortfall(a),
+        )[0];
       if (partenaire === undefined) continue;
 
       const [recoit, cede] =
-        manque(charge) >= manque(partenaire)
+        shortfall(charge) >= shortfall(partenaire)
           ? [charge, partenaire]
           : [partenaire, charge];
       loaded[recoit][i].steps += 1;
@@ -863,7 +941,7 @@ function rebalance(loaded: Loaded[][], needsG: number[]): void {
 
       return n + (impair ? 1 : 0);
     }, 0);
-  const ecart = (l: number, sauf = -1, delta = 0) =>
+  const margin = (l: number, sauf = -1, delta = 0) =>
     loaded[l].reduce(
       (g, x, i) =>
         g +
@@ -888,8 +966,8 @@ function rebalance(loaded: Loaded[][], needsG: number[]): void {
         for (let i = 0; i < loaded[a].length; i++) {
           if (!divisible(i) || loaded[a][i].steps < 1) continue;
 
-          const avant = Math.abs(ecart(a)) + Math.abs(ecart(b));
-          const apres = Math.abs(ecart(a, i, -1)) + Math.abs(ecart(b, i, 1));
+          const avant = Math.abs(margin(a)) + Math.abs(margin(b));
+          const apres = Math.abs(margin(a, i, -1)) + Math.abs(margin(b, i, 1));
           if (avant - apres <= gain) continue;
 
           // La règle tient des deux côtés : une fraction par secteur, pas plus.
@@ -909,16 +987,43 @@ function rebalance(loaded: Loaded[][], needsG: number[]): void {
   }
 }
 
-/** Un secteur chargé : les pas deviennent des unités, et on somme. */
+/** Les pas d'un secteur, devenus des unités. */
+function servingsOf(loaded: Loaded[]): Serving[] {
+  return loaded
+    .filter((x) => x.steps > 0)
+    .map((x) => ({ product: x.product, units: x.steps / stepsOf(x.product) }));
+}
+
+/**
+ * Les rations imposées sur un secteur, rangées sur le pas de chaque produit.
+ *
+ * L'arrondi tient ici et pas chez l'appelant : c'est `Serving.units` qui porte
+ * l'invariant, et un demi-gel n'existe pas davantage parce qu'un humain l'a
+ * saisi. Ce qui tombe sous le demi-pas disparaît.
+ */
+function imposedOf(
+  given: Imposed,
+  products: Product[],
+  leg: number,
+): Serving[] {
+  const byId = new Map(products.map((p) => [p.id, p]));
+
+  return given.servings[leg].flatMap((r) => {
+    const product = byId.get(r.productId);
+    if (!product) throw new Error(`Unknown product: ${r.productId}`);
+
+    const steps = Math.round(r.units * stepsOf(product));
+
+    return steps > 0 ? [{ product, units: steps / stepsOf(product) }] : [];
+  });
+}
+
+/** Un secteur chargé : on somme ce qu'il porte. */
 function assemble(
   raw: RawLeg,
   need: Leg["need"],
-  loaded: Loaded[],
+  servings: Serving[],
 ): Omit<Leg, "fills" | "refillMl"> {
-  const servings: Serving[] = loaded
-    .filter((x) => x.steps > 0)
-    .map((x) => ({ product: x.product, units: x.steps / stepsOf(x.product) }));
-
   const supply = servings.reduce(
     (s, r) => ({
       carbsG: s.carbsG + r.units * r.product.carbsG,

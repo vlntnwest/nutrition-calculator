@@ -1,5 +1,6 @@
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
+import { aidStations } from "@/db/schema/aidStations";
 import { fill } from "@/db/schema/fill";
 import { flasks } from "@/db/schema/flasks";
 import { legOverrides } from "@/db/schema/legOverrides";
@@ -13,15 +14,20 @@ import { warnings } from "@/db/schema/warnings";
 import { resolveTargets } from "./targets";
 
 export type RoadbookServing = {
+  /** Ce que l'écran renvoie pour désigner la ration qu'il retouche. */
+  productSnapshotId: string;
   name: string;
   brandName: string | null;
   quantity: number;
+  /** Le pas de retouche : 1 pour ce qui ne se coupe pas, 2 pour le reste. */
+  divisibleBy: number;
 };
 
 export type RoadbookFill = {
   flaskRank: number;
   /** Absent : de l'eau claire. */
   product: string | null;
+  productSnapshotId: string | null;
   volumeMl: number;
 };
 
@@ -42,6 +48,12 @@ export type RoadbookLeg = {
   durationS: number;
   servings: RoadbookServing[];
   fills: RoadbookFill[];
+  /**
+   * Le secteur ouvre-t-il une portée de liquide ? On ne remplit ses flasques
+   * qu'au départ ou en repartant d'une borne qui fournit de l'eau : ailleurs,
+   * il n'y a rien à verser. Même règle que `carrySpans`, côté noyau.
+   */
+  opensLiquidSpan: boolean;
   supply: Supply;
   /** Les glucides visés sur ce secteur : la cible horaire fois sa durée. */
   needG: number;
@@ -60,6 +72,18 @@ export type RoadbookLeg = {
 
 export type Roadbook = {
   legs: RoadbookLeg[];
+  /** Les produits retenus pour ce plan — de quoi poser ce que le calcul n'a
+   * pas proposé. */
+  catalogue: {
+    id: string;
+    name: string;
+    brandName: string | null;
+    divisibleBy: number;
+  }[];
+  /** Les contenants déclarés, pour retoucher les remplissages. */
+  flasks: { rank: number; volumeMl: number; onlyWater: boolean }[];
+  /** Le plan a été retouché à la main depuis son dernier calcul. */
+  edited: boolean;
   /** Le sac complet, et ce qu'il apporte. */
   total: Supply & {
     marginG: number;
@@ -69,7 +93,7 @@ export type Roadbook = {
   warnings: { code: string; payload: unknown }[];
 };
 
-const VIDE: Supply = { carbsG: 0, energyKcal: 0, sodiumMg: 0, fluidMl: 0 };
+const EMPTY: Supply = { carbsG: 0, energyKcal: 0, sodiumMg: 0, fluidMl: 0 };
 
 /**
  * Le côté calculé d'un plan, ou null s'il n'a jamais été calculé.
@@ -98,50 +122,72 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
     return null;
   }
 
-  const [legRows, servingRows, fillRows, warningRows, flaskRows, overrideRows] =
-    await Promise.all([
-      db
-        .select()
-        .from(legs)
-        .where(eq(legs.planId, accessId))
-        .orderBy(asc(legs.rank)),
-      db
-        .select({
-          legRank: servings.legRank,
-          quantity: servings.quantity,
-          name: productSnapshots.name,
-          brandName: productSnapshots.brandName,
-          carbsG: productSnapshots.carbsG,
-          energyKcal: productSnapshots.energyKcal,
-          sodiumMg: productSnapshots.sodiumMg,
-          fluidMl: productSnapshots.fluidMl,
-        })
-        .from(servings)
-        .innerJoin(
-          productSnapshots,
-          eq(servings.productSnapshotId, productSnapshots.id),
-        )
-        .where(eq(servings.planId, accessId))
-        .orderBy(asc(servings.legRank), asc(productSnapshots.name)),
-      db
-        .select({
-          legRank: fill.legRank,
-          flaskRank: fill.flaskRank,
-          volumeMl: fill.volumeMl,
-          product: productSnapshots.name,
-        })
-        .from(fill)
-        // `leftJoin` : un remplissage sans produit, c'est de l'eau claire.
-        .leftJoin(
-          productSnapshots,
-          eq(fill.productSnapshotId, productSnapshots.id),
-        )
-        .where(eq(fill.planId, accessId))
-        .orderBy(asc(fill.legRank), asc(fill.flaskRank)),
-      db.select().from(warnings).where(eq(warnings.planId, accessId)),
-      db.select().from(flasks).where(eq(flasks.planId, accessId)),
-      db.select().from(legOverrides).where(eq(legOverrides.planId, accessId)),
-    ]);
+  const [
+    legRows,
+    servingRows,
+    fillRows,
+    warningRows,
+    flaskRows,
+    overrideRows,
+    stationRows,
+    catalogue,
+  ] = await Promise.all([
+    db
+      .select()
+      .from(legs)
+      .where(eq(legs.planId, accessId))
+      .orderBy(asc(legs.rank)),
+    db
+      .select({
+        legRank: servings.legRank,
+        quantity: servings.quantity,
+        productSnapshotId: servings.productSnapshotId,
+        divisibleBy: productSnapshots.divisibleBy,
+        name: productSnapshots.name,
+        brandName: productSnapshots.brandName,
+        carbsG: productSnapshots.carbsG,
+        energyKcal: productSnapshots.energyKcal,
+        sodiumMg: productSnapshots.sodiumMg,
+        fluidMl: productSnapshots.fluidMl,
+      })
+      .from(servings)
+      .innerJoin(
+        productSnapshots,
+        eq(servings.productSnapshotId, productSnapshots.id),
+      )
+      .where(eq(servings.planId, accessId))
+      .orderBy(asc(servings.legRank), asc(productSnapshots.name)),
+    db
+      .select({
+        legRank: fill.legRank,
+        flaskRank: fill.flaskRank,
+        volumeMl: fill.volumeMl,
+        productSnapshotId: fill.productSnapshotId,
+        product: productSnapshots.name,
+      })
+      .from(fill)
+      // `leftJoin` : un remplissage sans produit, c'est de l'eau claire.
+      .leftJoin(
+        productSnapshots,
+        eq(fill.productSnapshotId, productSnapshots.id),
+      )
+      .where(eq(fill.planId, accessId))
+      .orderBy(asc(fill.legRank), asc(fill.flaskRank)),
+    db.select().from(warnings).where(eq(warnings.planId, accessId)),
+    db.select().from(flasks).where(eq(flasks.planId, accessId)),
+    db.select().from(legOverrides).where(eq(legOverrides.planId, accessId)),
+    db.select().from(aidStations).where(eq(aidStations.planId, accessId)),
+    db
+      .select({
+        id: productSnapshots.id,
+        name: productSnapshots.name,
+        brandName: productSnapshots.brandName,
+        divisibleBy: productSnapshots.divisibleBy,
+      })
+      .from(productSnapshots)
+      .where(eq(productSnapshots.planId, accessId))
+      .orderBy(asc(productSnapshots.name)),
+  ]);
 
   const runner = {
     massKg: settings.massKg,
@@ -169,7 +215,13 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
   const byLeg = <T extends { legRank: number }>(rows: T[], rank: number) =>
     rows.filter((r) => r.legRank === rank);
 
-  const legsOut = legRows.map((leg) => {
+  // Le secteur `i` part de la borne qui clôt le secteur `i - 1`. Une borne
+  // inconnue rouvre, comme au noyau.
+  const liquidAt = new Map(
+    stationRows.map((a) => [a.positionM, a.providesLiquid]),
+  );
+
+  const legsOut = legRows.map((leg, i) => {
     const rations = byLeg(servingRows, leg.rank);
     const supply = rations.reduce(
       (s, r) => ({
@@ -178,8 +230,9 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
         sodiumMg: s.sodiumMg + r.quantity * r.sodiumMg,
         fluidMl: s.fluidMl + r.quantity * (r.fluidMl ?? 0),
       }),
-      VIDE,
+      EMPTY,
     );
+    const depuis = i === 0 ? null : legRows[i - 1].endPositionM;
     const cible = imposed.get(boundOf(leg.endPositionM)) ?? targets;
     const needG = (cible.carbsGH * leg.durationS) / 3600;
     const needFluidMl = (cible.fluidMlH * leg.durationS) / 3600;
@@ -191,13 +244,17 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
       descentM: leg.descentM,
       durationS: leg.durationS,
       servings: rations.map((s) => ({
+        productSnapshotId: s.productSnapshotId,
         name: s.name,
         brandName: s.brandName,
         quantity: s.quantity,
+        divisibleBy: s.divisibleBy,
       })),
+      opensLiquidSpan: depuis === null || (liquidAt.get(depuis) ?? true),
       fills: byLeg(fillRows, leg.rank).map((f) => ({
         flaskRank: f.flaskRank,
         product: f.product,
+        productSnapshotId: f.productSnapshotId,
         volumeMl: f.volumeMl,
       })),
       supply,
@@ -222,6 +279,13 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
 
   return {
     legs: legsOut,
+    catalogue,
+    flasks: flaskRows.map((f) => ({
+      rank: f.rank,
+      volumeMl: f.volumeMl,
+      onlyWater: f.onlyWater,
+    })),
+    edited: row.plans.editedAt !== null,
     total: {
       carbsG: legsOut.reduce((t, l) => t + l.supply.carbsG, 0),
       energyKcal: legsOut.reduce((t, l) => t + l.supply.energyKcal, 0),

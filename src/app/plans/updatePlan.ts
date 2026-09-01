@@ -15,7 +15,7 @@ import type { NewPlan } from "./planInput";
 import {
   assertValid,
   insertSnapshots,
-  normalise,
+  normalize,
   settingsColumns,
 } from "./planInput";
 import { changed, survives } from "./survives";
@@ -53,7 +53,7 @@ export async function updatePlan(
   const current = await getPlan(accessId);
   if (!current) throw new PlanError(`Unknown plan: ${accessId}`);
 
-  const merged: NewPlan = normalise({
+  const merged: NewPlan = normalize({
     track: current.track,
     settings: { ...current.settings, ...patch.settings },
     flasks: patch.flasks ?? current.flasks,
@@ -128,6 +128,8 @@ export async function updatePlan(
         lastSavedAt: sql`now()`,
         // `undefined` laisse la colonne où elle est : le calcul a survécu.
         generatedAt: garde ? undefined : null,
+        // Le calcul jeté emporte les retouches qui portaient dessus.
+        editedAt: garde ? undefined : null,
         expiresAt: sql`greatest(now(), ${merged.settings.raceDate ?? null}::timestamptz) + interval '6 months'`,
       })
       .where(eq(plans.accessId, accessId));

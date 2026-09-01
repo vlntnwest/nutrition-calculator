@@ -1282,3 +1282,167 @@ test("l'arrivée se règle à part, aucun ravito ne la ferme", () => {
     6,
   );
 });
+
+test("des rations imposées remplacent la répartition", () => {
+  const impose = nutritionPlan(flatTrack(20, 3), [], RUNNER, TARGETS, [gel], {
+    imposed: { servings: [[{ productId: gel.id, units: 3 }]] },
+  });
+
+  // Sans ravito, un seul secteur : la consigne tient en un tableau.
+  expect(impose.legs).toHaveLength(1);
+  expect(impose.legs[0].servings).toEqual([{ product: gel, units: 3 }]);
+  expect(impose.legs[0].supply.carbsG).toBeCloseTo(3 * gel.carbsG);
+  expect(impose.legs[0].marginG).toBeCloseTo(
+    3 * gel.carbsG - impose.legs[0].need.carbsG,
+  );
+});
+
+test("les remarques se rejouent sur les rations imposées", () => {
+  const impose = nutritionPlan(flatTrack(20, 3), [], RUNNER, TARGETS, [gel], {
+    imposed: { servings: [[{ productId: gel.id, units: 20 }]] },
+  });
+
+  // 540 g sur 180 visés, très au-delà de CARBS_OVERSHOOT_MAX.
+  expect(impose.warnings.map((w) => w.code)).toContain("carbs-above-target");
+});
+
+test("une ration imposée se range sur le pas du produit", () => {
+  const impose = nutritionPlan(
+    flatTrack(20, 3),
+    [],
+    RUNNER,
+    TARGETS,
+    [gel, baouwBar],
+    {
+      imposed: {
+        servings: [
+          [
+            { productId: gel.id, units: 1.4 },
+            { productId: baouwBar.id, units: 1.4 },
+          ],
+        ],
+      },
+    },
+  );
+
+  // Le gel ne se coupe pas, la barre se coupe en deux.
+  expect(impose.legs[0].servings).toEqual([
+    { product: gel, units: 1 },
+    { product: baouwBar, units: 1.5 },
+  ]);
+});
+
+test("une ration imposée sous le demi-pas disparaît", () => {
+  const impose = nutritionPlan(flatTrack(20, 3), [], RUNNER, TARGETS, [gel], {
+    imposed: { servings: [[{ productId: gel.id, units: 0.3 }]] },
+  });
+
+  expect(impose.legs[0].servings).toEqual([]);
+});
+
+test("des remplissages imposés remplacent le calcul des flasques", () => {
+  const runner: Runner = {
+    massKg: 70,
+    flasks: [{ volumeMl: 500, onlyWater: false }],
+  };
+  const impose = nutritionPlan(flatTrack(20, 3), [], runner, TARGETS, [gel], {
+    imposed: {
+      servings: [[{ productId: gel.id, units: 2 }]],
+      // Le calcul, lui, part toujours flasque pleine : 200 ne peut venir
+      // que de la consigne.
+      fills: [[{ flaskIndex: 0, productId: null, volumeMl: 200 }]],
+    },
+  });
+
+  expect(impose.legs[0].fills).toEqual([
+    { flaskIndex: 0, product: null, volumeMl: 200 },
+  ]);
+});
+
+test("ce que les flasques imposées ne portent pas ressort en refillMl", () => {
+  const runner: Runner = {
+    massKg: 70,
+    flasks: [{ volumeMl: 500, onlyWater: false }],
+  };
+  const impose = nutritionPlan(flatTrack(20, 3), [], runner, TARGETS, [gel], {
+    imposed: {
+      servings: [[{ productId: gel.id, units: 2 }]],
+      fills: [[{ flaskIndex: 0, productId: null, volumeMl: 200 }]],
+    },
+  });
+
+  // 500 mL/h sur 3 h : 1500 mL à couvrir, la consigne en porte 200.
+  expect(impose.legs[0].refillMl).toBeCloseTo(1300);
+});
+
+test("une flasque qu'on impose vide reste vide", () => {
+  const runner: Runner = {
+    massKg: 70,
+    flasks: [{ volumeMl: 500, onlyWater: false }],
+  };
+  const impose = nutritionPlan(
+    flatTrack(20, 3),
+    [],
+    runner,
+    TARGETS,
+    [gel, drink],
+    {
+      // Le calcul remplirait la flasque de boisson ; on part sans.
+      imposed: {
+        servings: [[{ productId: drink.id, units: 1 }]],
+        fills: [[]],
+      },
+    },
+  );
+
+  expect(impose.legs[0].fills).toEqual([]);
+  expect(impose.legs[0].refillMl).toBeCloseTo(1500);
+});
+
+test("un remplissage imposé hors de l'ouverture de la portée se refuse", () => {
+  // La portée [1, 2] s'ouvre au point d'eau : le passage sec ne rouvre rien.
+  // Verser sur le secteur 2, c'est remplir une flasque restée à la maison.
+  expect(() =>
+    nutritionPlan(
+      flatTrack(40, 4),
+      [WATER_STOP, DRY_STOP],
+      CARRIER,
+      TARGETS,
+      [gel, drink],
+      {
+        imposed: {
+          servings: [[], [], []],
+          fills: [
+            [{ flaskIndex: 0, productId: null, volumeMl: 500 }],
+            [{ flaskIndex: 0, productId: null, volumeMl: 500 }],
+            [{ flaskIndex: 0, productId: null, volumeMl: 500 }],
+          ],
+        },
+      },
+    ),
+  ).toThrow(/carry span/);
+});
+
+test("une portée ne porte que ce qu'elle a versé à son ouverture", () => {
+  const impose = nutritionPlan(
+    flatTrack(40, 4),
+    [WATER_STOP, DRY_STOP],
+    CARRIER,
+    TARGETS,
+    [gel, drink],
+    {
+      imposed: {
+        servings: [[], [], []],
+        fills: [
+          [{ flaskIndex: 0, productId: null, volumeMl: 500 }],
+          [{ flaskIndex: 0, productId: null, volumeMl: 500 }],
+          [],
+        ],
+      },
+    },
+  );
+
+  // La portée couvre 1 h puis 2 h, soit 1 500 mL, dont 500 portés au départ.
+  expect(impose.legs[1].refillMl).toBeCloseTo(1000);
+  expect(impose.legs[2].fills).toEqual([]);
+});
