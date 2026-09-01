@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { savePlan } from "@/app/plans/actions";
 import type { CatalogueEntry } from "@/app/plans/catalogue";
 
-export function ProduitsForm({
+export function ProductsForm({
   accessId,
   catalogue,
   choisis,

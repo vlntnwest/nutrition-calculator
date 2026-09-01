@@ -1,6 +1,6 @@
 import { suggestedTargets } from "@/core/nutrition";
 import { planOf } from "../plan";
-import { CiblesForm } from "./CiblesForm";
+import { TargetsForm } from "./TargetsForm";
 
 /**
  * Écran 3 — combien manger et boire par heure, et dans quoi.
@@ -22,7 +22,7 @@ export default async function Page(
       : suggestedTargets({ massKg, flasks: [] }, targetTimeS);
 
   return (
-    <CiblesForm
+    <TargetsForm
       accessId={accessId}
       targets={targets}
       suggestion={suggestion}

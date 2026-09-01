@@ -1,6 +1,6 @@
 import { planOf, roadbookOf } from "../plan";
-import { Calculer } from "./Calculer";
-import { Retoucher } from "./Retoucher";
+import { ComputeButton } from "./ComputeButton";
+import { RoadbookEditor } from "./RoadbookEditor";
 
 /** Écran 5 — le calcul, et ce qu'il donne. */
 export default async function Page(
@@ -15,7 +15,7 @@ export default async function Page(
 
   return (
     <section className="flex flex-col gap-6">
-      <Calculer
+      <ComputeButton
         accessId={accessId}
         calcule={roadbook !== null}
         edited={roadbook?.edited ?? false}
@@ -27,7 +27,7 @@ export default async function Page(
           un poids.
         </p>
       ) : (
-        <Retoucher
+        <RoadbookEditor
           accessId={accessId}
           roadbook={roadbook}
           totalM={plan.track.distanceM}

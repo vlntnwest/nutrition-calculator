@@ -10,13 +10,13 @@ import type { NewPlan } from "./planInput";
 import {
   assertValid,
   insertSnapshots,
-  normalise,
+  normalize,
   settingsColumns,
 } from "./planInput";
 
 /** Écrit un plan et rend son identifiant d'accès. */
 export async function createPlan(raw: NewPlan): Promise<string> {
-  const input = normalise(raw);
+  const input = normalize(raw);
   assertValid(input);
 
   return db.transaction(async (tx) => {

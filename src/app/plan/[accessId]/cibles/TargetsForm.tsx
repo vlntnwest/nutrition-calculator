@@ -4,18 +4,18 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { savePlan } from "@/app/plans/actions";
 import type { Flask, Targets } from "@/core/type";
-import { nombre } from "../champs";
+import { toNumber } from "../fields";
 
-type Champs = { carbsGH: string; fluidMlH: string; sodiumMgL: string };
-type LigneFlasque = { volumeMl: string; onlyWater: boolean };
+type Fields = { carbsGH: string; fluidMlH: string; sodiumMgL: string };
+type FlaskRow = { volumeMl: string; onlyWater: boolean };
 
-const enChamps = (t: Targets): Champs => ({
+const toFields = (t: Targets): Fields => ({
   carbsGH: String(t.carbsGH),
   fluidMlH: String(t.fluidMlH),
   sodiumMgL: String(t.sodiumMgL),
 });
 
-export function CiblesForm({
+export function TargetsForm({
   accessId,
   targets,
   suggestion,
@@ -28,10 +28,10 @@ export function CiblesForm({
   flasks: Flask[];
 }) {
   const depart = targets ?? suggestion;
-  const [champs, setChamps] = useState<Champs>(
-    depart ? enChamps(depart) : { carbsGH: "", fluidMlH: "", sodiumMgL: "" },
+  const [champs, setChamps] = useState<Fields>(
+    depart ? toFields(depart) : { carbsGH: "", fluidMlH: "", sodiumMgL: "" },
   );
-  const [lignes, setLignes] = useState<LigneFlasque[]>(
+  const [lignes, setLignes] = useState<FlaskRow[]>(
     flasks.map((f) => ({
       volumeMl: String(f.volumeMl),
       onlyWater: f.onlyWater,
@@ -48,9 +48,9 @@ export function CiblesForm({
   function submit() {
     // Trois constantes, pas un objet : contrôler `o.x` ne restreint pas le
     // type de `o`, seulement celui de `o.x` là où on le lit.
-    const carbsGH = nombre(champs.carbsGH);
-    const fluidMlH = nombre(champs.fluidMlH);
-    const sodiumMgL = nombre(champs.sodiumMgL);
+    const carbsGH = toNumber(champs.carbsGH);
+    const fluidMlH = toNumber(champs.fluidMlH);
+    const sodiumMgL = toNumber(champs.sodiumMgL);
 
     if (
       carbsGH === undefined ||
@@ -64,7 +64,7 @@ export function CiblesForm({
 
     const volumes: Flask[] = [];
     for (const ligne of lignes) {
-      const volumeMl = nombre(ligne.volumeMl);
+      const volumeMl = toNumber(ligne.volumeMl);
       if (volumeMl === undefined) {
         setMessage("Indique la contenance de chaque flasque, en millilitres.");
 
@@ -86,7 +86,7 @@ export function CiblesForm({
     });
   }
 
-  function edit(i: number, patch: Partial<LigneFlasque>) {
+  function edit(i: number, patch: Partial<FlaskRow>) {
     setLignes(lignes.map((l, j) => (j === i ? { ...l, ...patch } : l)));
   }
 

@@ -93,7 +93,7 @@ export type Roadbook = {
   warnings: { code: string; payload: unknown }[];
 };
 
-const VIDE: Supply = { carbsG: 0, energyKcal: 0, sodiumMg: 0, fluidMl: 0 };
+const EMPTY: Supply = { carbsG: 0, energyKcal: 0, sodiumMg: 0, fluidMl: 0 };
 
 /**
  * Le côté calculé d'un plan, ou null s'il n'a jamais été calculé.
@@ -230,7 +230,7 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
         sodiumMg: s.sodiumMg + r.quantity * r.sodiumMg,
         fluidMl: s.fluidMl + r.quantity * (r.fluidMl ?? 0),
       }),
-      VIDE,
+      EMPTY,
     );
     const depuis = i === 0 ? null : legRows[i - 1].endPositionM;
     const cible = imposed.get(boundOf(leg.endPositionM)) ?? targets;

@@ -855,7 +855,7 @@ function consolidate(loaded: Loaded[][], needsG: number[]): void {
     stepsOf(loaded[0][i].product) > 1 && loaded[0][i].product.fluidMl === 0;
   const fraction = (l: number, i: number) =>
     loaded[l][i].steps % stepsOf(loaded[l][i].product) !== 0;
-  const combien = (l: number) =>
+  const fractionalCount = (l: number) =>
     loaded[l].reduce(
       (n, _, i) => n + (divisible(i) && fraction(l, i) ? 1 : 0),
       0,
@@ -863,7 +863,7 @@ function consolidate(loaded: Loaded[][], needsG: number[]): void {
   // Ce qu'il reste à couvrir, recalculé à chaque échange : c'est lui qui
   // désigne le receveur, pas une estimation faite avant la répartition — un
   // secteur déjà bien servi continuerait sinon de recevoir.
-  const manque = (l: number) =>
+  const shortfall = (l: number) =>
     needsG[l] -
     loaded[l].reduce(
       (g, x) => g + (x.steps * x.product.carbsG) / stepsOf(x.product),
@@ -879,7 +879,7 @@ function consolidate(loaded: Loaded[][], needsG: number[]): void {
     let pire = 1;
     for (let l = 0; l < loaded.length; l++) {
       if (bloques.has(l)) continue;
-      const n = combien(l);
+      const n = fractionalCount(l);
       if (n > pire) {
         pire = n;
         charge = l;
@@ -897,11 +897,15 @@ function consolidate(loaded: Loaded[][], needsG: number[]): void {
       const partenaire = loaded
         .map((_, m) => m)
         .filter((m) => m !== charge && fraction(m, i))
-        .sort((a, b) => combien(b) - combien(a) || manque(b) - manque(a))[0];
+        .sort(
+          (a, b) =>
+            fractionalCount(b) - fractionalCount(a) ||
+            shortfall(b) - shortfall(a),
+        )[0];
       if (partenaire === undefined) continue;
 
       const [recoit, cede] =
-        manque(charge) >= manque(partenaire)
+        shortfall(charge) >= shortfall(partenaire)
           ? [charge, partenaire]
           : [partenaire, charge];
       loaded[recoit][i].steps += 1;
@@ -937,7 +941,7 @@ function rebalance(loaded: Loaded[][], needsG: number[]): void {
 
       return n + (impair ? 1 : 0);
     }, 0);
-  const ecart = (l: number, sauf = -1, delta = 0) =>
+  const margin = (l: number, sauf = -1, delta = 0) =>
     loaded[l].reduce(
       (g, x, i) =>
         g +
@@ -962,8 +966,8 @@ function rebalance(loaded: Loaded[][], needsG: number[]): void {
         for (let i = 0; i < loaded[a].length; i++) {
           if (!divisible(i) || loaded[a][i].steps < 1) continue;
 
-          const avant = Math.abs(ecart(a)) + Math.abs(ecart(b));
-          const apres = Math.abs(ecart(a, i, -1)) + Math.abs(ecart(b, i, 1));
+          const avant = Math.abs(margin(a)) + Math.abs(margin(b));
+          const apres = Math.abs(margin(a, i, -1)) + Math.abs(margin(b, i, 1));
           if (avant - apres <= gain) continue;
 
           // La règle tient des deux côtés : une fraction par secteur, pas plus.

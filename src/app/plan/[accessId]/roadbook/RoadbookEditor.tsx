@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { saveEditedRoadbook } from "@/app/plans/actions";
 import type { Roadbook } from "@/app/plans/getRoadbook";
 import type { RoadbookEdit } from "@/app/plans/saveRoadbook";
-import { borne, duree, ecart, excessif } from "./format";
+import { bound, duration, excessive, margin } from "./format";
 
 /** Le plan affiché, ramené à ce qui se retouche. */
 function editOf(roadbook: Roadbook): RoadbookEdit {
@@ -30,7 +30,7 @@ function editOf(roadbook: Roadbook): RoadbookEdit {
   };
 }
 
-export function Retoucher({
+export function RoadbookEditor({
   accessId,
   roadbook,
   totalM,
@@ -57,15 +57,15 @@ export function Retoucher({
     setErreur(null);
   }
 
-  const produit = (id: string) => roadbook.catalogue.find((p) => p.id === id);
-  const nomme = (id: string) => {
-    const p = produit(id);
+  const productOf = (id: string) => roadbook.catalogue.find((p) => p.id === id);
+  const nameOf = (id: string) => {
+    const p = productOf(id);
 
     return p ? `${p.brandName ?? ""} ${p.name}`.trim() : id;
   };
 
   /** Pose une quantité sur un secteur. À zéro, la ration disparaît. */
-  function poser(leg: number, snapshotId: string, quantity: number) {
+  function setServing(leg: number, snapshotId: string, quantity: number) {
     setSale(true);
     setEdit((e) => ({
       ...e,
@@ -81,7 +81,7 @@ export function Retoucher({
   }
 
   /** Verse — ou vide — une flasque sur un secteur. */
-  function verser(
+  function setFill(
     leg: number,
     flaskRank: number,
     contenu: { productSnapshotId: string | null; volumeMl: number } | null,
@@ -98,7 +98,7 @@ export function Retoucher({
     }));
   }
 
-  function enregistrer() {
+  function save() {
     setErreur(null);
     start(async () => {
       const result = await saveEditedRoadbook(accessId, edit);
@@ -124,7 +124,7 @@ export function Retoucher({
           type="button"
           className="border px-3 py-1 font-semibold"
           disabled={!sale || pending}
-          onClick={enregistrer}
+          onClick={save}
         >
           {pending ? "Enregistrement…" : "Enregistrer"}
         </button>
@@ -154,16 +154,16 @@ export function Retoucher({
           return (
             <li key={leg.rank} className="flex flex-col gap-1 border-t pt-2">
               <h3 className="font-semibold">
-                Secteur {leg.rank} — jusqu'à {borne(leg, totalM)}
+                Secteur {leg.rank} — jusqu'à {bound(leg, totalM)}
               </h3>
               <p className="text-sm">
-                {duree(leg.durationS)} · +{leg.ascentM} m / −{leg.descentM} m
+                {duration(leg.durationS)} · +{leg.ascentM} m / −{leg.descentM} m
               </p>
 
               <ul className="text-sm">
                 {rations.map((r) => {
                   const pas =
-                    1 / (produit(r.productSnapshotId)?.divisibleBy ?? 1);
+                    1 / (productOf(r.productSnapshotId)?.divisibleBy ?? 1);
 
                   return (
                     <li
@@ -171,14 +171,14 @@ export function Retoucher({
                       className="flex items-center gap-2"
                     >
                       <span>
-                        {r.quantity} × {nomme(r.productSnapshotId)}
+                        {r.quantity} × {nameOf(r.productSnapshotId)}
                       </span>
                       <button
                         type="button"
                         className="border px-2"
-                        aria-label={`Retirer ${pas} de ${nomme(r.productSnapshotId)}`}
+                        aria-label={`Retirer ${pas} de ${nameOf(r.productSnapshotId)}`}
                         onClick={() =>
-                          poser(l, r.productSnapshotId, r.quantity - pas)
+                          setServing(l, r.productSnapshotId, r.quantity - pas)
                         }
                       >
                         −
@@ -186,9 +186,9 @@ export function Retoucher({
                       <button
                         type="button"
                         className="border px-2"
-                        aria-label={`Ajouter ${pas} de ${nomme(r.productSnapshotId)}`}
+                        aria-label={`Ajouter ${pas} de ${nameOf(r.productSnapshotId)}`}
                         onClick={() =>
-                          poser(l, r.productSnapshotId, r.quantity + pas)
+                          setServing(l, r.productSnapshotId, r.quantity + pas)
                         }
                       >
                         +
@@ -196,7 +196,7 @@ export function Retoucher({
                       <button
                         type="button"
                         className="border px-2"
-                        onClick={() => poser(l, r.productSnapshotId, 0)}
+                        onClick={() => setServing(l, r.productSnapshotId, 0)}
                       >
                         retirer
                       </button>
@@ -211,7 +211,7 @@ export function Retoucher({
                   value=""
                   aria-label={`Ajouter un produit au secteur ${leg.rank}`}
                   onChange={(e) => {
-                    if (e.target.value) poser(l, e.target.value, 1);
+                    if (e.target.value) setServing(l, e.target.value, 1);
                   }}
                 >
                   <option value="">Ajouter un produit…</option>
@@ -227,12 +227,12 @@ export function Retoucher({
                 Apport : {Math.round(leg.supply.carbsG)} g de glucides
                 <span
                   className={
-                    excessif(leg.supply.carbsG, leg.needG)
+                    excessive(leg.supply.carbsG, leg.needG)
                       ? "text-red-600"
                       : undefined
                   }
                 >
-                  {ecart(leg.marginG)}
+                  {margin(leg.marginG)}
                 </span>{" "}
                 · {Math.round(leg.supply.energyKcal).toLocaleString("fr")} kcal
                 · {Math.round(leg.supply.sodiumMg)} mg de sodium ·{" "}
@@ -269,9 +269,9 @@ export function Retoucher({
                           onChange={(e) => {
                             const v = e.target.value;
                             if (v === "vide")
-                              return verser(l, flask.rank, null);
+                              return setFill(l, flask.rank, null);
 
-                            verser(l, flask.rank, {
+                            setFill(l, flask.rank, {
                               productSnapshotId: v === "eau" ? null : v,
                               volumeMl: verse?.volumeMl ?? flask.volumeMl,
                             });
@@ -295,7 +295,7 @@ export function Retoucher({
                             value={verse.volumeMl}
                             aria-label={`Volume de la flasque ${flask.rank} au secteur ${leg.rank}`}
                             onChange={(e) =>
-                              verser(l, flask.rank, {
+                              setFill(l, flask.rank, {
                                 productSnapshotId: verse.productSnapshotId,
                                 volumeMl: Number(e.target.value),
                               })
@@ -308,8 +308,8 @@ export function Retoucher({
                 </ul>
               ) : (
                 <p className={`text-sm ${vieux}`}>
-                  Rien à verser ici : les flasques ont été remplies en amont, au
-                  dernier ravito qui donnait de l'eau.
+                  Pas de remplissage ici : les flasques sont préparées en amont,
+                  au dernier ravito qui donnait de l'eau.
                 </p>
               )}
 
@@ -338,7 +338,7 @@ export function Retoucher({
           {Math.round(roadbook.total.carbsG)} g de glucides
           <span
             className={
-              excessif(
+              excessive(
                 roadbook.total.carbsG,
                 roadbook.total.carbsG - roadbook.total.marginG,
               )
@@ -346,7 +346,7 @@ export function Retoucher({
                 : undefined
             }
           >
-            {ecart(roadbook.total.marginG)}
+            {margin(roadbook.total.marginG)}
           </span>{" "}
           · {Math.round(roadbook.total.energyKcal).toLocaleString("fr")} kcal ·{" "}
           {Math.round(roadbook.total.sodiumMg)} mg de sodium ·{" "}

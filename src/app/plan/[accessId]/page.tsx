@@ -1,5 +1,5 @@
-import { CourseForm } from "./CourseForm";
 import { planOf } from "./plan";
+import { RaceForm } from "./RaceForm";
 
 /** Écran 2 — le chrono, le coureur, les ravitos. */
 export default async function Page(props: PageProps<"/plan/[accessId]">) {
@@ -8,5 +8,5 @@ export default async function Page(props: PageProps<"/plan/[accessId]">) {
   const plan = await planOf(accessId);
   if (!plan) return null;
 
-  return <CourseForm accessId={accessId} plan={plan} />;
+  return <RaceForm accessId={accessId} plan={plan} />;
 }

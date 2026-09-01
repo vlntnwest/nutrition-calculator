@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { savePlan } from "@/app/plans/actions";
 import type { NewAidStation, NewPlan } from "@/app/plans/planInput";
-import { nombre, toClock, toSeconds } from "./champs";
+import { toClock, toNumber, toSeconds } from "./fields";
 
 /**
  * Un ravito en cours de saisie.
@@ -13,9 +13,9 @@ import { nombre, toClock, toSeconds } from "./champs";
  * effacerait le séparateur décimal, qu'on ne pourrait alors jamais entrer.
  * La conversion attend l'enregistrement.
  */
-type Ligne = { name: string; km: string; stopMin: string };
+type Row = { name: string; km: string; stopMin: string };
 
-function toLigne(aid: NewAidStation): Ligne {
+function toRow(aid: NewAidStation): Row {
   return {
     name: aid.name,
     km: String(aid.distanceM / 1000),
@@ -24,16 +24,16 @@ function toLigne(aid: NewAidStation): Ligne {
 }
 
 /** Les ravitos saisis, ou le premier reproche à faire à l'utilisateur. */
-function toStations(lignes: Ligne[]): NewAidStation[] | string {
+function toStations(lignes: Row[]): NewAidStation[] | string {
   const stations: NewAidStation[] = [];
 
   for (const ligne of lignes) {
-    const km = nombre(ligne.km);
+    const km = toNumber(ligne.km);
     if (km === undefined) {
       return `Ravito « ${ligne.name} » : indique sa distance en kilomètres.`;
     }
 
-    const stop = nombre(ligne.stopMin);
+    const stop = toNumber(ligne.stopMin);
     if (ligne.stopMin.trim() !== "" && stop === undefined) {
       return `Ravito « ${ligne.name} » : l'arrêt n'est pas un nombre de minutes.`;
     }
@@ -48,7 +48,7 @@ function toStations(lignes: Ligne[]): NewAidStation[] | string {
   return stations;
 }
 
-export function CourseForm({
+export function RaceForm({
   accessId,
   plan,
 }: {
@@ -57,7 +57,7 @@ export function CourseForm({
 }) {
   const [chrono, setChrono] = useState(toClock(plan.settings.targetTimeS));
   const [masse, setMasse] = useState(String(plan.settings.massKg ?? ""));
-  const [lignes, setLignes] = useState<Ligne[]>(plan.aidStations.map(toLigne));
+  const [lignes, setLignes] = useState<Row[]>(plan.aidStations.map(toRow));
   const [message, setMessage] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -73,7 +73,7 @@ export function CourseForm({
     setMessage(null);
     start(async () => {
       const result = await savePlan(accessId, {
-        settings: { targetTimeS: toSeconds(chrono), massKg: nombre(masse) },
+        settings: { targetTimeS: toSeconds(chrono), massKg: toNumber(masse) },
         aidStations: stations,
       });
       setMessage(result.ok ? "Enregistré." : result.error);
@@ -83,7 +83,7 @@ export function CourseForm({
     });
   }
 
-  function edit(i: number, patch: Partial<Ligne>) {
+  function edit(i: number, patch: Partial<Row>) {
     setLignes(lignes.map((l, j) => (j === i ? { ...l, ...patch } : l)));
   }
 

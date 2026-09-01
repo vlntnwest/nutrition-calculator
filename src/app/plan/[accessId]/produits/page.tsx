@@ -1,6 +1,6 @@
 import { listProducts } from "@/app/plans/catalogue";
 import { planOf } from "../plan";
-import { ProduitsForm } from "./ProduitsForm";
+import { ProductsForm } from "./ProductsForm";
 
 /** Écran 4 — ce qu'on emporte. Le noyau répartit, on ne choisit pas par secteur. */
 export default async function Page(
@@ -14,7 +14,7 @@ export default async function Page(
   if (!plan) return null;
 
   return (
-    <ProduitsForm
+    <ProductsForm
       accessId={accessId}
       catalogue={catalogue}
       choisis={plan.productCodes}

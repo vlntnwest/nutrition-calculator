@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { computePlan } from "@/app/plans/actions";
 
-export function Calculer({
+export function ComputeButton({
   accessId,
   calcule,
   edited,
@@ -23,7 +23,7 @@ export function Calculer({
 
   const aConfirmer = edited && !confirme;
 
-  function libelle(): string {
+  function label(): string {
     if (pending) return "Calcul…";
     if (confirme) return "Ça écrasera tes retouches. Confirmer ?";
 
@@ -57,7 +57,7 @@ export function Calculer({
           });
         }}
       >
-        {libelle()}
+        {label()}
       </button>
       {erreur && <p role="alert">{erreur}</p>}
     </div>

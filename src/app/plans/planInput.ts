@@ -81,7 +81,7 @@ function whole(value: number | undefined): number | undefined {
  * 10 000,2 s'écriraient à mille mètres l'un de l'autre, il serait absurde de
  * les refuser sur un écart de 999,8.
  */
-export function normalise(input: NewPlan): NewPlan {
+export function normalize(input: NewPlan): NewPlan {
   return {
     track: {
       ...input.track,
@@ -170,7 +170,7 @@ function tooClose(input: NewPlan): [number, number] | null {
 }
 
 /** Un nombre exploitable : ni `NaN`, ni infini, ni autre chose qu'un nombre. */
-function fini(v: unknown): v is number {
+function isNumber(v: unknown): v is number {
   return typeof v === "number" && Number.isFinite(v);
 }
 
@@ -187,14 +187,19 @@ function assertTrack(track: NewPlan["track"]): void {
   }
 
   for (const [i, p] of track.points.entries()) {
-    if (!fini(p?.d) || !fini(p?.lat) || !fini(p?.lon) || !fini(p?.ele)) {
+    if (
+      !isNumber(p?.d) ||
+      !isNumber(p?.lat) ||
+      !isNumber(p?.lon) ||
+      !isNumber(p?.ele)
+    ) {
       throw new PlanError(`Malformed track points at index ${i}`);
     }
   }
 
   let precedent = Number.NEGATIVE_INFINITY;
   for (const [i, p] of track.profile.entries()) {
-    if (!fini(p?.d) || !fini(p?.ele)) {
+    if (!isNumber(p?.d) || !isNumber(p?.ele)) {
       throw new PlanError(`Malformed track profile at index ${i}`);
     }
     // Le calcul lit le profil comme une fonction de la distance : un retour
