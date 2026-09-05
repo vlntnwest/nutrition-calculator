@@ -2,54 +2,92 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Hero } from "../components/Hero";
 import { DemoCards } from "./_home/cards/DemoCards";
 import {
   ImportDropzone,
   type ImportStatus,
 } from "./_home/dropzone/ImportDropzone";
-import { Hero } from "../components/Hero";
+import {
+  ImportRaceModal,
+  type ParsedTrack,
+} from "./_home/import-modal/ImportRaceModal";
 import { PlansActions } from "./_home/nav/PlansActions";
 import { analyzeGpx } from "./import/analyzeGpx";
-import { importTrack } from "./plans/actions";
+import { importTrack, savePlan } from "./plans/actions";
 import { rememberPlan } from "./plans/stored";
 
 /**
  * Écran d'import. Voir le commentaire de contrat de direction dans
  * layout.tsx pour la direction visuelle ; ce fichier orchestre seulement
- * la lecture du GPX, les autres pièces vivent chacune dans leur fichier.
+ * la lecture du GPX et la création du plan, les autres pièces vivent
+ * chacune dans leur fichier.
  */
 export default function Page() {
   const [status, setStatus] = useState<ImportStatus>({ kind: "vide" });
+  const [parsed, setParsed] = useState<ParsedTrack | null>(null);
   const router = useRouter();
 
   async function read(file: File) {
     setStatus({ kind: "lecture" });
+    if (!file.name.endsWith(".gpx")) {
+      setStatus({
+        kind: "erreur",
+        message: "Le fichier doit être un fichier GPX",
+      });
+      return;
+    }
     try {
       const analysis = await analyzeGpx(await file.text());
-      const created = await importTrack({
+      setStatus({ kind: "vide" });
+      setParsed({
+        fileName: file.name,
         name: analysis.name,
         distanceM: analysis.distanceM,
-        ascentM: Math.round(analysis.ascentM),
+        ascentM: analysis.ascentM,
         points: analysis.points,
         profile: analysis.profile,
       });
-
-      if (!created.ok) {
-        setStatus({ kind: "erreur", message: created.error });
-
-        return;
-      }
-
-      rememberPlan(created.value);
-      // L'état reste sur « lecture » : la navigation remplace l'écran, et
-      // repasser par « vide » ferait clignoter le formulaire au départ.
-      router.push(`/plan/${created.value}/pace`);
     } catch (error) {
       setStatus({
         kind: "erreur",
         message: error instanceof Error ? error.message : String(error),
       });
     }
+  }
+
+  /**
+   * La modale valide le nom et le chrono ; le plan n'existe qu'à partir
+   * d'ici. Un message renvoyé rouvre la modale dessus, `null` déclenche la
+   * navigation vers l'onglet Course pour y poser les ravitos.
+   */
+  async function confirm(
+    raceName: string,
+    targetTimeS: number | undefined,
+  ): Promise<string | null> {
+    if (!parsed) return "Le fichier importé a été perdu — réessayez.";
+
+    const created = await importTrack({
+      name: raceName,
+      distanceM: parsed.distanceM,
+      ascentM: Math.round(parsed.ascentM),
+      points: parsed.points,
+      profile: parsed.profile,
+    });
+
+    if (!created.ok) return created.error;
+
+    if (targetTimeS !== undefined) {
+      const saved = await savePlan(created.value, {
+        settings: { targetTimeS },
+      });
+      if (!saved.ok) return saved.error;
+    }
+
+    rememberPlan(created.value);
+    router.push(`/plan/${created.value}`);
+
+    return null;
   }
 
   return (
@@ -75,6 +113,14 @@ export default function Page() {
           </div>
         </div>
       </Hero>
+
+      {parsed && (
+        <ImportRaceModal
+          track={parsed}
+          onCancel={() => setParsed(null)}
+          onConfirm={confirm}
+        />
+      )}
     </main>
   );
 }

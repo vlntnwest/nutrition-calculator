@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { planOf } from "./plan";
 
@@ -13,33 +12,8 @@ export default async function Layout(props: LayoutProps<"/plan/[accessId]">) {
 
   if (!plan) notFound();
 
-  const onglets = [
-    { href: `/plan/${accessId}`, texte: "Course" },
-    { href: `/plan/${accessId}/cibles`, texte: "Cibles" },
-    { href: `/plan/${accessId}/produits`, texte: "Produits" },
-    { href: `/plan/${accessId}/roadbook`, texte: "Roadbook" },
-  ];
-
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6 p-8">
-      <header className="flex flex-col gap-2">
-        <Link href="/" className="text-sm underline">
-          ← Nouvel import
-        </Link>
-        <h1 className="text-2xl font-semibold">{plan.track.name}</h1>
-        <p className="text-sm">
-          {(plan.track.distanceM / 1000).toFixed(1)} km · {plan.track.ascentM} m
-          D+
-        </p>
-        <nav className="flex gap-4 text-sm">
-          {onglets.map((o) => (
-            <Link key={o.href} href={o.href} className="underline">
-              {o.texte}
-            </Link>
-          ))}
-        </nav>
-      </header>
-
+    <div className="flex min-h-screen flex-col bg-paper text-ink">
       {props.children}
     </div>
   );

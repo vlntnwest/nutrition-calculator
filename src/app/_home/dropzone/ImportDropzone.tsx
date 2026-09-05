@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { SpinnerGlyph } from "../icons/SpinnerGlyph";
 import { UploadGlyph } from "../icons/UploadGlyph";
 
 export type ImportStatus =
@@ -77,7 +78,7 @@ export function ImportDropzone({
         <div className="max-w-xl w-full rounded-[28px] border border-white/40 bg-white/10 shadow-2xl shadow-black/20 backdrop-blur-sm">
           <div className="flex h-full flex-col items-center justify-center gap-3 px-24 py-10 text-center">
             <span className="flex size-14 items-center justify-center rounded-2xl border border-black/30 bg-white/15 text-black">
-              <UploadGlyph />
+              {lecture ? <SpinnerGlyph /> : <UploadGlyph />}
             </span>
 
             <div className="space-y-1">
