@@ -3,11 +3,29 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Carnet d'expédition : papier blanc, encre, un accent brûlé. */
+  --ink: #17130f;
+  --ink-soft: #635c52;
+  --paper: #ffffff;
+  --paper-dim: #f6f3ee;
+  --line: #17130f1f;
+  --accent: #c2410c;
+  --accent-dark: #3a1306;
+  --accent-tint: #fbe7d9;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-paper: var(--paper);
+  --color-paper-dim: var(--paper-dim);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-dark: var(--accent-dark);
+  --color-accent-tint: var(--accent-tint);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

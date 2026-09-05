@@ -2,26 +2,28 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { DemoCards } from "./_home/cards/DemoCards";
+import {
+  ImportDropzone,
+  type ImportStatus,
+} from "./_home/dropzone/ImportDropzone";
+import { Hero } from "../components/Hero";
+import { PlansActions } from "./_home/nav/PlansActions";
 import { analyzeGpx } from "./import/analyzeGpx";
 import { importTrack } from "./plans/actions";
 import { rememberPlan } from "./plans/stored";
 
-type State =
-  | { kind: "vide" }
-  | { kind: "lecture" }
-  | { kind: "erreur"; message: string };
-
 /**
- * Écran d'import, réduit à son squelette : il n'y a pas encore de direction
- * artistique. Le GPX est lu dans un worker, puis le plan s'ouvre en base
- * aussitôt — l'identifiant rendu est tout ce qui rouvre le plan ensuite.
+ * Écran d'import. Voir le commentaire de contrat de direction dans
+ * layout.tsx pour la direction visuelle ; ce fichier orchestre seulement
+ * la lecture du GPX, les autres pièces vivent chacune dans leur fichier.
  */
 export default function Page() {
-  const [state, setState] = useState<State>({ kind: "vide" });
+  const [status, setStatus] = useState<ImportStatus>({ kind: "vide" });
   const router = useRouter();
 
   async function read(file: File) {
-    setState({ kind: "lecture" });
+    setStatus({ kind: "lecture" });
     try {
       const analysis = await analyzeGpx(await file.text());
       const created = await importTrack({
@@ -33,7 +35,7 @@ export default function Page() {
       });
 
       if (!created.ok) {
-        setState({ kind: "erreur", message: created.error });
+        setStatus({ kind: "erreur", message: created.error });
 
         return;
       }
@@ -41,9 +43,9 @@ export default function Page() {
       rememberPlan(created.value);
       // L'état reste sur « lecture » : la navigation remplace l'écran, et
       // repasser par « vide » ferait clignoter le formulaire au départ.
-      router.push(`/plan/${created.value}`);
+      router.push(`/plan/${created.value}/pace`);
     } catch (error) {
-      setState({
+      setStatus({
         kind: "erreur",
         message: error instanceof Error ? error.message : String(error),
       });
@@ -51,26 +53,28 @@ export default function Page() {
   }
 
   return (
-    <main className="mx-auto flex max-w-2xl flex-col gap-6 p-8">
-      <h1 className="text-2xl font-semibold">Plan nutritionnel de course</h1>
+    <main className="flex min-h-screen flex-col bg-paper text-ink">
+      <Hero>
+        <div className="px-6 pt-4 text-center sm:pt-8 lg:pt-6">
+          <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
+            Importez la trace de votre course
+          </h1>
+          <p className="mx-auto mt-3 max-w-xl text-base text-ink-soft sm:text-lg">
+            Un fichier GPX suffit. Le plan s'ouvre aussitôt et se garde sur cet
+            appareil.
+          </p>
+        </div>
+        <ImportDropzone status={status} onFile={(file) => void read(file)} />
 
-      <label className="flex flex-col gap-2">
-        <span>Fichier GPX</span>
-        <input
-          type="file"
-          accept=".gpx,application/gpx+xml"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void read(file);
-          }}
-        />
-      </label>
-
-      {state.kind === "lecture" && <p>Lecture…</p>}
-
-      {state.kind === "erreur" && (
-        <p role="alert">Import impossible — {state.message}</p>
-      )}
+        <div className="flex flex-1 w-full px-4 pb-6 lg:pb-8">
+          <div className="flex w-full flex-col gap-4 pt-16 lg:flex-row">
+            <div className="flex flex-1 flex-wrap gap-4">
+              <DemoCards />
+            </div>
+            <PlansActions />
+          </div>
+        </div>
+      </Hero>
     </main>
   );
 }
