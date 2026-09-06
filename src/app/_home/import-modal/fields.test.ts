@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import {
+  baseChronoHMS,
   digitsOnly,
   paceLabel,
   raceNameFromFileName,
@@ -48,4 +49,21 @@ test.each([
   [1200, 1000 * (1200 / 59.6), "01:00"],
 ])("paceLabel(%o, %o) → %o", (targetTimeS, distanceM, attendu) => {
   expect(paceLabel(targetTimeS, distanceM)).toBe(attendu);
+});
+
+test.each([
+  [0, { h: "", m: "", s: "" }],
+  // 10 km à 6 min/km : 1 h tout rond.
+  [10000, { h: "01", m: "00", s: "00" }],
+  // 42,195 km : 15 190,2 s arrondies à 15 190 → 4 h 13 min 10 s.
+  [42195, { h: "04", m: "13", s: "10" }],
+])("baseChronoHMS(%o) → %o", (distanceM, attendu) => {
+  expect(baseChronoHMS(distanceM)).toEqual(attendu);
+});
+
+test("le chrono de base se relit bien à 6 min/km", () => {
+  for (const distanceM of [5000, 21097, 42195, 168000]) {
+    const { h, m, s } = baseChronoHMS(distanceM);
+    expect(paceLabel(toSecondsHMS(h, m, s), distanceM)).toBe("06:00");
+  }
 });

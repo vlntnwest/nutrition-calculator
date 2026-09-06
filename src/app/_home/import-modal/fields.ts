@@ -50,6 +50,34 @@ export function raceNameFromFileName(fileName: string): string {
 }
 
 /**
+ * L'allure qui remplit le chrono à l'ouverture de la fiche, en secondes par
+ * kilomètre. Un point de départ à corriger, pas une prédiction : elle ignore
+ * le dénivelé, que le noyau, lui, prend en compte.
+ */
+export const BASE_PACE_S_PER_KM = 360;
+
+/**
+ * Le chrono proposé à l'ouverture : la distance courue à
+ * `BASE_PACE_S_PER_KM`, découpée en trois cases de deux chiffres. Une trace
+ * sans distance rend trois cases vides plutôt qu'un `00:00:00` trompeur.
+ */
+export function baseChronoHMS(distanceM: number): {
+  h: string;
+  m: string;
+  s: string;
+} {
+  if (distanceM <= 0) return { h: "", m: "", s: "" };
+
+  const total = Math.round((distanceM / 1000) * BASE_PACE_S_PER_KM);
+
+  return {
+    h: String(Math.floor(total / 3600)).padStart(2, "0"),
+    m: String(Math.floor((total % 3600) / 60)).padStart(2, "0"),
+    s: String(total % 60).padStart(2, "0"),
+  };
+}
+
+/**
  * L'allure moyenne que suppose le chrono visé, en `mm:ss /km` — la seule
  * confirmation immédiate qu'un chrono tapé est plausible avant d'aller
  * jusqu'au roadbook. `undefined` tant qu'aucun chrono n'est renseigné.

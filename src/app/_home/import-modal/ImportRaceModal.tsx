@@ -6,12 +6,14 @@ import {
   type Ref,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import { ElevationChart } from "@/components/track/ElevationChart";
 import type { ProfilePoint, ResolvedPoint } from "@/core/type";
 import {
+  baseChronoHMS,
   digitsOnly,
   paceLabel,
   raceNameFromFileName,
@@ -62,9 +64,10 @@ export function ImportRaceModal({
   const [name, setName] = useState(
     () => track.name?.trim() || raceNameFromFileName(track.fileName),
   );
-  const [h, setH] = useState("");
-  const [m, setM] = useState("");
-  const [s, setS] = useState("");
+  const base = useMemo(() => baseChronoHMS(track.distanceM), [track.distanceM]);
+  const [h, setH] = useState(base.h);
+  const [m, setM] = useState(base.m);
+  const [s, setS] = useState(base.s);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
@@ -210,12 +213,16 @@ export function ImportRaceModal({
                   onChange={(value) => setS(digitsOnly(value))}
                 />
               </div>
-              {pace && (
-                <p className="text-ink-soft text-xs">
-                  soit <span className="font-mono text-ink">{pace} /km</span> de
-                  moyenne — ajustable ensuite
-                </p>
-              )}
+              <p className="text-ink-soft text-xs">
+                {pace ? (
+                  <>
+                    soit <span className="font-mono text-ink">{pace} /km</span>{" "}
+                    de moyenne — ajustable ensuite
+                  </>
+                ) : (
+                  "un chrono est nécessaire pour calculer le plan"
+                )}
+              </p>
             </div>
 
             <p className="text-[11px] text-ink-soft leading-relaxed">

@@ -47,6 +47,11 @@ function FitBoundsOnResize({ bounds }: { bounds: LatLngBounds }) {
  * s'en sert comme `fillColor` (`url(#id)`), une astuce SVG standard plutôt
  * qu'une fonctionnalité Leaflet. `map.getRenderer` garantit que ce SVG existe
  * déjà, sans dépendre de l'ordre de montage face aux autres calques.
+ *
+ * Motif calé sur la boîte du marqueur (`objectBoundingBox`) et non sur
+ * l'espace de la carte : une tuile de deux cases sur deux mesure les deux
+ * tiers du disque, donc toujours trois cases par côté, quel que soit
+ * l'endroit où l'arrivée tombe sur la carte.
  */
 function DamierArrivee({ id }: { id: string }) {
   const map = useMap();
@@ -66,16 +71,14 @@ function DamierArrivee({ id }: { id: string }) {
 
     const pattern = document.createElementNS(ns, "pattern");
     pattern.setAttribute("id", id);
-    pattern.setAttribute("width", "6");
-    pattern.setAttribute("height", "6");
-    pattern.setAttribute("patternUnits", "userSpaceOnUse");
+    pattern.setAttribute("width", String(2 / 3));
+    pattern.setAttribute("height", String(2 / 3));
+    pattern.setAttribute("patternUnits", "objectBoundingBox");
+    pattern.setAttribute("viewBox", "0 0 2 2");
     pattern.innerHTML =
-      '<rect width="6" height="6" fill="#ffffff" />' +
-      '<rect width="2" height="2" fill="#171717" />' +
-      '<rect x="4" width="2" height="2" fill="#171717" />' +
-      '<rect x="2" y="2" width="2" height="2" fill="#171717" />' +
-      '<rect y="4" width="2" height="2" fill="#171717" />' +
-      '<rect x="4" y="4" width="2" height="2" fill="#171717" />';
+      '<rect width="2" height="2" fill="#ffffff" />' +
+      '<rect width="1" height="1" fill="#171717" />' +
+      '<rect x="1" y="1" width="1" height="1" fill="#171717" />';
     defs.appendChild(pattern);
 
     return () => {
@@ -175,7 +178,7 @@ export default function RouteMap({
         pathOptions={{
           color: "#ffffff",
           weight: 2,
-          fillColor: "#2f6b3f",
+          fillColor: "#369d51",
           fillOpacity: 1,
         }}
         interactive={false}
