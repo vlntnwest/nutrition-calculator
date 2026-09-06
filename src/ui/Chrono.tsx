@@ -74,7 +74,7 @@ function Case({
         inputMode="numeric"
         placeholder="00"
         aria-label={label}
-        className={`w-full rounded-[var(--radius-control)] border border-line bg-paper text-center font-mono text-ink outline-none transition-colors focus:border-accent ${
+        className={`w-full rounded-[var(--radius-control)] border border-line bg-paper text-center font-mono text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-accent ${
           taille === "sm" ? "py-1.5 text-base" : "py-2 text-lg"
         }`}
       />

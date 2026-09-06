@@ -29,7 +29,7 @@ export function ProductCard({
     <article
       className={`flex flex-col overflow-hidden rounded-[var(--radius-panel)] border transition-colors ${
         dansLeSac
-          ? "border-accent/40 bg-paper ring-1 ring-accent/15"
+          ? "border-ink bg-paper"
           : "border-line bg-paper hover:border-line-strong"
       }`}
     >

@@ -26,7 +26,7 @@ const CARTES = [
     photo: "/card-saverne.webp",
     distanceKm: "28,4",
     ascentM: "1 314",
-    detail: "◍ à recalculer",
+    detail: "à recalculer",
     profile:
       "M0,150 L40,120 L70,135 L100,90 L130,105 L160,60 L190,80 L220,40 L250,65 L280,45 L310,90 L340,70 L370,110 L400,95",
   },

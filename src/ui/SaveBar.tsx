@@ -5,9 +5,9 @@ import { Button } from "./Button";
 import { CheckIcon, SpinnerIcon } from "./icons";
 
 /**
- * Le pied d'un écran de saisie. Il colle au bas de la zone de défilement :
- * sur un formulaire long, le bouton reste sous le pouce sans qu'on ait à
- * remonter chercher.
+ * Le pied d'un écran de saisie, posé hors de la zone qui défile : sur un
+ * formulaire long, le bouton reste sous le pouce sans qu'on ait à remonter
+ * le chercher, et rien ne passe derrière lui.
  */
 export function SaveBar({
   pending,
@@ -29,7 +29,7 @@ export function SaveBar({
   children?: ReactNode;
 }) {
   return (
-    <div className="sticky bottom-0 z-20 -mx-4 mt-2 flex items-center gap-3 border-line border-t bg-paper px-4 py-3 sm:-mx-6 sm:px-6">
+    <div className="flex items-center gap-3 border-line border-t bg-paper px-4 py-3 sm:px-6">
       {children}
       <div className="ml-auto flex items-center gap-3">
         <p className="text-[12px] text-ink-soft">

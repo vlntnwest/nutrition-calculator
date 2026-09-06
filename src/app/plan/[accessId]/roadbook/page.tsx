@@ -3,7 +3,7 @@ import { resolveTargets } from "@/app/plans/targets";
 import { duree } from "@/format/number";
 import { ArrowRightIcon } from "@/ui/icons";
 import { EmptyNote } from "@/ui/Notice";
-import { destinations } from "../_shell/destinations";
+import { calculable, destinations } from "../_shell/destinations";
 import { planOf, roadbookOf } from "../plan";
 import { CalculeDepuis, ComputeButton } from "./ComputeButton";
 import { RoadbookEditor } from "./RoadbookEditor";
@@ -58,6 +58,7 @@ export default async function Page(
           accessId={accessId}
           calcule={roadbook !== null}
           edited={roadbook?.edited ?? false}
+          pret={calculable(plan)}
         />
       </div>
 

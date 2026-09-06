@@ -31,8 +31,9 @@ import {
 const RouteMap = dynamic(() => import("@/ui/track/RouteMap"), { ssr: false });
 
 /**
- * Écran Course : la trace sert de fond, la colonne de papier posée dessus
- * porte le chrono, l'allure et la pile des ravitos.
+ * Écran Course : la trace occupe le cadre, le papier porte l'écriture. Sur
+ * grand écran les deux se partagent la largeur ; au pouce la trace passe
+ * derrière et le papier monte du bas, réductible d'un geste.
  *
  * Un ravito se pose au clic, sur le profil ou sur la carte, puis se règle
  * dans sa carte. Une seule carte reste ouverte à la fois : la colonne garde
@@ -148,8 +149,8 @@ export function RaceScreen({
       </div>
 
       <section
-        className={`absolute inset-x-0 bottom-0 z-10 flex flex-col rounded-t-[var(--radius-sheet)] border border-line border-b-0 bg-paper shadow-[var(--shadow-lifted)] transition-[height] duration-300 ease-out lg:static lg:order-1 lg:h-auto lg:w-[27rem] lg:shrink-0 lg:rounded-none lg:border-0 lg:border-r lg:shadow-none ${
-          depliee ? "h-[93%]" : "h-[68%]"
+        className={`absolute inset-x-0 bottom-0 z-10 flex flex-col rounded-t-[var(--radius-sheet)] border border-line border-b-0 max-h-full bg-paper shadow-[var(--shadow-lifted)] transition-[height] duration-300 ease-out lg:static lg:order-1 lg:h-auto lg:max-h-none lg:w-[27rem] lg:shrink-0 lg:rounded-none lg:border-0 lg:border-r lg:shadow-none ${
+          depliee ? "h-[74dvh]" : "h-[46dvh]"
         }`}
       >
         <button
@@ -167,7 +168,7 @@ export function RaceScreen({
           </span>
         </button>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 lg:px-5 lg:pt-5">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4 lg:px-5 lg:pt-5">
           <Panel>
             <PanelHead titre="Chrono visé" />
             <Rule />
@@ -325,7 +326,9 @@ export function RaceScreen({
 
           {reproche && <ErrorNote>{reproche}</ErrorNote>}
           {erreur && <ErrorNote>{erreur}</ErrorNote>}
+        </div>
 
+        <div className="shrink-0">
           <SaveBar
             pending={pending}
             modifie={modifie}

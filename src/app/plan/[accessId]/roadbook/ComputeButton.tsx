@@ -11,10 +11,13 @@ export function ComputeButton({
   accessId,
   calcule,
   edited,
+  pret,
 }: {
   accessId: string;
   calcule: boolean;
   edited: boolean;
+  /** Le plan porte-t-il de quoi calculer ? Sinon le bouton ne promet rien. */
+  pret: boolean;
 }) {
   const router = useRouter();
   const [erreur, setErreur] = useState<string | null>(null);
@@ -36,8 +39,13 @@ export function ComputeButton({
   return (
     <div className="flex flex-col items-end gap-2">
       <Button
-        ton={confirme ? "encre" : calcule ? "contour" : "encre"}
-        disabled={pending}
+        ton={confirme || !calcule ? "encre" : "contour"}
+        disabled={pending || !pret}
+        title={
+          pret
+            ? undefined
+            : "Il manque un chrono, un poids ou un produit dans le sac."
+        }
         icone={
           pending ? (
             <SpinnerIcon className="size-4" />

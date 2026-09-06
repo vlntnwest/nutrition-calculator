@@ -32,7 +32,7 @@ export function warningText(code: string, payload: unknown): string {
       const vise = nombre(payload, "carbsGH");
       const guide = nombre(payload, "guideGH");
 
-      return `La cible de ${entier(vise ?? 0)} g de glucides par heure passe au-dessus du repère de ${entier(guide ?? 0)} g/h retenu dans la littérature. Rien ne l'interdit, mais cela se teste à l'entraînement.`;
+      return `La cible de ${entier(vise ?? 0)} g de glucides par heure passe au-dessus du repère de ${entier(guide ?? 0)} g/h retenu dans la littérature. Testez-la à l'entraînement avant de l'appliquer en course.`;
     }
 
     case "carbs-single-source": {
@@ -47,7 +47,7 @@ export function warningText(code: string, payload: unknown): string {
       const vise = nombre(payload, "fluidMlH");
       const guide = nombre(payload, "guideMlH");
 
-      return `Boire ${entier(vise ?? 0)} mL par heure dépasse le repère de ${entier(guide ?? 0)} mL/h. Au-delà, le risque n'est plus la déshydratation mais l'excès d'eau.`;
+      return `Boire ${entier(vise ?? 0)} mL par heure dépasse le repère de ${entier(guide ?? 0)} mL/h. Au-delà, l'excès d'eau devient le risque principal : redescendez la cible de boisson, ou salez davantage.`;
     }
 
     case "sodium-below-target": {
@@ -59,7 +59,7 @@ export function warningText(code: string, payload: unknown): string {
     case "carbs-above-target": {
       const part = pourcent(payload, "share");
 
-      return `Le sac apporte nettement plus de glucides que visé${part ? ` : ${part} de la cible` : ""}. Les doses ajoutées à la main ne sont pas redistribuées.`;
+      return `Le sac apporte plus de glucides que visé${part ? ` : ${part} de la cible` : ""}. Les doses ajoutées à la main ne sont pas redistribuées.`;
     }
 
     case "leg-fluid-above-target": {

@@ -30,7 +30,7 @@ export function AidStationCard({
     <article
       className={`overflow-hidden rounded-[var(--radius-panel)] border transition-colors ${
         ouverte
-          ? "border-accent/40 bg-paper ring-1 ring-accent/15"
+          ? "border-accent bg-paper"
           : "border-line bg-paper hover:border-line-strong"
       }`}
     >

@@ -1,7 +1,7 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
-import { type LatLngBounds, latLngBounds, type Path } from "leaflet";
+import { control, type LatLngBounds, latLngBounds, type Path } from "leaflet";
 import { useEffect, useId, useMemo } from "react";
 import {
   CircleMarker,
@@ -37,6 +37,30 @@ function FitBoundsOnResize({ bounds }: { bounds: LatLngBounds }) {
 
     return () => observateur.disconnect();
   }, [map, bounds]);
+
+  return null;
+}
+
+/**
+ * La mention légale d'OpenStreetMap est obligatoire ; le préfixe que Leaflet
+ * y ajoute ne l'est pas, et il publie un drapeau en emoji que la voix du
+ * produit interdit. Le contrôle se repose à la main, sans préfixe.
+ */
+function AttributionSansPrefixe() {
+  const map = useMap();
+
+  useEffect(() => {
+    const controle = control
+      .attribution({ prefix: false })
+      .addAttribution(
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      )
+      .addTo(map);
+
+    return () => {
+      controle.remove();
+    };
+  }, [map]);
 
   return null;
 }
@@ -151,14 +175,17 @@ export default function RouteMap({
       doubleClickZoom={false}
       touchZoom={false}
       zoomControl={false}
-      className={`h-full w-full ${onPick ? "[&_.leaflet-interactive]:cursor-crosshair" : ""}`}
+      attributionControl={false}
+      className={`fond-carnet h-full w-full ${onPick ? "[&_.leaflet-interactive]:cursor-crosshair" : ""}`}
     >
+      <AttributionSansPrefixe />
       <FitBoundsOnResize bounds={bounds} />
       <DamierArrivee id={idDamier} />
-      <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-      />
+      {/* Fond OpenStreetMap standard, le seul qui reste sans clé d'API. Ses
+          verts et ses roses saturés appartiennent à une autre direction :
+          `fond-carnet` les ramène au papier en CSS, et le tracé accent
+          reprend tout le contraste. */}
+      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
       <Polyline
         positions={positions}
         pathOptions={{ color: "var(--accent)", weight: 3.5 }}

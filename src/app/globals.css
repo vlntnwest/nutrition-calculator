@@ -87,15 +87,31 @@ body {
 
 /*
  * Le fond de carte du tracé importé : la mention légale reste obligatoire,
- * mais n'a pas à peser sur une fiche de quelques centimètres de haut.
+ * mais n'a pas à peser sur une fiche de quelques centimètres de haut. La
+ * spécificité doit tenir devant `leaflet.css`, importé après ce fichier.
  */
-.leaflet-control-attribution {
+.leaflet-container .leaflet-control-attribution {
   background: transparent;
+  color: var(--ink-faint);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
   font-size: 9px;
 }
 
-.leaflet-control-attribution a {
+.leaflet-container .leaflet-control-attribution a {
   color: var(--ink-soft);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/*
+ * Les tuiles OpenStreetMap arrivent en verts, bleus et roses saturés : sur
+ * l'écran Course elles occupent la moitié du cadre et parlent une autre
+ * langue que le carnet. Désaturées et réchauffées, elles redeviennent du
+ * papier, et le tracé accent reprend tout le contraste. Le filtre porte sur
+ * le seul calque des tuiles : marqueurs et tracé gardent leurs couleurs.
+ */
+.fond-carnet .leaflet-tile-pane {
+  filter: grayscale(0.92) sepia(0.28) brightness(1.06) contrast(0.92);
 }
 
 /*

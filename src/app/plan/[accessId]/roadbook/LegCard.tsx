@@ -14,6 +14,7 @@ import { ChevronIcon, CloseIcon, FlaskIcon, PlusIcon } from "@/ui/icons";
 import { Releve, Val } from "@/ui/Measure";
 import { Notice } from "@/ui/Notice";
 import { Rule } from "@/ui/Panel";
+import { Select } from "@/ui/Select";
 import { Stepper } from "@/ui/Stepper";
 import { bound, excessive } from "./format";
 import { warningText } from "./warnings";
@@ -271,18 +272,17 @@ export function LegCard({
 
       {absents.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 border-line border-t px-4 py-2.5">
-          <label className="flex items-center gap-2 text-[12px] text-ink-soft">
+          <span className="flex items-center gap-2 text-[12px] text-ink-soft">
             <PlusIcon className="size-4" />
             <span className="sr-only sm:not-sr-only">
               Ajouter un produit à ce secteur
             </span>
-            <select
+            <Select
               value=""
               aria-label={`Ajouter un produit au secteur ${leg.rank}`}
               onChange={(event) => {
                 if (event.target.value) onServing(event.target.value, 1);
               }}
-              className="cursor-pointer rounded-[var(--radius-control)] border border-line bg-paper px-2 py-1.5 text-[13px] text-ink outline-none focus:border-accent"
             >
               <option value="">choisir dans le sac</option>
               {absents.map((p) => (
@@ -290,8 +290,8 @@ export function LegCard({
                   {`${p.brandName ?? ""} ${p.name}`.trim()}
                 </option>
               ))}
-            </select>
-          </label>
+            </Select>
+          </span>
         </div>
       )}
 
@@ -340,7 +340,8 @@ export function LegCard({
                   <span className="shrink-0 text-[13px] text-ink-soft">
                     Flasque {flask.rank}
                   </span>
-                  <select
+                  <Select
+                    className="min-w-0 flex-1"
                     aria-label={`Contenu de la flasque ${flask.rank} au secteur ${leg.rank}`}
                     value={
                       verse === undefined
@@ -356,7 +357,6 @@ export function LegCard({
                         volumeMl: verse?.volumeMl ?? flask.volumeMl,
                       });
                     }}
-                    className="min-w-0 flex-1 cursor-pointer rounded-[var(--radius-control)] border border-line bg-paper px-2 py-1.5 text-[13px] text-ink outline-none focus:border-accent"
                   >
                     <option value="vide">rien</option>
                     <option value="eau">eau claire</option>
@@ -366,7 +366,7 @@ export function LegCard({
                           {`${p.brandName ?? ""} ${p.name}`.trim()}
                         </option>
                       ))}
-                  </select>
+                  </Select>
                   {verse !== undefined && (
                     <span className="flex shrink-0 items-center rounded-[var(--radius-control)] border border-line bg-paper focus-within:border-accent">
                       <input

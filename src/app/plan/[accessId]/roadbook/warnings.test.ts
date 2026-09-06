@@ -13,7 +13,7 @@ test("les dix codes de la base ont tous une phrase", () => {
 
 test("les chiffres du noyau entrent dans la phrase", () => {
   expect(warningText("carbs-above-guide", { carbsGH: 110, guideGH: 90 })).toBe(
-    "La cible de 110 g de glucides par heure passe au-dessus du repère de 90 g/h retenu dans la littérature. Rien ne l'interdit, mais cela se teste à l'entraînement.",
+    "La cible de 110 g de glucides par heure passe au-dessus du repère de 90 g/h retenu dans la littérature. Testez-la à l'entraînement avant de l'appliquer en course.",
   );
 });
 

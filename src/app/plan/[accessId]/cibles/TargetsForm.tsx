@@ -12,7 +12,7 @@ import { Button, IconButton } from "@/ui/Button";
 import { ToggleChip } from "@/ui/Chip";
 import { Hint, MeasureField } from "@/ui/Field";
 import { FlaskIcon, PlusIcon, TrashIcon } from "@/ui/icons";
-import { Val } from "@/ui/Measure";
+import { Stat, Val } from "@/ui/Measure";
 import { EmptyNote, ErrorNote, Notice } from "@/ui/Notice";
 import { Panel, PanelHead, Rule } from "@/ui/Panel";
 import { SaveBar } from "@/ui/SaveBar";
@@ -107,224 +107,265 @@ export function TargetsForm({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-col gap-5 overflow-y-auto px-4 py-6 sm:px-6">
-      <div>
-        <h2 className="font-semibold text-[22px] text-ink tracking-tight">
-          Cibles horaires
-        </h2>
-        <p className="mt-1 text-[14px] text-ink-soft leading-relaxed">
-          {suggestion && propose ? (
-            <>
-              Suggérées d'après <Val>{massKg} kg</Val> et{" "}
-              <Val>{duree(targetTimeS ?? 0)}</Val>. Modifiez-les si vous savez
-              mieux.
-            </>
-          ) : (
-            "Ce qu'on vise par heure de course. Le roadbook répartit ensuite ces cibles secteur par secteur."
-          )}
-        </p>
-      </div>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 lg:flex-row lg:items-start">
+          <div className="flex min-w-0 flex-1 flex-col gap-5">
+            <div>
+              <h2 className="font-semibold text-[22px] text-ink tracking-tight">
+                Cibles horaires
+              </h2>
+              <p className="mt-1 text-[14px] text-ink-soft leading-relaxed">
+                {suggestion && propose ? (
+                  <>
+                    Suggérées d'après <Val>{massKg} kg</Val> et{" "}
+                    <Val>{duree(targetTimeS ?? 0)}</Val>. Modifiez-les si vous
+                    savez mieux.
+                  </>
+                ) : (
+                  "Ce qu'on vise par heure de course. Le roadbook répartit ensuite ces cibles secteur par secteur."
+                )}
+              </p>
+            </div>
 
-      <Panel className="p-4">
-        <div className="flex flex-col gap-5">
-          <Slider
-            label="Glucides"
-            unite="g/h"
-            value={cibles.carbsGH}
-            min={0}
-            max={120}
-            step={5}
-            bornes={["0", "120 g/h"]}
-            onChange={(carbsGH) =>
-              change(() => setCibles({ ...cibles, carbsGH }))
-            }
-          />
-          {cibles.carbsGH > CARBS_GUIDE_G_H && (
-            <Notice code="carbs-above-guide">
-              Au-delà de <Val>{CARBS_GUIDE_G_H} g/h</Val>, on sort des
-              fourchettes publiées. Le calcul suivra quand même, et le signalera
-              sur le roadbook.
-            </Notice>
-          )}
-          {cibles.carbsGH > CARBS_SINGLE_SOURCE_MAX_G_H && (
-            <Hint>
-              Au-dessus de {CARBS_SINGLE_SOURCE_MAX_G_H} g/h, un seul type de
-              sucre ne passe plus : il faut au moins un produit qui annonce un
-              mélange glucose et fructose.
-            </Hint>
-          )}
+            <Panel className="p-4">
+              <div className="flex flex-col gap-5">
+                <Slider
+                  label="Glucides"
+                  unite="g/h"
+                  value={cibles.carbsGH}
+                  min={0}
+                  max={120}
+                  step={5}
+                  bornes={["0", "120 g/h"]}
+                  onChange={(carbsGH) =>
+                    change(() => setCibles({ ...cibles, carbsGH }))
+                  }
+                />
+                {cibles.carbsGH > CARBS_GUIDE_G_H && (
+                  <Notice code="carbs-above-guide">
+                    Au-delà de <Val>{CARBS_GUIDE_G_H} g/h</Val>, on sort des
+                    fourchettes publiées. Le calcul suivra quand même, et le
+                    signalera sur le roadbook.
+                  </Notice>
+                )}
+                {cibles.carbsGH > CARBS_SINGLE_SOURCE_MAX_G_H && (
+                  <Hint>
+                    Au-dessus de {CARBS_SINGLE_SOURCE_MAX_G_H} g/h, un seul type
+                    de sucre ne passe plus : il faut au moins un produit qui
+                    annonce un mélange glucose et fructose.
+                  </Hint>
+                )}
 
-          <Rule />
+                <Rule />
 
-          <Slider
-            label="Boisson"
-            unite="mL/h"
-            value={cibles.fluidMlH}
-            min={100}
-            max={1200}
-            step={25}
-            bornes={["100", "1 200 mL/h"]}
-            onChange={(fluidMlH) =>
-              change(() => setCibles({ ...cibles, fluidMlH }))
-            }
-          />
-          {cibles.fluidMlH > FLUID_GUIDE_ML_H && (
-            <Notice code="fluid-above-guide">
-              Au-delà de <Val>{entier(FLUID_GUIDE_ML_H)} mL/h</Val>, le risque
-              n'est plus la déshydratation mais l'excès d'eau.
-            </Notice>
-          )}
+                <Slider
+                  label="Boisson"
+                  unite="mL/h"
+                  value={cibles.fluidMlH}
+                  min={100}
+                  max={1200}
+                  step={25}
+                  bornes={["100", "1 200 mL/h"]}
+                  onChange={(fluidMlH) =>
+                    change(() => setCibles({ ...cibles, fluidMlH }))
+                  }
+                />
+                {cibles.fluidMlH > FLUID_GUIDE_ML_H && (
+                  <Notice code="fluid-above-guide">
+                    Au-delà de <Val>{entier(FLUID_GUIDE_ML_H)} mL/h</Val>, le
+                    risque n'est plus la déshydratation mais l'excès d'eau.
+                  </Notice>
+                )}
 
-          <Rule />
+                <Rule />
 
-          <Slider
-            label="Sodium dans la boisson"
-            unite="mg/L"
-            value={cibles.sodiumMgL}
-            min={0}
-            max={1600}
-            step={50}
-            bornes={["0", "1 600 mg/L"]}
-            aide="Se compte par litre bu, pas par heure : c'est la concentration de la boisson préparée."
-            onChange={(sodiumMgL) =>
-              change(() => setCibles({ ...cibles, sodiumMgL }))
-            }
-          />
-        </div>
-      </Panel>
+                <Slider
+                  label="Sodium dans la boisson"
+                  unite="mg/L"
+                  value={cibles.sodiumMgL}
+                  min={0}
+                  max={1600}
+                  step={50}
+                  bornes={["0", "1 600 mg/L"]}
+                  aide="La concentration de la boisson préparée, par litre bu."
+                  onChange={(sodiumMgL) =>
+                    change(() => setCibles({ ...cibles, sodiumMgL }))
+                  }
+                />
+              </div>
+            </Panel>
 
-      <Panel className="p-4">
-        <MeasureField
-          label="Poids du coureur"
-          unite="kg"
-          value={masse}
-          placeholder="70"
-          largeur="w-40"
-          onChange={(event) => change(() => setMasse(event.target.value))}
-          hint="La suggestion de boisson et la dépense en dépendent."
-        />
-      </Panel>
-
-      <Panel>
-        <PanelHead
-          titre="Flasques emportées"
-          aide="Sans flasque, le roadbook ne dit pas où verser la boisson."
-        />
-        <Rule />
-
-        <div className="flex flex-col gap-3 p-4">
-          {lignes.length === 0 && (
-            <EmptyNote titre="Rien à porter pour l'instant">
-              Ajoutez au moins un contenant : le calcul a besoin de savoir dans
-              quoi la boisson part.
-            </EmptyNote>
-          )}
-
-          {lignes.map((ligne, i) => (
-            <div key={ligne.id} className="flex items-end gap-3">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-paper-dim text-ink-soft">
-                <FlaskIcon className="size-5" />
-              </span>
-
+            <Panel className="p-4">
               <MeasureField
-                label={`Flasque ${i + 1}`}
-                unite="mL"
-                placeholder="500"
-                largeur="w-32"
-                value={ligne.volumeMl}
-                onChange={(event) =>
-                  change(() =>
-                    setLignes(
-                      lignes.map((l, j) =>
-                        j === i ? { ...l, volumeMl: event.target.value } : l,
-                      ),
-                    ),
-                  )
-                }
+                label="Poids du coureur"
+                unite="kg"
+                value={masse}
+                placeholder="70"
+                largeur="w-40"
+                onChange={(event) => change(() => setMasse(event.target.value))}
+                hint="La suggestion de boisson et la dépense en dépendent."
               />
+            </Panel>
 
-              <div className="flex flex-1 items-center gap-2 pb-1">
-                <ToggleChip
-                  actif={ligne.onlyWater}
-                  onChange={(onlyWater) =>
+            <Panel>
+              <PanelHead
+                titre="Flasques emportées"
+                aide="Sans flasque, le roadbook ne dit pas où verser la boisson."
+              />
+              <Rule />
+
+              <div className="flex flex-col gap-3 p-4">
+                {lignes.length === 0 && (
+                  <EmptyNote titre="Rien à porter pour l'instant">
+                    Ajoutez au moins un contenant : le calcul a besoin de savoir
+                    dans quoi la boisson part.
+                  </EmptyNote>
+                )}
+
+                {lignes.map((ligne, i) => (
+                  <div key={ligne.id} className="flex items-end gap-3">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-paper-dim text-ink-soft">
+                      <FlaskIcon className="size-5" />
+                    </span>
+
+                    <MeasureField
+                      label={`Flasque ${i + 1}`}
+                      unite="mL"
+                      placeholder="500"
+                      largeur="w-32"
+                      value={ligne.volumeMl}
+                      onChange={(event) =>
+                        change(() =>
+                          setLignes(
+                            lignes.map((l, j) =>
+                              j === i
+                                ? { ...l, volumeMl: event.target.value }
+                                : l,
+                            ),
+                          ),
+                        )
+                      }
+                    />
+
+                    <div className="flex flex-1 items-center gap-2 pb-1">
+                      <ToggleChip
+                        actif={ligne.onlyWater}
+                        onChange={(onlyWater) =>
+                          change(() =>
+                            setLignes(
+                              lignes.map((l, j) =>
+                                j === i ? { ...l, onlyWater } : l,
+                              ),
+                            ),
+                          )
+                        }
+                      >
+                        eau claire seulement
+                      </ToggleChip>
+                    </div>
+
+                    <div className="pb-1">
+                      <IconButton
+                        libelle={`Retirer la flasque ${i + 1}`}
+                        onClick={() =>
+                          change(() =>
+                            setLignes(lignes.filter((_, j) => j !== i)),
+                          )
+                        }
+                      >
+                        <TrashIcon className="size-4" />
+                      </IconButton>
+                    </div>
+                  </div>
+                ))}
+
+                <Button
+                  taille="sm"
+                  icone={<PlusIcon className="size-4" />}
+                  className="self-start"
+                  onClick={() =>
                     change(() =>
-                      setLignes(
-                        lignes.map((l, j) =>
-                          j === i ? { ...l, onlyWater } : l,
-                        ),
-                      ),
+                      setLignes([
+                        ...lignes,
+                        { id: nouvelId(), volumeMl: "500", onlyWater: false },
+                      ]),
                     )
                   }
                 >
-                  eau claire seulement
-                </ToggleChip>
+                  Ajouter une flasque
+                </Button>
               </div>
+            </Panel>
 
-              <div className="pb-1">
-                <IconButton
-                  libelle={`Retirer la flasque ${i + 1}`}
-                  onClick={() =>
-                    change(() => setLignes(lignes.filter((_, j) => j !== i)))
-                  }
-                >
-                  <TrashIcon className="size-4" />
-                </IconButton>
-              </div>
-            </div>
-          ))}
+            {reproche && <ErrorNote>{reproche}</ErrorNote>}
+            {erreur && <ErrorNote>{erreur}</ErrorNote>}
 
-          <Button
-            taille="sm"
-            icone={<PlusIcon className="size-4" />}
-            className="self-start"
-            onClick={() =>
-              change(() =>
-                setLignes([
-                  ...lignes,
-                  { id: nouvelId(), volumeMl: "500", onlyWater: false },
-                ]),
-              )
-            }
-          >
-            Ajouter une flasque
-          </Button>
-        </div>
-      </Panel>
+            <SaveBar
+              pending={pending}
+              modifie={modifie}
+              enregistre={enregistre && !modifie}
+              consequence="le roadbook devra être recalculé"
+              onSave={submit}
+            />
+          </div>
 
-      {synthese && (
-        <p className="text-[13px] text-ink-soft leading-relaxed">
-          Sur {duree(targetTimeS ?? 0)}, ces cibles demandent{" "}
-          <Val>{entier(synthese.carbsG)} g</Val> de glucides et{" "}
-          <Val>{entier(synthese.fluidMl)} mL</Val> de boisson.{" "}
-          {synthese.remplissages === null ? (
-            "Aucune flasque déclarée : le calcul ne saura pas où la verser."
-          ) : synthese.remplissages === 0 ? (
-            <>
-              Les <Val>{entier(synthese.carryMl)} mL</Val> emportés couvrent la
-              course sans remplissage.
-            </>
-          ) : (
-            <>
-              Les <Val>{entier(synthese.carryMl)} mL</Val> emportés demandent{" "}
-              {synthese.remplissages === 1
-                ? "un remplissage"
-                : `${synthese.remplissages} remplissages`}{" "}
-              en course.
-            </>
+          {synthese && (
+            <aside className="lg:sticky lg:top-6 lg:w-80 lg:shrink-0">
+              <Panel ton="creux" className="p-4">
+                <p className="font-mono text-[10px] text-ink-soft uppercase tracking-[0.14em]">
+                  ce que ça demande
+                </p>
+                <div className="mt-3 flex gap-6">
+                  <Stat
+                    value={entier(synthese.carbsG)}
+                    unite="g"
+                    label="glucides sur la course"
+                    taille="lg"
+                  />
+                  <Stat
+                    value={entier(synthese.fluidMl)}
+                    unite="mL"
+                    label="boisson sur la course"
+                    taille="lg"
+                  />
+                </div>
+                <Rule className="my-3.5" />
+                <p className="text-[13px] text-ink-soft leading-relaxed">
+                  Sur {duree(targetTimeS ?? 0)} de course.{" "}
+                  {synthese.remplissages === null ? (
+                    "Aucune flasque déclarée : le calcul ne saura pas où verser la boisson."
+                  ) : synthese.remplissages === 0 ? (
+                    <>
+                      Les <Val>{entier(synthese.carryMl)} mL</Val> emportés
+                      couvrent la distance sans remplissage.
+                    </>
+                  ) : (
+                    <>
+                      Les <Val>{entier(synthese.carryMl)} mL</Val> emportés
+                      demandent{" "}
+                      {synthese.remplissages === 1
+                        ? "un remplissage"
+                        : `${synthese.remplissages} remplissages`}{" "}
+                      en course.
+                    </>
+                  )}
+                </p>
+              </Panel>
+            </aside>
           )}
-        </p>
-      )}
+        </div>
+      </div>
 
-      {reproche && <ErrorNote>{reproche}</ErrorNote>}
-      {erreur && <ErrorNote>{erreur}</ErrorNote>}
-
-      <SaveBar
-        pending={pending}
-        modifie={modifie}
-        enregistre={enregistre && !modifie}
-        consequence="le roadbook devra être recalculé"
-        onSave={submit}
-      />
+      <div className="shrink-0">
+        <SaveBar
+          pending={pending}
+          modifie={modifie}
+          enregistre={enregistre && !modifie}
+          consequence="le roadbook devra être recalculé"
+          onSave={submit}
+        />
+      </div>
     </div>
   );
 }
