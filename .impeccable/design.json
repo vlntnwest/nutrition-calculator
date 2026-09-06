@@ -101,6 +101,11 @@
         "role": "tertiary",
         "displayName": "Vert de confirmation",
         "canonical": "#2f6b3f"
+      },
+      "go-mark": {
+        "role": "tertiary",
+        "displayName": "Vert de marqueur",
+        "canonical": "#369d51"
       }
     },
     "typographyMeta": {
@@ -325,6 +330,11 @@
         "section": "colors"
       },
       {
+        "name": "La règle des deux verts",
+        "body": "--go et --go-mark ne sont pas un doublon à unifier : le premier habille une confirmation écrite et doit tenir le contraste d'un texte, le second habille un disque de six pixels posé sur des tuiles de carte et cherche la lumière. Un jeton nouveau se justifie par un besoin de lisibilité distinct, jamais par une nuance de goût.",
+        "section": "colors"
+      },
+      {
         "name": "La règle du refus sans rouge",
         "body": "Un message d'erreur emprunte l'accent (accent-tint et accent-dark) plutôt que d'introduire un rouge d'alerte. Le carnet n'a pas de sixième teinte.",
         "section": "colors"
@@ -380,12 +390,13 @@
       "Don't poser l'accent dans le fond d'un bouton, ni comme couleur de texte courant.",
       "Don't ajouter une ombre en dehors de --shadow-panel et --shadow-lifted. Un panneau au repos, au survol ou au focus reste plat.",
       "Don't introduire un rouge, un bleu, ou une sixième teinte. Un refus emprunte l'accent, une alerte l'ambre, une confirmation le vert de --go, et rien d'autre n'existe.",
-      "Don't inventer un rayon. Trois valeurs et la pilule couvrent tout ce que le plan contient ; les 28px et 20px littéraux de l'accueil sont sa signature à lui, pas une quatrième marche du système.",
+      "Don't inventer un rayon, ni en écrire un en dur. Trois variables et la pilule couvrent tout ce que le plan contient, et se citent par leur nom ; les 28px du panneau de dépôt et les 4px de la bande d'allure sont les deux seules valeurs littérales du dépôt, chacune argumentée sur place.",
       "Don't poser un emoji ou un glyphe Unicode à la place d'une icône. Le point médian, le signe moins et le + restent, ce sont des signes typographiques.",
       "Don't ajouter un deuxième moment de mouvement. Le carnet en a un, la fiche qui monte (fiche-monte, 260ms, cubic-bezier(0.16, 1, 0.3, 1), depuis un état déjà lisible), son voile (voile-parait, 200ms), la roue d'attente, et le repli de la feuille en mobile (300ms). Tout le reste est une transition de couleur. Toute animation nouvelle passe par @media (prefers-reduced-motion: reduce).",
       "Don't écrire un tiret cadratin ou demi-cadratin dans une chaîne affichée, ni un superlatif, ni un verbe d'accroche. Les dix interdits de docs/voix.md valent pour tout texte lu par un coureur.",
       "Don't habiller un select autrement qu'en retirant le chevron du système pour poser celui du jeu. Le reste du comportement natif est ce que le clavier et le tactile attendent.",
-      "Don't faire entrer une photographie dans les quatre destinations du plan. Elle vit sur l'accueil, et la vignette d'un produit est un substitut de catalogue, pas une image d'ambiance."
+      "Don't faire entrer une photographie dans les quatre destinations du plan. Elle vit sur l'accueil, et la vignette d'un produit est un substitut de catalogue, pas une image d'ambiance.",
+      "Don't recopier la valeur d'un jeton là où la variable se résout. La SVG de Leaflet vit dans le DOM : ses marqueurs, son tracé et jusqu'au motif du damier posé en innerHTML prennent var(--paper), var(--ink), var(--accent) et var(--go-mark). Le canvas du profil est le seul contexte qui l'interdit."
     ]
   }
 }

@@ -18,6 +18,7 @@ colors:
   warn: "#8a5a00"
   warn-tint: "#fdf3dd"
   go: "#2f6b3f"
+  go-mark: "#369d51"
 typography:
   display:
     fontFamily: "var(--font-geist-sans), system-ui, sans-serif"
@@ -197,7 +198,9 @@ La photographie ne franchit jamais la porte du plan.
 
 Une palette de papier et d'encre, deux familles neutres qui font tout le travail,
 plus un accent brûlé tenu en réserve. Aucune couleur n'existe hors de
-`src/app/globals.css`, à deux exceptions près documentées plus bas.
+`src/app/globals.css`. Le seul endroit qui recopie des valeurs est
+`src/ui/track/ElevationChart.tsx`, parce qu'un `<canvas>` dessine avec l'API 2D et
+ne résout pas les variables CSS ; le miroir y est signalé en commentaire.
 
 ### Primary
 
@@ -225,13 +228,17 @@ dans un jaune-vert-rouge d'emprunt.
 
 ### Tertiary
 
-Deux teintes de service, chacune sur un seul usage.
+Des teintes de service, chacune sur un seul usage.
 
 - **Ambre d'avertissement** (`{colors.warn}` sur `{colors.warn-tint}`) : une
   remarque du calcul (`Notice`, `Tag ton="alerte"`). Jamais employée seule, un
   pictogramme et un mot portent l'alerte.
 - **Vert de confirmation** (`{colors.go}`) : le seul mot « Enregistré » de la barre
-  d'enregistrement, accompagné d'une coche.
+  d'enregistrement, accompagné d'une coche. Tenu à 4,5:1 sur le papier, parce qu'il
+  habille du texte.
+- **Vert de marqueur** (`{colors.go-mark}`) : le disque de départ sur la carte, et
+  lui seul. Six pixels posés sur un fond de tuiles : il lui faut de la lumière
+  plutôt que du contraste, et c'est pourquoi il ne se confond pas avec `{colors.go}`.
 
 ### Neutral
 
@@ -258,6 +265,12 @@ trouve. Aucun bouton n'en est rempli : l'encre porte les actions de l'outil, le
 papier les actions secondaires, le texte nu ce qui se défait. La seule apparition
 de l'accent dans un bouton est le survol d'un bouton `retrait`, qui n'a ni fond ni
 bordure.
+
+**La règle des deux verts.** `{colors.go}` et `{colors.go-mark}` ne sont pas un
+doublon à unifier : le premier habille une confirmation écrite et doit tenir le
+contraste d'un texte, le second habille un disque de six pixels posé sur des tuiles
+de carte et cherche la lumière. Un jeton nouveau se justifie par un besoin de
+lisibilité distinct, jamais par une nuance de goût.
 
 **La règle du refus sans rouge.** Un message d'erreur emprunte l'accent
 (`{colors.accent-tint}` et `{colors.accent-dark}`) plutôt que d'introduire un rouge
@@ -409,6 +422,12 @@ Trois rayons, déclarés en variables et jamais improvisés :
 - **Pilule** (`{rounded.pill}`) : ce qui se pose et se retire ou compte quelque
   chose. Chip, filtre, étiquette, pastille de rang d'un ravito, poignée de repli,
   curseur de slider, bande d'allure.
+
+Ces rayons se citent par leur variable, jamais par leur valeur : `rounded-[var(--radius-panel)]`
+et non `rounded-[12px]`. Deux littéraux subsistent et sont les seuls admis, chacun
+pour une raison écrite : les 28px du panneau de dépôt de l'accueil, qui appartient à
+sa composition, et les 4px de la bande d'allure du roadbook, où un secteur peut
+descendre à quelques pixels de large et où le rayon de contrôle l'avalerait.
 
 Les bordures font toujours 1px. La seule bordure épaisse du système est le cadre
 plein écran du glisser-déposer (2px blanc), et les deux anneaux de 2px `paper`
@@ -574,9 +593,13 @@ d'un coup d'œil, pas un outil de navigation. La classe `.fond-carnet` ramène l
 tuiles au papier (`grayscale(0.92) sepia(0.28) brightness(1.06) contrast(0.92)`),
 appliquée au seul calque des tuiles pour que le tracé et les marqueurs gardent leurs
 couleurs. Le tracé est en accent, 3,5px. Les bornes de ravitaillement sont des
-disques de 18px en accent cernés de blanc, le rang posé au centre en Geist Mono 10px
-papier, sans le fond ni la flèche que Leaflet donne à ses infobulles : le chiffre
-est la borne. La mention légale est ramenée à 9px `ink-faint` sur fond transparent,
+disques de 18px en accent cernés de papier, le rang posé au centre en Geist Mono
+10px papier, sans le fond ni la flèche que Leaflet donne à ses infobulles : le
+chiffre est la borne. Le départ est un disque de 12px en `go-mark`, l'arrivée un
+damier d'encre et de papier posé en `<pattern>` SVG. Tous ces habillages passent par
+les variables CSS : la SVG que Leaflet dessine vit dans le DOM et les résout, y
+compris dans le motif injecté en `innerHTML`. La mention légale est ramenée à 9px
+`ink-faint` sur fond transparent,
 et le préfixe de Leaflet est retiré, parce qu'il publie un drapeau en emoji.
 
 ### LegProfile, la bande d'allure (composant signature)
@@ -600,12 +623,12 @@ L'accueil ne suit pas la grammaire du plan et c'est le contrat.
   de l'échelle de rayons. Le bouton qu'il porte est une pilule de papier. Le
   glisser-déposer est actif sur toute la fenêtre : un fichier survolant la page
   ouvre un voile d'encre à 70 % avec un cadre blanc de 2px en retrait de 12px.
-- **Cartes-affiche** : fond photo sur `ink`, rayon de 20px, un seul dégradé haut et
+- **Cartes-affiche** : fond photo sur `ink`, rayon de feuille, un seul dégradé haut et
   bas, le titre en 24px/700 papier, le profil de la course tracé en SVG papier de
   5px sur toute la largeur, les bornes en traits accent, et le relevé en Geist Mono
   au pied. Aucun panneau plaqué : la photo s'éteint.
-- **Tuiles de navigation** : papier plein sans bordure, rayon de 20px, une étiquette
-  en Geist Mono 11px capitales au-dessus d'un intitulé en 18px/700.
+- **Tuiles de navigation** : papier plein sans bordure, rayon de feuille, une
+  étiquette en Geist Mono 11px capitales au-dessus d'un intitulé en 18px/700.
 
 Le poids typographique de l'accueil (700) et son verre n'ont pas cours de l'autre
 côté de la porte : le plan ne monte jamais au-dessus de 600, et n'a pas une seule
@@ -647,9 +670,10 @@ surface translucide.
 - **Don't** introduire un rouge, un bleu, ou une sixième teinte. Un refus emprunte
   l'accent, une alerte l'ambre, une confirmation le vert de `--go`, et rien d'autre
   n'existe.
-- **Don't** inventer un rayon. Trois valeurs et la pilule couvrent tout ce que le
-  plan contient ; les 28px et 20px littéraux de l'accueil sont sa signature à lui,
-  pas une quatrième marche du système.
+- **Don't** inventer un rayon, ni en écrire un en dur. Trois variables et la pilule
+  couvrent tout ce que le plan contient, et se citent par leur nom ; les 28px du
+  panneau de dépôt et les 4px de la bande d'allure sont les deux seules valeurs
+  littérales du dépôt, chacune argumentée sur place.
 - **Don't** poser un emoji ou un glyphe Unicode à la place d'une icône. Le point
   médian `·`, le signe moins `−` et le `+` restent, ce sont des signes
   typographiques.
@@ -668,12 +692,7 @@ surface translucide.
   vit sur l'accueil, et la vignette d'un produit est un substitut de catalogue, pas
   une image d'ambiance.
 
-### Deux dettes relevées dans le build, à corriger plutôt qu'à imiter
-
-- `src/ui/track/RouteMap.tsx` code en dur `#369d51` pour le marqueur de départ et
-  `#171717` pour le damier d'arrivée. Ni l'un ni l'autre ne correspond à un jeton :
-  `--go` vaut `#2f6b3f` et `--ink` vaut `#17130f`. Ces deux valeurs sont hors
-  système et doivent rejoindre les jetons, pas servir de précédent.
-- Les rayons `rounded-[20px]` de `PlanCards`, `MyPlansLink` et `OfficialPlansLink`
-  répètent la valeur de `--radius-sheet` sans passer par la variable. La valeur est
-  juste, la référence manque.
+- **Don't** recopier la valeur d'un jeton là où la variable se résout. La SVG de
+  Leaflet vit dans le DOM : ses marqueurs, son tracé et jusqu'au motif du damier
+  posé en `innerHTML` prennent `var(--paper)`, `var(--ink)`, `var(--accent)` et
+  `var(--go-mark)`. Le `<canvas>` du profil est le seul contexte qui l'interdit.
