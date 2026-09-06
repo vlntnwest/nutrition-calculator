@@ -2,9 +2,9 @@ import type { ReactNode } from "react";
 import { WarnIcon } from "./icons";
 
 /**
- * Une remarque du calcul. Le pictogramme et le mot portent l'alerte ; la
- * teinte ne fait que confirmer, pour que la feuille imprimée en noir et
- * blanc dise la même chose que l'écran.
+ * Une remarque du calcul. Le pictogramme et le mot portent l'alerte à eux
+ * seuls : il n'y a pas de teinte pour la doubler, et la feuille imprimée en
+ * noir et blanc dit donc exactement ce que l'écran dit.
  */
 export function Notice({
   ton = "alerte",
@@ -22,7 +22,7 @@ export function Notice({
     <div
       className={`flex gap-2.5 rounded-[var(--radius-control)] border px-3 py-2.5 ${
         alerte
-          ? "border-warn/25 bg-warn-tint text-warn"
+          ? "border-line-strong bg-paper-sunk text-ink"
           : "border-line bg-paper-dim text-ink-soft"
       }`}
     >

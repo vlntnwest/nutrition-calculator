@@ -135,10 +135,11 @@ export function RaceScreen({
   }
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col lg:flex-row">
-      {/* `isolate` : Leaflet empile ses panneaux à z-index 400. Sans contexte
-          d'empilement propre, ils passeraient devant la feuille du bas. */}
-      <div className="absolute inset-0 isolate z-0 lg:static lg:order-2 lg:flex-1">
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      {/* La trace occupe tout le cadre, la colonne de papier flotte dessus.
+          `isolate` est indispensable : Leaflet empile ses panneaux à
+          z-index 400 et ils passeraient sinon devant le papier. */}
+      <div className="absolute inset-0 isolate z-0">
         <RouteMap
           points={points}
           hoverIndex={hoverIndex}
@@ -150,7 +151,7 @@ export function RaceScreen({
       </div>
 
       <section
-        className={`absolute inset-x-0 bottom-0 z-10 flex flex-col rounded-t-[var(--radius-sheet)] border border-line border-b-0 max-h-full bg-paper shadow-[var(--shadow-lifted)] transition-[height] duration-300 ease-out lg:static lg:order-1 lg:h-auto lg:max-h-none lg:w-[27rem] lg:shrink-0 lg:rounded-none lg:border-0 lg:border-r lg:shadow-none ${
+        className={`absolute inset-x-0 bottom-0 z-10 flex max-h-full flex-col rounded-t-[var(--radius-sheet)] border border-line border-b-0 bg-veil shadow-[var(--shadow-lifted)] transition-[height] duration-300 ease-out lg:inset-y-0 lg:right-auto lg:h-auto lg:w-[27rem] lg:rounded-none lg:border-t-0 lg:border-r lg:border-b-0 lg:border-l-0 ${
           depliee ? "h-[74dvh]" : "h-[46dvh]"
         }`}
       >

@@ -588,19 +588,53 @@ pour que la couleur ait le droit d'exister ici.
 
 ### RouteMap (composant signature)
 
-Le tracé sur un vrai fond OpenStreetMap, non interactif : c'est une confirmation
-d'un coup d'œil, pas un outil de navigation. La classe `.fond-carnet` ramène les
-tuiles au papier (`grayscale(0.92) sepia(0.28) brightness(1.06) contrast(0.92)`),
-appliquée au seul calque des tuiles pour que le tracé et les marqueurs gardent leurs
-couleurs. Le tracé est en accent, 3,5px. Les bornes de ravitaillement sont des
-disques de 18px en accent cernés de papier, le rang posé au centre en Geist Mono
-10px papier, sans le fond ni la flèche que Leaflet donne à ses infobulles : le
-chiffre est la borne. Le départ est un disque de 12px en `go-mark`, l'arrivée un
-damier d'encre et de papier posé en `<pattern>` SVG. Tous ces habillages passent par
-les variables CSS : la SVG que Leaflet dessine vit dans le DOM et les résout, y
-compris dans le motif injecté en `innerHTML`. La mention légale est ramenée à 9px
-`ink-faint` sur fond transparent,
-et le préfixe de Leaflet est retiré, parce qu'il publie un drapeau en emoji.
+Le tracé sur un vrai fond OpenStreetMap. La classe `.fond-carnet` ramène les tuiles
+au papier (`grayscale(0.92) sepia(0.28) brightness(1.06) contrast(0.92)`), appliquée
+au seul calque des tuiles pour que le tracé et les marqueurs gardent leurs couleurs.
+Le tracé est en accent, 3,5px. Les bornes de ravitaillement sont des disques de 18px
+en accent cernés de papier, le rang posé au centre en Geist Mono 10px papier, sans
+le fond ni la flèche que Leaflet donne à ses infobulles : le chiffre est la borne.
+Le départ est un disque de 12px en `go-mark`, l'arrivée un damier d'encre et de
+papier posé en `<pattern>` SVG. Tous ces habillages passent par les variables CSS :
+la SVG que Leaflet dessine vit dans le DOM et les résout, y compris dans le motif
+injecté en `innerHTML`. La mention légale est ramenée à 9px `ink-faint` sur fond
+transparent, et le préfixe de Leaflet est retiré, parce qu'il publie un drapeau en
+emoji.
+
+**Deux états, selon ce qu'on est venu y faire.** La prop `deplacable` est fausse par
+défaut, et `dragging`, `scrollWheelZoom`, `doubleClickZoom`, `touchZoom` et
+`keyboard` y sont tous liés d'un bloc. Fixe, la carte est une image : dans la fiche
+d'import, c'est une confirmation d'un coup d'œil, et une carte qui se déplace y
+volerait le geste au formulaire. Déplaçable, elle devient un instrument : sur
+l'écran Course, seul endroit du produit qui la passe à `true`, on vient chercher un
+endroit précis de la trace pour y poser une borne. Le clic sur le tracé continue d'y
+poser un ravito dans les deux états.
+
+**Les commandes sont dessinées, pas empruntées.** Le contrôle de zoom de Leaflet est
+désactivé (`zoomControl={false}`) : il arrive en boîte blanche et en Arial, une
+autre langue que le carnet. À sa place, trois boutons de 32px empilés au coin haut
+droit dans un panneau papier cerné d'un filet, rayon de contrôle, séparés par un
+filet d'un pixel, avec `--shadow-panel` : `PlusIcon`, `MinusIcon`, et `FrameIcon`
+pour recadrer, une icône du jeu comme les autres, cadre à coins marqués sur la
+grille de 24 au trait 1,6. Le panneau appelle `DomEvent.disableClickPropagation` et
+`disableScrollPropagation` : Leaflet écoute en natif sur le conteneur, un
+`stopPropagation` React n'atteindrait pas ces écouteurs, et un clic sur « + »
+poserait aussi un ravito.
+
+**La carte suit la main et s'arrête avec elle.** `inertia={false}` : un geste vif
+projetait la carte hors du tracé. Borner le déplacement par `maxBounds` a été essayé
+et retiré, parce qu'à ce zoom la vue remplit déjà le cadre de la trace et que le
+moindre geste rebondissait. C'est le bouton « recadrer » qui rattrape une vue
+égarée, pas une laisse. Ce recadrage ne s'anime pas et coupe ce qui vole encore
+(`map.stop()` puis `fitBounds` en `animate: false`) : un recadrage animé lancé sur
+un zoom inachevé atterrissait court, et il fallait cliquer deux fois.
+
+**Le recadrage automatique s'arrête à la première main posée.** Le
+`ResizeObserver` qui rattrape l'ouverture d'un `<dialog>` recadrerait aussi à chaque
+repli de la feuille du bas, qui change de hauteur au pouce : un témoin le désarme
+dès que la carte a été manœuvrée. Il écoute les gestes plutôt que leurs
+conséquences, `dragstart` et `zoomstart` sur la carte, et les deux boutons de zoom
+se marquent eux-mêmes ; « recadrer » est le seul geste qui le remet à zéro.
 
 ### LegProfile, la bande d'allure (composant signature)
 

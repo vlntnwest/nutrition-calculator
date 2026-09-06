@@ -5,7 +5,7 @@ import { CheckIcon, CloseIcon } from "./icons";
 
 /**
  * Un choix qui se pose ou se retire d'un coup. Coché, il prend l'accent et
- * un signe : la couleur ne dit jamais l'état à elle seule.
+ * une coche : la teinte ne dit jamais l'état à elle seule.
  */
 export function ToggleChip({
   actif,
@@ -61,13 +61,13 @@ export function Tag({
   ton = "neutre",
   children,
 }: {
-  ton?: "neutre" | "accent" | "alerte";
+  ton?: "neutre" | "marque" | "alerte";
   children: ReactNode;
 }) {
   const tons = {
     neutre: "border-line bg-paper-dim text-ink-soft",
-    accent: "border-accent/30 bg-accent-tint text-accent-dark",
-    alerte: "border-warn/30 bg-warn-tint text-warn",
+    marque: "border-accent/40 bg-accent-tint text-accent-dark",
+    alerte: "border-line-strong bg-paper-sunk text-ink",
   };
 
   return (

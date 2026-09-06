@@ -12,12 +12,15 @@ export function Panel({
 }: {
   children: ReactNode;
   className?: string;
-  ton?: "papier" | "creux" | "marque";
+  ton?: "papier" | "creux" | "marque" | "nu";
 }) {
   const fonds = {
     papier: "bg-paper border-line",
     creux: "bg-paper-dim border-line",
-    marque: "bg-paper border-accent/40 ring-1 ring-accent/15",
+    marque: "bg-paper border-accent ring-1 ring-accent/15",
+    /* Sur un voile, pour les blocs qui ne portent pas de saisie : le papier
+       plein est réservé aux surfaces où l'on écrit et où l'on lit. */
+    nu: "bg-transparent border-line",
   };
 
   return (

@@ -178,7 +178,7 @@ export function RoadbookEditor({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="sticky top-0 z-10 shrink-0 border-line border-b bg-paper">
+      <div className="sticky top-0 z-10 shrink-0 border-line border-b bg-veil backdrop-blur-xl">
         <div className="mx-auto w-full max-w-4xl px-4 sm:px-6">
           <LegProfile
             points={points}

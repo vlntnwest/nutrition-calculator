@@ -51,7 +51,7 @@ export function Modal({
         // son contenu : c'est ce qui distingue « en dehors ».
         if (event.target === ref.current) ref.current?.close();
       }}
-      className={`m-0 mt-auto max-h-[92dvh] w-full rounded-t-[var(--radius-sheet)] border border-line bg-paper p-0 text-ink shadow-[var(--shadow-lifted)] backdrop:bg-ink/70 backdrop:backdrop-blur-sm sm:m-auto sm:max-h-[88dvh] sm:w-[calc(100%-2rem)] sm:rounded-[var(--radius-sheet)] ${largeur}`}
+      className={`m-0 mt-auto max-h-[92dvh] w-full rounded-t-[var(--radius-sheet)] border border-line bg-paper p-0 text-ink shadow-[var(--shadow-lifted)] backdrop:bg-[var(--veil-ink)] backdrop:backdrop-blur-md sm:m-auto sm:max-h-[88dvh] sm:w-[calc(100%-2rem)] sm:rounded-[var(--radius-sheet)] ${largeur}`}
     >
       {children}
     </dialog>

@@ -124,7 +124,7 @@ export function LegCard({
             imposer une durée
           </Button>
         ) : (
-          <Tag ton="accent">
+          <Tag ton="marque">
             durée imposée {duree(leg.imposedDurationS)}
             <button
               type="button"
@@ -154,7 +154,7 @@ export function LegCard({
             cible {entier(cibleGH)} g/h
           </Button>
         ) : (
-          <Tag ton="accent">
+          <Tag ton="marque">
             cible imposée {entier(leg.imposedCarbsGH)} g/h
             <button
               type="button"

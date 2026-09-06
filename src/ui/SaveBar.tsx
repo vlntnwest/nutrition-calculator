@@ -29,7 +29,7 @@ export function SaveBar({
   children?: ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-3 border-line border-t bg-paper px-4 py-3 sm:px-6">
+    <div className="flex items-center gap-3 border-line border-t bg-veil px-4 py-3 sm:px-6">
       {children}
       <div className="ml-auto flex items-center gap-3">
         <p className="text-[12px] text-ink-soft">
@@ -39,7 +39,7 @@ export function SaveBar({
               Enregistrement
             </span>
           ) : enregistre ? (
-            <span className="flex items-center gap-1.5 text-go">
+            <span className="flex items-center gap-1.5 text-ink">
               <CheckIcon className="size-3.5" />
               Enregistré
             </span>

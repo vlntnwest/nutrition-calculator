@@ -23,13 +23,13 @@ ChartJS.register(LinearScale, PointElement, LineElement, Filler, Tooltip);
  * dans le DOM et en profite. Ces valeurs miroitent `globals.css` ; les
  * changer là-bas sans les changer ici les désynchronise.
  */
-const INK = "#17130f";
-const INK_SOFT = "#635c52";
-const LINE = "#17130f1f";
+const INK = "#131313";
+const INK_SOFT = "#5c5c5c";
+const LINE = "#1313131f";
 const PAPER = "#ffffff";
 
 /** L'aplat sous la courbe : de l'encre à cinq pour cent, la masse du relief. */
-const FILL = "#17130f0d";
+const FILL = "#1313130d";
 
 /**
  * `context.font` sur un `<canvas>` ne résout pas non plus les variables CSS
@@ -58,9 +58,9 @@ export type ProfileMark = {
 };
 
 /**
- * Le profil altimétrique, coloré par palier de pente plutôt qu'en aplat
- * unique — inspiré d'OpenRunner, dans la famille du seul accent du carnet
- * (`slopeColor`) plutôt que dans son jaune-vert-rouge d'origine.
+ * Le profil altimétrique, tracé par palier de pente plutôt qu'en aplat
+ * unique — inspiré d'OpenRunner, sur une échelle de cinq gris
+ * (`slopeColor`) plutôt que sur son jaune-vert-rouge d'origine.
  *
  * Prend `track.points` (~2 000, déjà simplifiés pour l'affichage), jamais
  * `track.profile` (pleine résolution, un point tous les 10 m — plusieurs

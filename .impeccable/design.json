@@ -209,6 +209,28 @@
       { "name": "lg", "value": "1024px" },
       { "name": "xl", "value": "1280px" }
     ],
+    "carte": [
+      {
+        "name": "deux-etats",
+        "value": "deplacable, fausse par défaut ; dragging, scrollWheelZoom, doubleClickZoom, touchZoom et keyboard y sont tous liés",
+        "purpose": "Fixe, la carte est une image : dans la fiche d'import, une carte qui se déplace volerait le geste au formulaire. Déplaçable sur le seul écran Course, où l'on vient chercher un endroit précis de la trace pour y poser une borne. Le clic sur le tracé pose un ravito dans les deux états."
+      },
+      {
+        "name": "commandes-dessinees",
+        "value": "zoomControl={false} ; trois boutons de 32px empilés au coin haut droit, panneau papier cerné de --line, rayon --radius-control, ombre --shadow-panel, séparateurs d'un pixel ; PlusIcon, MinusIcon, FrameIcon",
+        "purpose": "Le contrôle de zoom de Leaflet arrive en boîte blanche et en Arial, une autre langue que le carnet. FrameIcon est une icône du jeu, cadre à coins marqués, grille 24 et trait 1,6. Le panneau appelle DomEvent.disableClickPropagation et disableScrollPropagation : Leaflet écoute en natif sur le conteneur, un stopPropagation React n'atteindrait pas ces écouteurs, et un clic sur « + » poserait aussi un ravito."
+      },
+      {
+        "name": "sans-inertie",
+        "value": "inertia={false} ; cadrer() = map.stop() puis fitBounds({ animate: false })",
+        "purpose": "Un geste vif projetait la carte hors du tracé. Borner le déplacement par maxBounds a été essayé et retiré : à ce zoom la vue remplit déjà le cadre de la trace, et le moindre geste rebondissait. C'est le bouton « recadrer » qui rattrape une vue égarée, pas une laisse. Un recadrage animé lancé sur un zoom inachevé atterrissait court, et il fallait cliquer deux fois."
+      },
+      {
+        "name": "temoin-de-deplacement",
+        "value": "une ref désarmée par les gestes : dragstart et zoomstart sur la carte, plus les deux boutons de zoom qui se marquent eux-mêmes ; « recadrer » la remet à zéro",
+        "purpose": "Le ResizeObserver qui rattrape l'ouverture d'un dialog recadrerait aussi à chaque repli de la feuille du bas, qui change de hauteur au pouce. Le témoin écoute les gestes plutôt que leurs conséquences, dragend et zoomend partant aussi sur un fitBounds programmé."
+      }
+    ],
     "focus": [
       {
         "name": "anneau-global",

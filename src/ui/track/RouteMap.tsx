@@ -81,7 +81,13 @@ function FitBoundsOnResize({
 }
 
 /**
- * Retient qu'une main s'est posée sur la carte. `dragend` et `zoomend`
+ * Retient qu'une main s'est posée sur la carte.
+ *
+ * On écoute les **gestes**, pas leurs conséquences : `zoomstart` part aussi
+ * sur le `fitBounds` de « recadrer », qui se réarmerait alors lui-même et
+ * laisserait le recadrage automatique désarmé pour de bon. `dragstart` ne
+ * vient que de la main ; la molette et le double-clic s'écoutent sur le
+ * conteneur, et les deux boutons de zoom se marquent eux-mêmes. `dragend` et `zoomend`
  * partiraient aussi sur un `fitBounds` programmé : ce sont les gestes qui
  * font foi, pas leurs conséquences.
  */
@@ -93,12 +99,16 @@ function MarqueDeplacement({ deplacee }: { deplacee: RefObject<boolean> }) {
       deplacee.current = true;
     }
 
+    const conteneur = map.getContainer();
+
     map.on("dragstart", marquer);
-    map.on("zoomstart", marquer);
+    conteneur.addEventListener("wheel", marquer, { passive: true });
+    conteneur.addEventListener("dblclick", marquer);
 
     return () => {
       map.off("dragstart", marquer);
-      map.off("zoomstart", marquer);
+      conteneur.removeEventListener("wheel", marquer);
+      conteneur.removeEventListener("dblclick", marquer);
     };
   }, [map, deplacee]);
 
@@ -132,7 +142,7 @@ function ControlesCarte({
   return (
     <div
       ref={isole}
-      className="absolute top-3 right-3 z-[1000] flex flex-col overflow-hidden rounded-[var(--radius-control)] border border-line bg-paper shadow-[var(--shadow-panel)]"
+      className="absolute top-3 right-3 z-[1000] flex flex-col overflow-hidden rounded-[var(--radius-control)] border border-line bg-veil shadow-[var(--shadow-panel)]"
     >
       <Commande
         libelle="Zoomer"
@@ -182,7 +192,7 @@ function Commande({
       aria-label={libelle}
       title={libelle}
       onClick={onClick}
-      className="flex size-8 cursor-pointer items-center justify-center text-ink-soft transition-colors hover:bg-paper-dim hover:text-ink"
+      className="flex size-8 cursor-pointer items-center justify-center text-ink-soft transition-colors hover:bg-paper/70 hover:text-ink"
     >
       {children}
     </button>
@@ -331,7 +341,7 @@ export default function RouteMap({
       // « recadrer » qui rattrape une vue égarée.
       inertia={false}
       zoomControl={false}
-      className={`fond-carnet h-full w-full ${onPick ? "[&_.leaflet-interactive]:cursor-crosshair" : ""}`}
+      className={`h-full w-full ${onPick ? "[&_.leaflet-interactive]:cursor-crosshair" : ""}`}
     >
       <AttributionSansPrefixe />
       <FitBoundsOnResize bounds={bounds} deplacee={deplacee} />
@@ -342,17 +352,37 @@ export default function RouteMap({
         </>
       )}
       <DamierArrivee id={idDamier} />
-      {/* Fond OpenStreetMap standard, le seul qui reste sans clé d'API. Ses
-          verts et ses roses saturés appartiennent à une autre direction :
-          `fond-carnet` les ramène au papier en CSS, et le tracé accent
-          reprend tout le contraste. */}
+      {/* Fond OpenStreetMap standard, le seul qui reste vraiment sans clé
+          d'API. Ses couleurs sont les siennes et on les lui laisse : le
+          terrain traversé se lit mieux dans sa propre langue, et
+          l'interface, elle, n'en emprunte aucune. */}
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
       />
+      {/* Une gaine blanche sous le tracé : les tuiles gardent leurs
+          couleurs, et c'est ce liseré qui détache l'encre de n'importe quel
+          fond, vert de forêt comme gris de ville. Le procédé vient des
+          cartes papier, où un trait ne compte jamais sur la teinte du
+          support pour se lire. */}
       <Polyline
         positions={positions}
-        pathOptions={{ color: "var(--accent)", weight: 3.5 }}
+        pathOptions={{
+          color: "var(--paper)",
+          weight: 7,
+          opacity: 0.9,
+          lineCap: "round",
+          lineJoin: "round",
+        }}
+      />
+      <Polyline
+        positions={positions}
+        pathOptions={{
+          color: "var(--accent)",
+          weight: 3.5,
+          lineCap: "round",
+          lineJoin: "round",
+        }}
       />
       {(onHoverIndex || onPick) && (
         // Ligne invisible et large : le trait visible ne fait que 3,5 px, une
@@ -381,7 +411,7 @@ export default function RouteMap({
         pathOptions={{
           color: "var(--paper)",
           weight: 2,
-          fillColor: "var(--go-mark)",
+          fillColor: "var(--accent)",
           fillOpacity: 1,
         }}
         interactive={false}

@@ -1,32 +1,50 @@
 @import "tailwindcss";
 
 /*
- * Carnet d'expédition : papier blanc, encre, un accent brûlé. Le carnet est
- * clair par nature et l'écran s'imprime : pas de thème sombre.
+ * Encre, papier, et un accent brûlé.
+ *
+ * Les gris sont neutres : aucune teinte chaude ne traîne dans le papier ni
+ * dans l'encre, parce que le livrable de ce produit est une feuille imprimée
+ * en noir et blanc. Ce que la couleur ferait ailleurs, deux choses le font
+ * ici — le filet d'un pixel pour séparer, le voile translucide pour dire
+ * qu'une surface flotte au-dessus d'une autre. L'accent, lui, est réservé :
+ * il marque la course, jamais l'interface.
+ *
+ * Les autres couleurs de l'écran viennent du dehors et gardent les leurs :
+ * les photos, et les tuiles de la carte.
+ *
+ * Clair par nature, et l'écran s'imprime : pas de thème sombre.
  */
 :root {
   color-scheme: light;
 
-  --ink: #17130f;
-  --ink-soft: #635c52;
-  /* Le plus clair des trois encres reste à 5,5:1 sur le papier : rien de ce
+  --ink: #131313;
+  --ink-soft: #5c5c5c;
+  /* Le plus clair des trois encres reste à 5:1 sur le papier : rien de ce
      qui se lit ne descend sous le seuil, même une mention de bas de fiche. */
-  --ink-faint: #6f675c;
+  --ink-faint: #6e6e6e;
   --paper: #ffffff;
-  --paper-dim: #f6f3ee;
-  --paper-sunk: #efeae2;
-  --line: #17130f1f;
-  --line-strong: #17130f33;
+  --paper-dim: #f4f4f4;
+  --paper-sunk: #e9e9e9;
+  --line: #1313131f;
+  --line-strong: #13131333;
+
+  /* Le seul écart à l'encre et au papier : l'accent brûlé. Il ne décore
+     rien. Il marque ce que le coureur pose sur sa course — bornes, tracé,
+     destination active, curseur — et se tait partout ailleurs. C'est
+     précisément parce que le reste est gris qu'il porte. */
   --accent: #c2410c;
-  --accent-dark: #3a1306;
-  --accent-tint: #fbe7d9;
-  --warn: #8a5a00;
-  --warn-tint: #fdf3dd;
-  /* Le vert d'une confirmation écrite, tenu à 4,5:1 sur le papier. */
-  --go: #2f6b3f;
-  /* Celui du marqueur de départ sur la carte : un disque de six pixels sur un
-     fond de tuiles, il lui faut de la lumière plutôt que du contraste. */
-  --go-mark: #369d51;
+  --accent-dark: #7a2c08;
+  --accent-tint: #fdece2;
+
+  /* Les voiles : une surface qui flotte au-dessus d'une autre laisse
+     transparaître ce qu'elle couvre. Le flou d'arrière-plan les accompagne
+     toujours — c'est lui qui rend la lecture possible, en effaçant le détail
+     de ce qui passe derrière pour n'en garder que les masses. Même sous le
+     voile le plus ouvert, l'encre la plus claire reste au-dessus de 4,5:1. */
+  --veil: #ffffffb8;
+  --veil-soft: #ffffff8c;
+  --veil-ink: #131313b3;
 
   --background: var(--paper);
   --foreground: var(--ink);
@@ -35,8 +53,8 @@
   --radius-panel: 12px;
   --radius-control: 8px;
 
-  --shadow-panel: 0 1px 2px #17130f0f, 0 8px 24px -16px #17130f4d;
-  --shadow-lifted: 0 2px 6px #17130f14, 0 24px 48px -24px #17130f59;
+  --shadow-panel: 0 1px 2px #1313130f, 0 8px 24px -16px #1313134d;
+  --shadow-lifted: 0 2px 6px #13131314, 0 24px 48px -24px #13131359;
 }
 
 @theme inline {
@@ -53,10 +71,8 @@
   --color-accent: var(--accent);
   --color-accent-dark: var(--accent-dark);
   --color-accent-tint: var(--accent-tint);
-  --color-warn: var(--warn);
-  --color-warn-tint: var(--warn-tint);
-  --color-go: var(--go);
-  --color-go-mark: var(--go-mark);
+  --color-veil: var(--veil);
+  --color-veil-soft: var(--veil-soft);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -109,15 +125,10 @@ body {
 }
 
 /*
- * Les tuiles OpenStreetMap arrivent en verts, bleus et roses saturés : sur
- * l'écran Course elles occupent la moitié du cadre et parlent une autre
- * langue que le carnet. Désaturées et réchauffées, elles redeviennent du
- * papier, et le tracé accent reprend tout le contraste. Le filtre porte sur
- * le seul calque des tuiles : marqueurs et tracé gardent leurs couleurs.
+ * La carte garde ses couleurs. Elle vient du dehors, elle n'a pas à parler la
+ * langue de l'interface : c'est le tracé, noir doublé d'une gaine blanche,
+ * qui reprend le contraste par-dessus, comme sur une carte papier.
  */
-.fond-carnet .leaflet-tile-pane {
-  filter: grayscale(0.92) sepia(0.28) brightness(1.06) contrast(0.92);
-}
 
 /*
  * Le seul mouvement du carnet : une fiche qui monte. Sortie exponentielle,
