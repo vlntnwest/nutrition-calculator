@@ -1,26 +1,12 @@
 import type { Roadbook } from "@/app/plans/getRoadbook";
 import { CARBS_OVERSHOOT_MAX } from "@/core/nutrition";
+import { km } from "@/format/number";
 
-/** `-12.4` → `−12`, `+3.2` → `+3`. Signé : l'écart peut être négatif. */
-export function margin(marginG: number): string {
-  if (Math.abs(marginG) < 1) return "";
-  const signe = marginG > 0 ? "+" : "−";
-
-  return ` (${signe}${Math.round(Math.abs(marginG))} g)`;
-}
-
-/** `4556` → `1 h 15`. */
-export function duration(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.round((seconds % 3600) / 60);
-
-  return h === 0 ? `${m} min` : `${h} h ${String(m).padStart(2, "0")}`;
-}
-
+/** Là où le secteur s'achève, nommé quand un ravito le clôt. */
 export function bound(leg: Roadbook["legs"][number], totalM: number): string {
   return leg.endPositionM === null
-    ? `arrivée (${(totalM / 1000).toFixed(1)} km)`
-    : `${(leg.endPositionM / 1000).toFixed(1)} km`;
+    ? `arrivée, ${km(totalM)} km`
+    : `${km(leg.endPositionM)} km`;
 }
 
 /**
@@ -33,4 +19,26 @@ export function bound(leg: Roadbook["legs"][number], totalM: number): string {
  */
 export function excessive(supplyG: number, needG: number): boolean {
   return needG > 0 && supplyG > needG * CARBS_OVERSHOOT_MAX;
+}
+
+/** L'abscisse où le secteur commence : la borne qui clôt le précédent. */
+export function startOf(legs: Roadbook["legs"], index: number): number {
+  return index === 0 ? 0 : (legs[index - 1].endPositionM ?? 0);
+}
+
+/**
+ * L'allure moyenne d'un secteur, en secondes par kilomètre. C'est du temps de
+ * mouvement : les arrêts au ravito ne sont pas dedans.
+ */
+export function legPaceSPerKm(
+  legs: Roadbook["legs"],
+  index: number,
+  totalM: number,
+): number | null {
+  const leg = legs[index];
+  const distanceM = (leg.endPositionM ?? totalM) - startOf(legs, index);
+
+  return distanceM > 0 && leg.durationS > 0
+    ? leg.durationS / (distanceM / 1000)
+    : null;
 }

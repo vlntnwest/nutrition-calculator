@@ -1,63 +1,88 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
-import { savePlan } from "@/app/plans/actions";
+import { useState } from "react";
+import {
+  CARBS_GUIDE_G_H,
+  CARBS_SINGLE_SOURCE_MAX_G_H,
+  FLUID_GUIDE_ML_H,
+} from "@/core/nutrition";
 import type { Flask, Targets } from "@/core/type";
-import { toNumber } from "../fields";
+import { duree, entier, toNumber } from "@/format/number";
+import { Button, IconButton } from "@/ui/Button";
+import { ToggleChip } from "@/ui/Chip";
+import { Hint, MeasureField } from "@/ui/Field";
+import { FlaskIcon, PlusIcon, TrashIcon } from "@/ui/icons";
+import { Val } from "@/ui/Measure";
+import { EmptyNote, ErrorNote, Notice } from "@/ui/Notice";
+import { Panel, PanelHead, Rule } from "@/ui/Panel";
+import { SaveBar } from "@/ui/SaveBar";
+import { Slider } from "@/ui/Slider";
+import { usePlanSave } from "../save";
+import { synthetiser } from "./synthese";
 
-type Fields = { carbsGH: string; fluidMlH: string; sodiumMgL: string };
-type FlaskRow = { volumeMl: string; onlyWater: boolean };
+/** `id` n'est jamais écrit : il tient l'identité d'une ligne pendant la saisie. */
+type FlaskRow = { id: string; volumeMl: string; onlyWater: boolean };
 
-const toFields = (t: Targets): Fields => ({
-  carbsGH: String(t.carbsGH),
-  fluidMlH: String(t.fluidMlH),
-  sodiumMgL: String(t.sodiumMgL),
-});
+let compteur = 0;
+
+function nouvelId(): string {
+  compteur += 1;
+
+  return `flasque-${compteur}`;
+}
+
+const DEFAUT: Targets = { carbsGH: 60, fluidMlH: 500, sodiumMgL: 600 };
 
 export function TargetsForm({
   accessId,
   targets,
   suggestion,
   flasks,
+  massKg,
+  targetTimeS,
 }: {
   accessId: string;
   targets: Targets | undefined;
   /** Nul tant qu'on ignore le poids ou le chrono. */
   suggestion: Targets | null;
   flasks: Flask[];
+  massKg: number | undefined;
+  targetTimeS: number | undefined;
 }) {
-  const depart = targets ?? suggestion;
-  const [champs, setChamps] = useState<Fields>(
-    depart ? toFields(depart) : { carbsGH: "", fluidMlH: "", sodiumMgL: "" },
+  const [cibles, setCibles] = useState<Targets>(
+    targets ?? suggestion ?? DEFAUT,
   );
+  const [masse, setMasse] = useState(String(massKg ?? ""));
   const [lignes, setLignes] = useState<FlaskRow[]>(
     flasks.map((f) => ({
+      id: nouvelId(),
       volumeMl: String(f.volumeMl),
       onlyWater: f.onlyWater,
     })),
   );
-  const [message, setMessage] = useState<string | null>(null);
-  const [pending, start] = useTransition();
-  const router = useRouter();
+  const [modifie, setModifie] = useState(false);
+  const [reproche, setReproche] = useState<string | null>(null);
+  const { pending, erreur, enregistre, save, reprise } = usePlanSave(accessId);
 
-  // Ce qui est montré n'a pas encore été validé : tant que l'utilisateur n'a
-  // pas enregistré, ce sont les valeurs du noyau, pas les siennes.
-  const propose = targets === undefined && suggestion !== null;
+  /** Toute saisie annule la confirmation précédente et rouvre le bouton. */
+  function change(fait: () => void) {
+    fait();
+    setModifie(true);
+    setReproche(null);
+    reprise();
+  }
+
+  // Ce qui est montré n'a pas encore été validé : tant que rien n'est
+  // enregistré, ce sont les valeurs du noyau, pas celles du coureur.
+  const propose = targets === undefined;
+  const synthese = targetTimeS
+    ? synthetiser(cibles, volumesLisibles(lignes), targetTimeS)
+    : null;
 
   function submit() {
-    // Trois constantes, pas un objet : contrôler `o.x` ne restreint pas le
-    // type de `o`, seulement celui de `o.x` là où on le lit.
-    const carbsGH = toNumber(champs.carbsGH);
-    const fluidMlH = toNumber(champs.fluidMlH);
-    const sodiumMgL = toNumber(champs.sodiumMgL);
-
-    if (
-      carbsGH === undefined ||
-      fluidMlH === undefined ||
-      sodiumMgL === undefined
-    ) {
-      setMessage("Les trois cibles sont nécessaires.");
+    const kg = toNumber(masse);
+    if (kg === undefined || kg <= 0) {
+      setReproche("Indiquez le poids du coureur : la suggestion en dépend.");
 
       return;
     }
@@ -65,134 +90,252 @@ export function TargetsForm({
     const volumes: Flask[] = [];
     for (const ligne of lignes) {
       const volumeMl = toNumber(ligne.volumeMl);
-      if (volumeMl === undefined) {
-        setMessage("Indique la contenance de chaque flasque, en millilitres.");
+      if (volumeMl === undefined || volumeMl <= 0) {
+        setReproche(
+          "Indiquez la contenance de chaque flasque, en millilitres.",
+        );
 
         return;
       }
       volumes.push({ volumeMl, onlyWater: ligne.onlyWater });
     }
 
-    setMessage(null);
-    start(async () => {
-      const result = await savePlan(accessId, {
-        settings: { targets: { carbsGH, fluidMlH, sodiumMgL } },
-        flasks: volumes,
-      });
-      setMessage(result.ok ? "Enregistré." : result.error);
-      // Les props viennent du serveur : sans ce rendu, l'écran continuerait
-      // d'annoncer l'état d'avant l'enregistrement.
-      if (result.ok) router.refresh();
-    });
-  }
-
-  function edit(i: number, patch: Partial<FlaskRow>) {
-    setLignes(lignes.map((l, j) => (j === i ? { ...l, ...patch } : l)));
+    setReproche(null);
+    save({ settings: { massKg: kg, targets: cibles }, flasks: volumes }, () =>
+      setModifie(false),
+    );
   }
 
   return (
-    <section className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h2 className="font-semibold">Cibles horaires</h2>
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 overflow-y-auto px-4 py-6 sm:px-6">
+      <div>
+        <h2 className="font-semibold text-[22px] text-ink tracking-tight">
+          Cibles horaires
+        </h2>
+        <p className="mt-1 text-[14px] text-ink-soft leading-relaxed">
+          {suggestion && propose ? (
+            <>
+              Suggérées d'après <Val>{massKg} kg</Val> et{" "}
+              <Val>{duree(targetTimeS ?? 0)}</Val>. Modifiez-les si vous savez
+              mieux.
+            </>
+          ) : (
+            "Ce qu'on vise par heure de course. Le roadbook répartit ensuite ces cibles secteur par secteur."
+          )}
+        </p>
+      </div>
 
-        {propose && (
-          <p className="text-sm">
-            Valeurs suggérées pour ton poids et ton chrono. Enregistre pour les
-            retenir, ou change-les.
-          </p>
-        )}
-        {depart === null && (
-          <p className="text-sm">
-            Renseigne d'abord ton poids et ton chrono dans l'onglet Course : la
-            suggestion en dépend.
-          </p>
-        )}
+      <Panel className="p-4">
+        <div className="flex flex-col gap-5">
+          <Slider
+            label="Glucides"
+            unite="g/h"
+            value={cibles.carbsGH}
+            min={0}
+            max={120}
+            step={5}
+            bornes={["0", "120 g/h"]}
+            onChange={(carbsGH) =>
+              change(() => setCibles({ ...cibles, carbsGH }))
+            }
+          />
+          {cibles.carbsGH > CARBS_GUIDE_G_H && (
+            <Notice code="carbs-above-guide">
+              Au-delà de <Val>{CARBS_GUIDE_G_H} g/h</Val>, on sort des
+              fourchettes publiées. Le calcul suivra quand même, et le signalera
+              sur le roadbook.
+            </Notice>
+          )}
+          {cibles.carbsGH > CARBS_SINGLE_SOURCE_MAX_G_H && (
+            <Hint>
+              Au-dessus de {CARBS_SINGLE_SOURCE_MAX_G_H} g/h, un seul type de
+              sucre ne passe plus : il faut au moins un produit qui annonce un
+              mélange glucose et fructose.
+            </Hint>
+          )}
 
-        <div className="flex gap-6">
-          {(
-            [
-              ["carbsGH", "Glucides (g/h)"],
-              ["fluidMlH", "Liquide (ml/h)"],
-              ["sodiumMgL", "Sodium (mg/L)"],
-            ] as const
-          ).map(([cle, libelle]) => (
-            <label key={cle} className="flex flex-col gap-1">
-              <span className="text-sm">{libelle}</span>
-              <input
-                className="w-28 border px-2 py-1"
-                inputMode="decimal"
-                value={champs[cle]}
-                onChange={(e) =>
-                  setChamps({ ...champs, [cle]: e.target.value })
+          <Rule />
+
+          <Slider
+            label="Boisson"
+            unite="mL/h"
+            value={cibles.fluidMlH}
+            min={100}
+            max={1200}
+            step={25}
+            bornes={["100", "1 200 mL/h"]}
+            onChange={(fluidMlH) =>
+              change(() => setCibles({ ...cibles, fluidMlH }))
+            }
+          />
+          {cibles.fluidMlH > FLUID_GUIDE_ML_H && (
+            <Notice code="fluid-above-guide">
+              Au-delà de <Val>{entier(FLUID_GUIDE_ML_H)} mL/h</Val>, le risque
+              n'est plus la déshydratation mais l'excès d'eau.
+            </Notice>
+          )}
+
+          <Rule />
+
+          <Slider
+            label="Sodium dans la boisson"
+            unite="mg/L"
+            value={cibles.sodiumMgL}
+            min={0}
+            max={1600}
+            step={50}
+            bornes={["0", "1 600 mg/L"]}
+            aide="Se compte par litre bu, pas par heure : c'est la concentration de la boisson préparée."
+            onChange={(sodiumMgL) =>
+              change(() => setCibles({ ...cibles, sodiumMgL }))
+            }
+          />
+        </div>
+      </Panel>
+
+      <Panel className="p-4">
+        <MeasureField
+          label="Poids du coureur"
+          unite="kg"
+          value={masse}
+          placeholder="70"
+          largeur="w-40"
+          onChange={(event) => change(() => setMasse(event.target.value))}
+          hint="La suggestion de boisson et la dépense en dépendent."
+        />
+      </Panel>
+
+      <Panel>
+        <PanelHead
+          titre="Flasques emportées"
+          aide="Sans flasque, le roadbook ne dit pas où verser la boisson."
+        />
+        <Rule />
+
+        <div className="flex flex-col gap-3 p-4">
+          {lignes.length === 0 && (
+            <EmptyNote titre="Rien à porter pour l'instant">
+              Ajoutez au moins un contenant : le calcul a besoin de savoir dans
+              quoi la boisson part.
+            </EmptyNote>
+          )}
+
+          {lignes.map((ligne, i) => (
+            <div key={ligne.id} className="flex items-end gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-paper-dim text-ink-soft">
+                <FlaskIcon className="size-5" />
+              </span>
+
+              <MeasureField
+                label={`Flasque ${i + 1}`}
+                unite="mL"
+                placeholder="500"
+                largeur="w-32"
+                value={ligne.volumeMl}
+                onChange={(event) =>
+                  change(() =>
+                    setLignes(
+                      lignes.map((l, j) =>
+                        j === i ? { ...l, volumeMl: event.target.value } : l,
+                      ),
+                    ),
+                  )
                 }
               />
-            </label>
+
+              <div className="flex flex-1 items-center gap-2 pb-1">
+                <ToggleChip
+                  actif={ligne.onlyWater}
+                  onChange={(onlyWater) =>
+                    change(() =>
+                      setLignes(
+                        lignes.map((l, j) =>
+                          j === i ? { ...l, onlyWater } : l,
+                        ),
+                      ),
+                    )
+                  }
+                >
+                  eau claire seulement
+                </ToggleChip>
+              </div>
+
+              <div className="pb-1">
+                <IconButton
+                  libelle={`Retirer la flasque ${i + 1}`}
+                  onClick={() =>
+                    change(() => setLignes(lignes.filter((_, j) => j !== i)))
+                  }
+                >
+                  <TrashIcon className="size-4" />
+                </IconButton>
+              </div>
+            </div>
           ))}
+
+          <Button
+            taille="sm"
+            icone={<PlusIcon className="size-4" />}
+            className="self-start"
+            onClick={() =>
+              change(() =>
+                setLignes([
+                  ...lignes,
+                  { id: nouvelId(), volumeMl: "500", onlyWater: false },
+                ]),
+              )
+            }
+          >
+            Ajouter une flasque
+          </Button>
         </div>
-      </div>
+      </Panel>
 
-      <div className="flex flex-col gap-2">
-        <h2 className="font-semibold">Flasques</h2>
-        <p className="text-sm">
-          Ce qu'on porte. Sans flasque, le roadbook ne dit pas où verser la
-          boisson.
+      {synthese && (
+        <p className="text-[13px] text-ink-soft leading-relaxed">
+          Sur {duree(targetTimeS ?? 0)}, ces cibles demandent{" "}
+          <Val>{entier(synthese.carbsG)} g</Val> de glucides et{" "}
+          <Val>{entier(synthese.fluidMl)} mL</Val> de boisson.{" "}
+          {synthese.remplissages === null ? (
+            "Aucune flasque déclarée : le calcul ne saura pas où la verser."
+          ) : synthese.remplissages === 0 ? (
+            <>
+              Les <Val>{entier(synthese.carryMl)} mL</Val> emportés couvrent la
+              course sans remplissage.
+            </>
+          ) : (
+            <>
+              Les <Val>{entier(synthese.carryMl)} mL</Val> emportés demandent{" "}
+              {synthese.remplissages === 1
+                ? "un remplissage"
+                : `${synthese.remplissages} remplissages`}{" "}
+              en course.
+            </>
+          )}
         </p>
+      )}
 
-        {lignes.map((ligne, i) => (
-          // Une flasque n'a que son rang pour identité, et il change quand on
-          // en retire une.
-          // biome-ignore lint/suspicious/noArrayIndexKey: le rang est l'identité
-          <div key={i} className="flex items-end gap-2">
-            <label className="flex flex-col gap-1">
-              <span className="text-sm">Contenance (ml)</span>
-              <input
-                className="w-28 border px-2 py-1"
-                inputMode="decimal"
-                placeholder="500"
-                value={ligne.volumeMl}
-                onChange={(e) => edit(i, { volumeMl: e.target.value })}
-              />
-            </label>
-            <label className="flex items-center gap-2 py-1">
-              <input
-                type="checkbox"
-                checked={ligne.onlyWater}
-                onChange={(e) => edit(i, { onlyWater: e.target.checked })}
-              />
-              <span className="text-sm">Eau claire seulement</span>
-            </label>
-            <button
-              type="button"
-              className="border px-2 py-1"
-              onClick={() => setLignes(lignes.filter((_, j) => j !== i))}
-            >
-              Retirer
-            </button>
-          </div>
-        ))}
+      {reproche && <ErrorNote>{reproche}</ErrorNote>}
+      {erreur && <ErrorNote>{erreur}</ErrorNote>}
 
-        <button
-          type="button"
-          className="self-start border px-2 py-1"
-          onClick={() =>
-            setLignes([...lignes, { volumeMl: "500", onlyWater: false }])
-          }
-        >
-          Ajouter une flasque
-        </button>
-      </div>
-
-      <div className="flex items-center gap-4">
-        <button
-          type="button"
-          className="border px-3 py-1 font-semibold"
-          onClick={submit}
-          disabled={pending}
-        >
-          {pending ? "Enregistrement…" : "Enregistrer"}
-        </button>
-        {message && <output>{message}</output>}
-      </div>
-    </section>
+      <SaveBar
+        pending={pending}
+        modifie={modifie}
+        enregistre={enregistre && !modifie}
+        consequence="le roadbook devra être recalculé"
+        onSave={submit}
+      />
+    </div>
   );
+}
+
+/** Les contenances déjà lisibles, pour la synthèse affichée au fil de la saisie. */
+function volumesLisibles(lignes: FlaskRow[]): Flask[] {
+  return lignes.flatMap((ligne) => {
+    const volumeMl = toNumber(ligne.volumeMl);
+
+    return volumeMl === undefined || volumeMl <= 0
+      ? []
+      : [{ volumeMl, onlyWater: ligne.onlyWater }];
+  });
 }

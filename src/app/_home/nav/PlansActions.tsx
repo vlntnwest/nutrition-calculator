@@ -1,5 +1,5 @@
-import { MyPlansLink } from "@/components/MyPlansLink";
-import { OfficialPlansLink } from "@/components/OfficialPlansLink";
+import { MyPlansLink } from "./MyPlansLink";
+import { OfficialPlansLink } from "./OfficialPlansLink";
 
 /**
  * Sous `lg`, une ligne à elles deux — jamais réduites au tiers en partageant

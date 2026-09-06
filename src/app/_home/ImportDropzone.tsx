@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { SpinnerGlyph } from "../icons/SpinnerGlyph";
-import { UploadGlyph } from "../icons/UploadGlyph";
+import { SpinnerIcon, UploadIcon } from "@/ui/icons";
 
 export type ImportStatus =
   | { kind: "vide" }
@@ -76,16 +75,20 @@ export function ImportDropzone({
     <>
       <div className="flex items-center justify-center px-6 py-12">
         <div className="max-w-xl w-full rounded-[28px] border border-white/40 bg-white/10 shadow-2xl shadow-black/20 backdrop-blur-sm">
-          <div className="flex h-full flex-col items-center justify-center gap-3 px-24 py-10 text-center">
-            <span className="flex size-14 items-center justify-center rounded-2xl border border-black/30 bg-white/15 text-black">
-              {lecture ? <SpinnerGlyph /> : <UploadGlyph />}
+          <div className="flex h-full flex-col items-center justify-center gap-3 px-6 py-10 sm:px-24 text-center">
+            <span className="flex size-14 items-center justify-center rounded-2xl border border-ink/30 bg-white/15 text-ink">
+              {lecture ? (
+                <SpinnerIcon className="size-6" />
+              ) : (
+                <UploadIcon className="size-6" />
+              )}
             </span>
 
             <div className="space-y-1">
-              <p className="font-medium text-lg text-black">
-                {lecture ? "Lecture en cours…" : "Déposez le fichier ici"}
+              <p className="font-medium text-ink text-lg">
+                {lecture ? "Lecture de la trace" : "Déposez le fichier ici"}
               </p>
-              <p className="text-sm text-black/70">.gpx</p>
+              <p className="text-ink/70 text-sm">.gpx</p>
             </div>
 
             <button
@@ -116,7 +119,7 @@ export function ImportDropzone({
           role="alert"
           className="mx-auto mb-6 w-full max-w-md rounded-2xl border border-line bg-paper-dim px-5 py-3 text-center text-sm"
         >
-          Import impossible — {status.message}
+          Import impossible. {status.message}
         </p>
       )}
 
@@ -126,7 +129,7 @@ export function ImportDropzone({
 
           <div className="flex flex-col items-center gap-4 text-center">
             <span className="flex size-16 items-center justify-center rounded-2xl border border-white/50 bg-white/15 text-white">
-              <UploadGlyph />
+              <UploadIcon className="size-6" />
             </span>
             <p className="text-xl font-medium text-paper">
               Déposez le fichier ici

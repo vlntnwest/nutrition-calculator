@@ -21,6 +21,10 @@ export type RoadbookServing = {
   quantity: number;
   /** Le pas de retouche : 1 pour ce qui ne se coupe pas, 2 pour le reste. */
   divisibleBy: number;
+  formatLabel: string;
+  carbsG: number;
+  sodiumMg: number;
+  weightG: number;
 };
 
 export type RoadbookFill = {
@@ -43,6 +47,12 @@ export type RoadbookLeg = {
   rank: number;
   /** L'abscisse où le secteur s'achève. Nul pour l'arrivée. */
   endPositionM: number | null;
+  /** Le ravito qui clôt le secteur. Nul à l'arrivée, que rien ne clôt. */
+  endName: string | null;
+  /** La durée imposée à ce secteur, si le coureur en a posé une. */
+  imposedDurationS: number | null;
+  /** La cible de glucides imposée à ce secteur, le cas échéant. */
+  imposedCarbsGH: number | null;
   ascentM: number;
   descentM: number;
   durationS: number;
@@ -84,9 +94,15 @@ export type Roadbook = {
   flasks: { rank: number; volumeMl: number; onlyWater: boolean }[];
   /** Le plan a été retouché à la main depuis son dernier calcul. */
   edited: boolean;
+  /** Quand le calcul a tourné. C'est lui qui fait foi sur sa fraîcheur. */
+  generatedAt: Date;
+  /** La distance totale, pour borner le dernier secteur. */
+  totalM: number;
   /** Le sac complet, et ce qu'il apporte. */
   total: Supply & {
     marginG: number;
+    /** Ce que le sac pèse au départ, tous produits confondus. */
+    weightG: number;
     units: { name: string; brandName: string | null; quantity: number }[];
   };
   /** Ceux qui ne visent aucun secteur — ils portent `leg_rank` à null. */
@@ -145,10 +161,12 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
         divisibleBy: productSnapshots.divisibleBy,
         name: productSnapshots.name,
         brandName: productSnapshots.brandName,
+        formatLabel: productSnapshots.formatLabel,
         carbsG: productSnapshots.carbsG,
         energyKcal: productSnapshots.energyKcal,
         sodiumMg: productSnapshots.sodiumMg,
         fluidMl: productSnapshots.fluidMl,
+        weightG: productSnapshots.weightG,
       })
       .from(servings)
       .innerJoin(
@@ -220,6 +238,8 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
   const liquidAt = new Map(
     stationRows.map((a) => [a.positionM, a.providesLiquid]),
   );
+  const nomAu = new Map(stationRows.map((a) => [a.positionM, a.name]));
+  const consigneAu = new Map(overrideRows.map((o) => [o.endPositionM, o]));
 
   const legsOut = legRows.map((leg, i) => {
     const rations = byLeg(servingRows, leg.rank);
@@ -240,6 +260,11 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
     return {
       rank: leg.rank,
       endPositionM: leg.endPositionM,
+      endName: nomAu.get(boundOf(leg.endPositionM)) ?? null,
+      imposedDurationS:
+        consigneAu.get(boundOf(leg.endPositionM))?.durationOverrideS ?? null,
+      imposedCarbsGH:
+        consigneAu.get(boundOf(leg.endPositionM))?.carbsOverrideG_H ?? null,
       ascentM: leg.ascentM,
       descentM: leg.descentM,
       durationS: leg.durationS,
@@ -249,6 +274,10 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
         brandName: s.brandName,
         quantity: s.quantity,
         divisibleBy: s.divisibleBy,
+        formatLabel: s.formatLabel,
+        carbsG: s.carbsG,
+        sodiumMg: s.sodiumMg,
+        weightG: s.weightG,
       })),
       opensLiquidSpan: depuis === null || (liquidAt.get(depuis) ?? true),
       fills: byLeg(fillRows, leg.rank).map((f) => ({
@@ -286,12 +315,15 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
       onlyWater: f.onlyWater,
     })),
     edited: row.plans.editedAt !== null,
+    generatedAt: row.plans.generatedAt,
+    totalM: row.tracks.distanceM,
     total: {
       carbsG: legsOut.reduce((t, l) => t + l.supply.carbsG, 0),
       energyKcal: legsOut.reduce((t, l) => t + l.supply.energyKcal, 0),
       sodiumMg: legsOut.reduce((t, l) => t + l.supply.sodiumMg, 0),
       fluidMl: legsOut.reduce((t, l) => t + l.supply.fluidMl, 0),
       marginG: legsOut.reduce((t, l) => t + l.marginG, 0),
+      weightG: servingRows.reduce((t, r) => t + r.quantity * r.weightG, 0),
       units: [...sac].map(([name, v]) => ({ name, ...v })),
     },
     warnings: warningRows

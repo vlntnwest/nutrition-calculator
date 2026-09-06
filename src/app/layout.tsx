@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Header } from "@/components/chrome/Header";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,23 +26,24 @@ export const metadata: Metadata = {
  * nœud commentaire littéral depuis React.
  */
 const DIRECTION_CONTRACT = `<!--
-  impeccable:direction bagage-01
-  THESIS: déposer le GPX est le geste fondateur — l'écran le traite comme
-  un instrument de relevé, pas comme un hero marketing générique.
-  OWN-WORLD: papier blanc, encre quasi noire, un seul accent brûlé
-  (ravitos, CTA) ; photographie plein cadre en guise d'imagerie forte —
-  crête brumeuse en hero (100dvh, fondue au blanc de la page en haut et à
-  l'encre en bas), photo de course + profil tracé par-dessus sur les
-  cartes ; Geist Mono pour les mesures (distance, D+, coordonnées), Geist
-  Sans pour le reste.
-  STORY: le coureur dépose sa trace dans un panneau vitré flottant sur une
-  photo de relief plein écran qui se fond dans la page ; deux dossiers déjà
-  ouverts en dessous, chacun sa photo et son profil tracé — un modèle à
-  dupliquer, un plan personnel — montrent tout de suite ce qu'elle devient.
-  FIRST VIEWPORT: hero plein écran (photo de relief fondue + panneau de
-  dépôt vitré), puis deux cartes-affiche à photo pleine et profil tracé.
-  FORM: direction unique dérivée du brief (wireframe + 5 références) —
-  brief-pinned, tournoi de concepts sauté (new-work §3).
+  impeccable:direction bagage-02
+  THESIS: un plan est un dossier qu'on rouvre, jamais un tunnel. L'accueil
+  reste une affiche de terrain ; les quatre destinations sont un atelier de
+  relevé, où la trace fait le fond et le papier porte l'écriture.
+  OWN-WORLD: papier blanc, encre quasi noire, un seul accent brûlé réservé
+  aux marques de la course (bornes, destination active, curseur) et jamais
+  posé dans un bouton. Filets d'un pixel plutôt que cartes flottantes ;
+  Geist Mono tabulaire pour toute mesure, Geist Sans pour le reste ; icônes
+  dessinées, trait 1,6 sur grille de 24. Photographie plein cadre sur le
+  seul accueil.
+  STORY: déposer la trace, confirmer la course, poser les ravitos sur le
+  relief, régler les cibles, remplir le sac, corriger un roadbook qui montre
+  toujours l'écart au calcul.
+  FIRST VIEWPORT: accueil, hero photo pleine et panneau de dépôt vitré.
+  Plan, rail à gauche et identité de course en tête, puis l'écran en pleine
+  hauteur : carte en fond sur Course, profil collant sur Roadbook.
+  FORM: brief-pinné par le canvas « Wireframes post-import », sept écrans
+  desktop et huit mobile ; tournoi de concepts sauté (new-work §3).
   FINISH: unreviewed and undocumented is unfinished; this build ends
   with the finish review, the verdict, and DESIGN.md.
 -->`;

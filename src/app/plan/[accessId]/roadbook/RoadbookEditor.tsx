@@ -2,10 +2,18 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { saveEditedRoadbook } from "@/app/plans/actions";
+import { imposeOnLegs, saveEditedRoadbook } from "@/app/plans/actions";
 import type { Roadbook } from "@/app/plans/getRoadbook";
+import type { LegOverride } from "@/app/plans/planInput";
 import type { RoadbookEdit } from "@/app/plans/saveRoadbook";
-import { bound, duration, excessive, margin } from "./format";
+import type { ProfilePoint } from "@/core/type";
+import { duree } from "@/format/number";
+import { Button } from "@/ui/Button";
+import { ErrorNote, Notice } from "@/ui/Notice";
+import { LegCard } from "./LegCard";
+import { LegProfile } from "./LegProfile";
+import { PackSummary } from "./PackSummary";
+import { warningText } from "./warnings";
 
 /** Le plan affiché, ramené à ce qui se retouche. */
 function editOf(roadbook: Roadbook): RoadbookEdit {
@@ -30,21 +38,45 @@ function editOf(roadbook: Roadbook): RoadbookEdit {
   };
 }
 
+/** Les consignes actuelles, telles que le serveur les relira. */
+function overridesOf(roadbook: Roadbook): LegOverride[] {
+  return roadbook.legs.flatMap((leg) => {
+    if (leg.imposedDurationS === null && leg.imposedCarbsGH === null) return [];
+
+    return [
+      {
+        endPositionM: leg.endPositionM ?? roadbook.totalM,
+        ...(leg.imposedDurationS === null
+          ? {}
+          : { durationS: leg.imposedDurationS }),
+        ...(leg.imposedCarbsGH === null
+          ? {}
+          : { targets: { carbsGH: leg.imposedCarbsGH } }),
+      },
+    ];
+  });
+}
+
 export function RoadbookEditor({
   accessId,
   roadbook,
-  totalM,
+  points,
+  cibleGH,
 }: {
   accessId: string;
   roadbook: Roadbook;
-  totalM: number;
+  points: ProfilePoint[];
+  /** La cible du plan, celle qui vaut pour un secteur sans consigne. */
+  cibleGH: number;
 }) {
   const router = useRouter();
   const [rendu, setRendu] = useState(roadbook);
   const [edit, setEdit] = useState(() => editOf(roadbook));
   const [sale, setSale] = useState(false);
+  const [actif, setActif] = useState<number | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const [imposing, startImpose] = useTransition();
 
   // `router.refresh()` ne remonte pas le composant. Sans ce retour à la
   // source, un recalcul rafraîchirait les agrégats en laissant les contrôles
@@ -56,13 +88,6 @@ export function RoadbookEditor({
     setSale(false);
     setErreur(null);
   }
-
-  const productOf = (id: string) => roadbook.catalogue.find((p) => p.id === id);
-  const nameOf = (id: string) => {
-    const p = productOf(id);
-
-    return p ? `${p.brandName ?? ""} ${p.name}`.trim() : id;
-  };
 
   /** Pose une quantité sur un secteur. À zéro, la ration disparaît. */
   function setServing(leg: number, snapshotId: string, quantity: number) {
@@ -80,7 +105,7 @@ export function RoadbookEditor({
     }));
   }
 
-  /** Verse — ou vide — une flasque sur un secteur. */
+  /** Verse, ou vide, une flasque sur un secteur. */
   function setFill(
     leg: number,
     flaskRank: number,
@@ -112,247 +137,114 @@ export function RoadbookEditor({
     });
   }
 
+  /**
+   * Poser ou retirer une consigne sur un secteur. Le découpage change, donc
+   * le calcul repart : l'action serveur fait les deux d'un coup.
+   */
+  function imposer(rank: number, patch: Partial<LegOverride>) {
+    const leg = roadbook.legs.find((l) => l.rank === rank);
+    if (!leg) return;
+
+    const borne = leg.endPositionM ?? roadbook.totalM;
+    const autres = overridesOf(roadbook).filter(
+      (o) => o.endPositionM !== borne,
+    );
+    const courante = overridesOf(roadbook).find(
+      (o) => o.endPositionM === borne,
+    );
+    const suite: LegOverride = {
+      endPositionM: borne,
+      durationS: courante?.durationS,
+      targets: courante?.targets,
+      ...patch,
+    };
+    const vide = suite.durationS === undefined && suite.targets === undefined;
+
+    setErreur(null);
+    startImpose(async () => {
+      const result = await imposeOnLegs(
+        accessId,
+        vide ? autres : [...autres, suite],
+      );
+      if (result.ok) router.refresh();
+      else setErreur(result.error);
+    });
+  }
+
   // Les chiffres agrégés viennent du serveur : tant qu'on n'a pas enregistré,
   // ils décrivent l'état d'avant. On les estompe plutôt que de les resommer
-  // ici — ce serait rouvrir la divergence que getRoadbook évite. ADR 011.
+  // ici, ce serait rouvrir la divergence que getRoadbook évite. ADR 011.
   const vieux = sale ? "opacity-50" : "";
 
   return (
-    <>
-      <div className="flex items-center gap-4">
-        <button
-          type="button"
-          className="border px-3 py-1 font-semibold"
-          disabled={!sale || pending}
-          onClick={save}
-        >
-          {pending ? "Enregistrement…" : "Enregistrer"}
-        </button>
-        {sale && (
-          <p className="text-sm">
-            Chiffres du dernier enregistrement — ils se mettront à jour.
-          </p>
-        )}
-        {erreur && <p role="alert">{erreur}</p>}
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="sticky top-0 z-10 shrink-0">
+        <LegProfile
+          points={points}
+          legs={roadbook.legs}
+          totalM={roadbook.totalM}
+          actif={actif}
+          onChoisir={(rank) => {
+            setActif(rank);
+            document
+              .getElementById(`secteur-${rank}`)
+              ?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
+        />
       </div>
 
-      {roadbook.warnings.length > 0 && (
-        <ul className={`flex flex-col gap-1 ${vieux}`} role="alert">
-          {roadbook.warnings.map((w) => (
-            <li key={w.code}>⚠ {w.code}</li>
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+        <div className="mx-auto flex max-w-3xl flex-col gap-4">
+          {roadbook.warnings.length > 0 && (
+            <div className={`flex flex-col gap-2 ${vieux}`}>
+              {roadbook.warnings.map((w) => (
+                <Notice key={w.code} code={w.code}>
+                  {warningText(w.code, w.payload)}
+                </Notice>
+              ))}
+            </div>
+          )}
+
+          {roadbook.legs.map((leg, l) => (
+            <LegCard
+              key={leg.rank}
+              leg={leg}
+              rations={edit.servings[l]}
+              remplissages={edit.fills[l]}
+              roadbook={roadbook}
+              cibleGH={leg.imposedCarbsGH ?? cibleGH}
+              totalM={roadbook.totalM}
+              vieux={vieux}
+              imposing={imposing}
+              onServing={(id, quantity) => setServing(l, id, quantity)}
+              onFill={(rank, contenu) => setFill(l, rank, contenu)}
+              onImposerDuree={(durationS) =>
+                imposer(leg.rank, { durationS: durationS ?? undefined })
+              }
+              onImposerCible={(carbsGH) =>
+                imposer(leg.rank, {
+                  targets: carbsGH === null ? undefined : { carbsGH },
+                })
+              }
+            />
           ))}
-        </ul>
-      )}
 
-      <ol className="flex flex-col gap-4">
-        {roadbook.legs.map((leg, l) => {
-          const rations = edit.servings[l];
-          const absents = roadbook.catalogue.filter(
-            (p) => !rations.some((r) => r.productSnapshotId === p.id),
-          );
+          <PackSummary total={roadbook.total} />
 
-          return (
-            <li key={leg.rank} className="flex flex-col gap-1 border-t pt-2">
-              <h3 className="font-semibold">
-                Secteur {leg.rank} — jusqu'à {bound(leg, totalM)}
-              </h3>
-              <p className="text-sm">
-                {duration(leg.durationS)} · +{leg.ascentM} m / −{leg.descentM} m
-              </p>
+          {erreur && <ErrorNote>{erreur}</ErrorNote>}
+        </div>
+      </div>
 
-              <ul className="text-sm">
-                {rations.map((r) => {
-                  const pas =
-                    1 / (productOf(r.productSnapshotId)?.divisibleBy ?? 1);
-
-                  return (
-                    <li
-                      key={r.productSnapshotId}
-                      className="flex items-center gap-2"
-                    >
-                      <span>
-                        {r.quantity} × {nameOf(r.productSnapshotId)}
-                      </span>
-                      <button
-                        type="button"
-                        className="border px-2"
-                        aria-label={`Retirer ${pas} de ${nameOf(r.productSnapshotId)}`}
-                        onClick={() =>
-                          setServing(l, r.productSnapshotId, r.quantity - pas)
-                        }
-                      >
-                        −
-                      </button>
-                      <button
-                        type="button"
-                        className="border px-2"
-                        aria-label={`Ajouter ${pas} de ${nameOf(r.productSnapshotId)}`}
-                        onClick={() =>
-                          setServing(l, r.productSnapshotId, r.quantity + pas)
-                        }
-                      >
-                        +
-                      </button>
-                      <button
-                        type="button"
-                        className="border px-2"
-                        onClick={() => setServing(l, r.productSnapshotId, 0)}
-                      >
-                        retirer
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-
-              {absents.length > 0 && (
-                <select
-                  className="border px-2 py-1 text-sm"
-                  value=""
-                  aria-label={`Ajouter un produit au secteur ${leg.rank}`}
-                  onChange={(e) => {
-                    if (e.target.value) setServing(l, e.target.value, 1);
-                  }}
-                >
-                  <option value="">Ajouter un produit…</option>
-                  {absents.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {`${p.brandName ?? ""} ${p.name}`.trim()}
-                    </option>
-                  ))}
-                </select>
-              )}
-
-              <p className={`text-sm ${vieux}`}>
-                Apport : {Math.round(leg.supply.carbsG)} g de glucides
-                <span
-                  className={
-                    excessive(leg.supply.carbsG, leg.needG)
-                      ? "text-red-600"
-                      : undefined
-                  }
-                >
-                  {margin(leg.marginG)}
-                </span>{" "}
-                · {Math.round(leg.supply.energyKcal).toLocaleString("fr")} kcal
-                · {Math.round(leg.supply.sodiumMg)} mg de sodium ·{" "}
-                {Math.round(leg.supply.fluidMl)} mL de boisson
-              </p>
-
-              <p className={`text-sm ${vieux}`}>
-                À boire : {Math.round(leg.needFluidMl)} mL
-              </p>
-
-              {leg.opensLiquidSpan ? (
-                <ul className="text-sm">
-                  {roadbook.flasks.map((flask) => {
-                    const verse = edit.fills[l].find(
-                      (f) => f.flaskRank === flask.rank,
-                    );
-
-                    return (
-                      <li
-                        key={flask.rank}
-                        className="flex items-center gap-2 py-0.5"
-                      >
-                        <span>
-                          Flasque {flask.rank} ({flask.volumeMl} mL)
-                        </span>
-                        <select
-                          className="border px-1"
-                          aria-label={`Flasque ${flask.rank} du secteur ${leg.rank}`}
-                          value={
-                            verse === undefined
-                              ? "vide"
-                              : (verse.productSnapshotId ?? "eau")
-                          }
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            if (v === "vide")
-                              return setFill(l, flask.rank, null);
-
-                            setFill(l, flask.rank, {
-                              productSnapshotId: v === "eau" ? null : v,
-                              volumeMl: verse?.volumeMl ?? flask.volumeMl,
-                            });
-                          }}
-                        >
-                          <option value="vide">rien</option>
-                          <option value="eau">eau claire</option>
-                          {!flask.onlyWater &&
-                            roadbook.catalogue.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {`${p.brandName ?? ""} ${p.name}`.trim()}
-                              </option>
-                            ))}
-                        </select>
-                        {verse !== undefined && (
-                          <input
-                            type="number"
-                            className="w-20 border px-1"
-                            min={1}
-                            step={10}
-                            value={verse.volumeMl}
-                            aria-label={`Volume de la flasque ${flask.rank} au secteur ${leg.rank}`}
-                            onChange={(e) =>
-                              setFill(l, flask.rank, {
-                                productSnapshotId: verse.productSnapshotId,
-                                volumeMl: Number(e.target.value),
-                              })
-                            }
-                          />
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <p className={`text-sm ${vieux}`}>
-                  Pas de remplissage ici : les flasques sont préparées en amont,
-                  au dernier ravito qui donnait de l'eau.
-                </p>
-              )}
-
-              <div className={vieux}>
-                {leg.warnings.map((w) => (
-                  <p key={w.code} className="text-sm">
-                    ⚠ {w.code}
-                  </p>
-                ))}
-              </div>
-            </li>
-          );
-        })}
-      </ol>
-
-      <section className={`flex flex-col gap-1 border-t pt-2 ${vieux}`}>
-        <h3 className="font-semibold">Le sac complet</h3>
-        <ul className="text-sm">
-          {roadbook.total.units.map((u) => (
-            <li key={u.name}>
-              {u.quantity} × {u.brandName} {u.name}
-            </li>
-          ))}
-        </ul>
-        <p className="text-sm">
-          {Math.round(roadbook.total.carbsG)} g de glucides
-          <span
-            className={
-              excessive(
-                roadbook.total.carbsG,
-                roadbook.total.carbsG - roadbook.total.marginG,
-              )
-                ? "text-red-600"
-                : undefined
-            }
-          >
-            {margin(roadbook.total.marginG)}
-          </span>{" "}
-          · {Math.round(roadbook.total.energyKcal).toLocaleString("fr")} kcal ·{" "}
-          {Math.round(roadbook.total.sodiumMg)} mg de sodium ·{" "}
-          {Math.round(roadbook.total.fluidMl)} mL de boisson
+      <div className="sticky bottom-0 z-10 flex shrink-0 items-center gap-3 border-line border-t bg-paper/92 px-4 py-3 backdrop-blur-sm sm:px-6">
+        <p className="min-w-0 flex-1 text-[12px] text-ink-soft">
+          {sale
+            ? "Les chiffres datent du dernier enregistrement, ils se mettront à jour."
+            : `${roadbook.legs.length} secteurs, ${duree(roadbook.legs.reduce((t, l) => t + l.durationS, 0))} de mouvement`}
         </p>
-      </section>
-    </>
+        <Button ton="encre" disabled={!sale || pending} onClick={save}>
+          {pending ? "Enregistrement" : "Enregistrer les retouches"}
+        </Button>
+      </div>
+    </div>
   );
 }

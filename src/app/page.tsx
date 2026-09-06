@@ -2,17 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Hero } from "../components/Hero";
-import { DemoCards } from "./_home/cards/DemoCards";
-import {
-  ImportDropzone,
-  type ImportStatus,
-} from "./_home/dropzone/ImportDropzone";
-import {
-  ImportRaceModal,
-  type ParsedTrack,
-} from "./_home/import-modal/ImportRaceModal";
+import { Hero } from "./_home/Hero";
+import { ImportDropzone, type ImportStatus } from "./_home/ImportDropzone";
+import { ImportRaceModal, type ParsedTrack } from "./_home/ImportRaceModal";
 import { PlansActions } from "./_home/nav/PlansActions";
+import { PlanCards } from "./_home/PlanCards";
 import { analyzeGpx } from "./import/analyzeGpx";
 import { importTrack, savePlan } from "./plans/actions";
 import { rememberPlan } from "./plans/stored";
@@ -65,7 +59,7 @@ export default function Page() {
     raceName: string,
     targetTimeS: number | undefined,
   ): Promise<string | null> {
-    if (!parsed) return "Le fichier importé a été perdu — réessayez.";
+    if (!parsed) return "Le fichier importé a été perdu. Relancez l'import.";
 
     const created = await importTrack({
       name: raceName,
@@ -107,7 +101,7 @@ export default function Page() {
         <div className="flex flex-1 w-full px-4 pb-6 lg:pb-8">
           <div className="flex w-full flex-col gap-4 pt-16 lg:flex-row">
             <div className="flex flex-1 flex-wrap gap-4">
-              <DemoCards />
+              <PlanCards />
             </div>
             <PlansActions />
           </div>

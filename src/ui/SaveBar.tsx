@@ -1,0 +1,56 @@
+"use client";
+
+import type { ReactNode } from "react";
+import { Button } from "./Button";
+import { CheckIcon, SpinnerIcon } from "./icons";
+
+/**
+ * Le pied d'un écran de saisie. Il colle au bas de la zone de défilement :
+ * sur un formulaire long, le bouton reste sous le pouce sans qu'on ait à
+ * remonter chercher.
+ */
+export function SaveBar({
+  pending,
+  modifie,
+  enregistre,
+  consequence,
+  onSave,
+  children,
+}: {
+  pending: boolean;
+  /** Des changements attendent d'être écrits. */
+  modifie: boolean;
+  /** Le dernier enregistrement a abouti et rien n'a bougé depuis. */
+  enregistre: boolean;
+  /** Ce que l'enregistrement entraînera, dit avant de le déclencher. */
+  consequence?: ReactNode;
+  onSave: () => void;
+  /** Une action secondaire, posée à gauche. */
+  children?: ReactNode;
+}) {
+  return (
+    <div className="sticky bottom-0 z-20 -mx-4 mt-2 flex items-center gap-3 border-line border-t bg-paper/92 px-4 py-3 backdrop-blur-sm sm:-mx-6 sm:px-6">
+      {children}
+      <div className="ml-auto flex items-center gap-3">
+        <p className="text-[12px] text-ink-soft">
+          {pending ? (
+            <span className="flex items-center gap-1.5">
+              <SpinnerIcon className="size-3.5" />
+              Enregistrement
+            </span>
+          ) : enregistre ? (
+            <span className="flex items-center gap-1.5 text-go">
+              <CheckIcon className="size-3.5" />
+              Enregistré
+            </span>
+          ) : (
+            modifie && consequence
+          )}
+        </p>
+        <Button ton="encre" disabled={pending || !modifie} onClick={onSave}>
+          Enregistrer
+        </Button>
+      </div>
+    </div>
+  );
+}

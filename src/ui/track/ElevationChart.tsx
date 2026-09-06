@@ -10,7 +10,7 @@ import {
   type ScriptableLineSegmentContext,
   Tooltip,
 } from "chart.js";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Line } from "react-chartjs-2";
 import type { ProfilePoint } from "@/core/type";
 import { gradePercent, SLOPE_BUCKETS, slopeColor } from "./slopeColor";
@@ -35,6 +35,14 @@ const PAPER = "#ffffff";
  */
 const MONO_STACK = "ui-monospace, Menlo, Consolas, monospace";
 
+/** Une borne posée sur le profil : un ravito, ou la fin d'un secteur. */
+export type ProfileMark = {
+  /** Le numéro lu sur la pastille. */
+  rank: number;
+  positionM: number;
+  libelle?: string;
+};
+
 /**
  * Le profil altimétrique, coloré par palier de pente plutôt qu'en aplat
  * unique — inspiré d'OpenRunner, dans la famille du seul accent du carnet
@@ -55,6 +63,10 @@ const MONO_STACK = "ui-monospace, Menlo, Consolas, monospace";
  * puisque rien ne force Chart.js à afficher un point qu'il n'a pas
  * lui-même détecté sous la souris.
  *
+ * `marks` pose des bornes verticales sur le tracé, `onPick` rend l'abscisse
+ * cliquée : c'est ainsi qu'un ravito se place, à l'endroit du relief où il
+ * tombe plutôt qu'en tapant un nombre.
+ *
  * `data` et `options` sont mémoïsés sur `points` : sans ça, chaque survol
  * change `hoverIndex` chez le parent, qui refait tout rendre — et recalculer
  * ~2 000 couleurs de segment à chaque déplacement de souris rendait le
@@ -64,12 +76,25 @@ export function ElevationChart({
   points,
   hoverIndex,
   onHoverIndex,
+  marks,
+  onPick,
+  legende = true,
 }: {
   points: ProfilePoint[];
   hoverIndex?: number | null;
   onHoverIndex?: (index: number | null) => void;
+  marks?: ProfileMark[];
+  onPick?: (positionM: number) => void;
+  legende?: boolean;
 }) {
   const chartRef = useRef<ChartJS<"line"> | null>(null);
+  // Les bornes se placent avec les échelles du graphique, qui n'existent pas
+  // encore au premier passage : un rendu de plus, une fois monté, suffit à
+  // les poser. Les survols suivants rendent déjà pour leur propre compte.
+  const [monte, setMonte] = useState(false);
+
+  useEffect(() => setMonte(true), []);
+
   const data = useMemo(() => {
     if (points.length < 2) return null;
 
@@ -177,12 +202,44 @@ export function ElevationChart({
 
   return (
     <div className="flex h-full flex-col gap-1 p-2">
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: filet visuel pour la souris qui quitte le canevas ; le survol lui-même n'a pas de sémantique pour un lecteur d'écran. */}
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: le survol et le clic visent un canevas, qui n'a pas d'enfants à focaliser. */}
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: poser une borne au clavier passe par « Ajouter un ravito » et son champ de position, à côté ; viser un pixel du relief n'a pas d'équivalent au clavier. */}
       <div
-        className="relative min-h-0 flex-1"
+        className={`relative min-h-0 flex-1 ${onPick ? "cursor-crosshair" : ""}`}
         onMouseLeave={() => onHoverIndex?.(null)}
+        onClick={(event) => {
+          if (!onPick || !chartRef.current) return;
+          const zone = event.currentTarget.getBoundingClientRect();
+          const km = chartRef.current.scales.x.getValueForPixel(
+            event.clientX - zone.left,
+          );
+          if (km == null) return;
+          const total = points[points.length - 1].d;
+
+          onPick(Math.min(Math.max(km * 1000, 0), total));
+        }}
       >
         <Line ref={chartRef} data={data} options={options} />
+
+        {monte &&
+          chart &&
+          marks?.map((mark) => {
+            const x = chart.scales.x.getPixelForValue(mark.positionM / 1000);
+
+            return (
+              <span
+                key={`${mark.rank}-${mark.positionM}`}
+                className="pointer-events-none absolute top-0 bottom-0"
+                style={{ left: x }}
+              >
+                <span className="absolute inset-y-0 w-px bg-accent" />
+                <span className="-translate-x-1/2 absolute top-0 flex size-4 items-center justify-center rounded-full bg-accent font-mono text-[9px] text-paper">
+                  {mark.rank}
+                </span>
+              </span>
+            );
+          })}
+
         {point && (
           <span
             className="pointer-events-none absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white"
@@ -194,7 +251,7 @@ export function ElevationChart({
           />
         )}
       </div>
-      <SlopeLegend />
+      {legende && <SlopeLegend />}
     </div>
   );
 }

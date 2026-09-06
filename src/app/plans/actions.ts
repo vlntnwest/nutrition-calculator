@@ -4,7 +4,7 @@ import type { ProfilePoint, ResolvedPoint } from "@/core/type";
 import { createPlan } from "./createPlan";
 import { getPlan } from "./getPlan";
 import { PlanError } from "./planError";
-import type { NewPlan } from "./planInput";
+import type { LegOverride, NewPlan } from "./planInput";
 import { regeneratePlan } from "./regeneratePlan";
 import type { RoadbookEdit } from "./saveRoadbook";
 import { saveRoadbook } from "./saveRoadbook";
@@ -93,7 +93,27 @@ export async function computePlan(accessId: string): Promise<Result<null>> {
 }
 
 /**
- * Écran 5 — enregistrer les retouches. Le calcul se rejoue avec elles pour
+ * Écran 7 — imposer une durée ou une cible à un secteur.
+ *
+ * Une consigne change le découpage même du calcul : la mise à jour jette les
+ * secteurs, le calcul doit repartir dans la foulée. Les deux en un seul
+ * aller-retour, sinon l'écran passerait par un état où le roadbook n'existe
+ * plus.
+ */
+export async function imposeOnLegs(
+  accessId: string,
+  legOverrides: LegOverride[],
+): Promise<Result<null>> {
+  return guard(async () => {
+    await updatePlan(accessId, { legOverrides });
+    await regeneratePlan(accessId);
+
+    return null;
+  }, accessId);
+}
+
+/**
+ * Écran 7 — enregistrer les retouches. Le calcul se rejoue avec elles pour
  * consigne, donc les remarques ressortent justes.
  */
 export async function saveEditedRoadbook(

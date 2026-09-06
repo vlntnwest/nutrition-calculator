@@ -6,10 +6,10 @@ import Link from "next/link";
  * courses officielles et l'historique serveur n'existent pas — cf. le
  * commentaire de contrat dans layout.tsx.
  */
-const DEMO_CARDS = [
+const CARTES = [
   {
     kind: "modele" as const,
-    name: "Traversée des Cimes — 2026",
+    name: "Traversée des Cimes 2026",
     photo: "/card-modele.webp",
     distanceKm: "176",
     ascentM: "10 000",
@@ -33,10 +33,10 @@ const DEMO_CARDS = [
 ];
 
 /** Les deux cartes-affiche : photo pleine, profil tracé, plaque de relevé. */
-export function DemoCards() {
+export function PlanCards() {
   return (
     <>
-      {DEMO_CARDS.map((card) => (
+      {CARTES.map((card) => (
         <article
           key={card.name}
           className="relative min-h-[280px] min-w-[280px] flex-1 overflow-hidden rounded-[20px] bg-ink"

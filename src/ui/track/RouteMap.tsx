@@ -8,6 +8,7 @@ import {
   MapContainer,
   Polyline,
   TileLayer,
+  Tooltip,
   useMap,
 } from "react-leaflet";
 import { nearestPointIndex } from "./nearestPoint";
@@ -117,10 +118,16 @@ export default function RouteMap({
   points,
   hoverIndex,
   onHoverIndex,
+  stations,
+  onPick,
 }: {
   points: { lat: number; lon: number }[];
   hoverIndex?: number | null;
   onHoverIndex?: (index: number | null) => void;
+  /** Les ravitos posés, chacun sur l'indice du point qui le porte. */
+  stations?: { rank: number; index: number }[];
+  /** Poser une borne au clic sur le tracé. Rend l'indice du point visé. */
+  onPick?: (index: number) => void;
 }) {
   const positions = useMemo(
     (): [number, number][] => points.map((p) => [p.lat, p.lon]),
@@ -144,7 +151,7 @@ export default function RouteMap({
       doubleClickZoom={false}
       touchZoom={false}
       zoomControl={false}
-      className="h-full w-full"
+      className={`h-full w-full ${onPick ? "[&_.leaflet-interactive]:cursor-crosshair" : ""}`}
     >
       <FitBoundsOnResize bounds={bounds} />
       <DamierArrivee id={idDamier} />
@@ -156,7 +163,7 @@ export default function RouteMap({
         positions={positions}
         pathOptions={{ color: "var(--accent)", weight: 3.5 }}
       />
-      {onHoverIndex && (
+      {(onHoverIndex || onPick) && (
         // Ligne invisible et large : le trait visible ne fait que 3,5 px, une
         // cible bien trop fine pour viser au pixel près sur un tracé courbe.
         <Polyline
@@ -164,11 +171,16 @@ export default function RouteMap({
           pathOptions={{ opacity: 0, weight: 16 }}
           eventHandlers={{
             mousemove: (event) => {
-              onHoverIndex(
+              onHoverIndex?.(
                 nearestPointIndex(points, event.latlng.lat, event.latlng.lng),
               );
             },
-            mouseout: () => onHoverIndex(null),
+            mouseout: () => onHoverIndex?.(null),
+            click: (event) => {
+              onPick?.(
+                nearestPointIndex(points, event.latlng.lat, event.latlng.lng),
+              );
+            },
           }}
         />
       )}
@@ -194,6 +206,29 @@ export default function RouteMap({
         }}
         interactive={false}
       />
+      {stations?.map((station) => {
+        const point = points[station.index];
+        if (!point) return null;
+
+        return (
+          <CircleMarker
+            key={`${station.rank}-${station.index}`}
+            center={[point.lat, point.lon]}
+            radius={9}
+            pathOptions={{
+              color: "#ffffff",
+              weight: 2,
+              fillColor: "var(--accent)",
+              fillOpacity: 1,
+            }}
+            interactive={false}
+          >
+            <Tooltip permanent direction="center" className="borne-ravito">
+              {station.rank}
+            </Tooltip>
+          </CircleMarker>
+        );
+      })}
       {survole && (
         <CircleMarker
           center={[survole.lat, survole.lon]}

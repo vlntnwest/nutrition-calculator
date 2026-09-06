@@ -1,10 +1,14 @@
 /**
- * Ce qui traduit la saisie de la modale d'import en valeurs, et l'inverse.
+ * Ce qui traduit un chrono saisi en secondes, et l'inverse.
  *
- * Même logique que `plan/[accessId]/fields.ts`, mais le chrono s'y saisit
- * en trois cases (h, min, s) plutôt qu'un seul champ « hh:mm » : le format
- * diffère, la fonction ne se partage pas.
+ * Un formulaire garde le **texte** tapé, jamais la valeur : repasser par un
+ * nombre à chaque frappe efface ce qui n'est pas encore un nombre.
  */
+
+/** Les trois cases d'un chrono, telles qu'elles sont tapées. */
+export type HMS = { h: string; m: string; s: string };
+
+export const HMS_VIDE: HMS = { h: "", m: "", s: "" };
 
 /** Ne garde que des chiffres, sur deux caractères au plus. */
 export function digitsOnly(texte: string): string {
@@ -12,14 +16,10 @@ export function digitsOnly(texte: string): string {
 }
 
 /**
- * Trois cases vides → aucun chrono visé, pas `0`. Une case vide parmi les
+ * Trois cases vides rendent `undefined`, pas `0`. Une case vide parmi les
  * trois vaut zéro : `"1", "", "30"` est bien 1 h 0 min 30 s.
  */
-export function toSecondsHMS(
-  h: string,
-  m: string,
-  s: string,
-): number | undefined {
+export function toSecondsHMS({ h, m, s }: HMS): number | undefined {
   if (h.trim() === "" && m.trim() === "" && s.trim() === "") return undefined;
 
   const heures = h.trim() === "" ? 0 : Number(h);
@@ -35,6 +35,17 @@ export function toSecondsHMS(
   }
 
   return heures * 3600 + minutes * 60 + secondes;
+}
+
+/** `13500` → `{ h: "03", m: "45", s: "00" }`. Absent rend trois cases vides. */
+export function toHMS(seconds: number | undefined): HMS {
+  if (seconds === undefined) return HMS_VIDE;
+
+  return {
+    h: String(Math.floor(seconds / 3600)).padStart(2, "0"),
+    m: String(Math.floor((seconds % 3600) / 60)).padStart(2, "0"),
+    s: String(Math.round(seconds % 60)).padStart(2, "0"),
+  };
 }
 
 /**
@@ -58,27 +69,17 @@ export const BASE_PACE_S_PER_KM = 360;
 
 /**
  * Le chrono proposé à l'ouverture : la distance courue à
- * `BASE_PACE_S_PER_KM`, découpée en trois cases de deux chiffres. Une trace
- * sans distance rend trois cases vides plutôt qu'un `00:00:00` trompeur.
+ * `BASE_PACE_S_PER_KM`. Une trace sans distance rend trois cases vides plutôt
+ * qu'un `00:00:00` trompeur.
  */
-export function baseChronoHMS(distanceM: number): {
-  h: string;
-  m: string;
-  s: string;
-} {
-  if (distanceM <= 0) return { h: "", m: "", s: "" };
+export function baseChronoHMS(distanceM: number): HMS {
+  if (distanceM <= 0) return HMS_VIDE;
 
-  const total = Math.round((distanceM / 1000) * BASE_PACE_S_PER_KM);
-
-  return {
-    h: String(Math.floor(total / 3600)).padStart(2, "0"),
-    m: String(Math.floor((total % 3600) / 60)).padStart(2, "0"),
-    s: String(total % 60).padStart(2, "0"),
-  };
+  return toHMS(Math.round((distanceM / 1000) * BASE_PACE_S_PER_KM));
 }
 
 /**
- * L'allure moyenne que suppose le chrono visé, en `mm:ss /km` — la seule
+ * L'allure moyenne que suppose le chrono visé, en `mm:ss`. C'est la seule
  * confirmation immédiate qu'un chrono tapé est plausible avant d'aller
  * jusqu'au roadbook. `undefined` tant qu'aucun chrono n'est renseigné.
  */

@@ -1,8 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { computePlan } from "@/app/plans/actions";
+import { Button } from "@/ui/Button";
+import { RecomputeIcon, SpinnerIcon } from "@/ui/icons";
+import { ErrorNote } from "@/ui/Notice";
 
 export function ComputeButton({
   accessId,
@@ -24,18 +27,24 @@ export function ComputeButton({
   const aConfirmer = edited && !confirme;
 
   function label(): string {
-    if (pending) return "Calcul…";
-    if (confirme) return "Ça écrasera tes retouches. Confirmer ?";
+    if (pending) return "Calcul";
+    if (confirme) return "Confirmer, les retouches seront écrasées";
 
-    return calcule ? "Recalculer" : "Calculer";
+    return calcule ? "Recalculer" : "Calculer le roadbook";
   }
 
   return (
-    <div className="flex items-center gap-4">
-      <button
-        type="button"
-        className="border px-3 py-1 font-semibold"
+    <div className="flex flex-col items-end gap-2">
+      <Button
+        ton={confirme ? "encre" : calcule ? "contour" : "encre"}
         disabled={pending}
+        icone={
+          pending ? (
+            <SpinnerIcon className="size-4" />
+          ) : (
+            <RecomputeIcon className="size-4" />
+          )
+        }
         onClick={() => {
           setErreur(null);
           if (aConfirmer) {
@@ -58,8 +67,41 @@ export function ComputeButton({
         }}
       >
         {label()}
-      </button>
-      {erreur && <p role="alert">{erreur}</p>}
+      </Button>
+      {erreur && <ErrorNote>{erreur}</ErrorNote>}
     </div>
   );
+}
+
+/**
+ * Depuis quand le calcul date. Rendu après le montage seulement : l'écart au
+ * présent n'a pas de valeur stable entre le serveur et le navigateur, et une
+ * heure absolue dépendrait du fuseau du serveur.
+ */
+export function CalculeDepuis({ at }: { at: string }) {
+  const [texte, setTexte] = useState<string | null>(null);
+
+  useEffect(() => {
+    function poser() {
+      const minutes = Math.round((Date.now() - Date.parse(at)) / 60000);
+      if (minutes < 1) return setTexte("à l'instant");
+      if (minutes < 60) return setTexte(`il y a ${minutes} min`);
+      const heures = Math.round(minutes / 60);
+      if (heures < 24) return setTexte(`il y a ${heures} h`);
+
+      setTexte(
+        new Date(at).toLocaleDateString("fr-FR", {
+          day: "numeric",
+          month: "long",
+        }),
+      );
+    }
+
+    poser();
+    const timer = setInterval(poser, 30000);
+
+    return () => clearInterval(timer);
+  }, [at]);
+
+  return texte === null ? null : <>calculé {texte}</>;
 }

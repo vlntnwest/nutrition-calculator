@@ -1,18 +1,38 @@
 @import "tailwindcss";
 
+/*
+ * Carnet d'expédition : papier blanc, encre, un accent brûlé. Le carnet est
+ * clair par nature et l'écran s'imprime : pas de thème sombre.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
 
-  /* Carnet d'expédition : papier blanc, encre, un accent brûlé. */
   --ink: #17130f;
   --ink-soft: #635c52;
+  /* Le plus clair des trois encres reste à 5,5:1 sur le papier : rien de ce
+     qui se lit ne descend sous le seuil, même une mention de bas de fiche. */
+  --ink-faint: #6f675c;
   --paper: #ffffff;
   --paper-dim: #f6f3ee;
+  --paper-sunk: #efeae2;
   --line: #17130f1f;
+  --line-strong: #17130f33;
   --accent: #c2410c;
   --accent-dark: #3a1306;
   --accent-tint: #fbe7d9;
+  --warn: #8a5a00;
+  --warn-tint: #fdf3dd;
+  --go: #2f6b3f;
+
+  --background: var(--paper);
+  --foreground: var(--ink);
+
+  --radius-sheet: 20px;
+  --radius-panel: 12px;
+  --radius-control: 8px;
+
+  --shadow-panel: 0 1px 2px #17130f0f, 0 8px 24px -16px #17130f4d;
+  --shadow-lifted: 0 2px 6px #17130f14, 0 24px 48px -24px #17130f59;
 }
 
 @theme inline {
@@ -20,27 +40,49 @@
   --color-foreground: var(--foreground);
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
   --color-paper: var(--paper);
   --color-paper-dim: var(--paper-dim);
+  --color-paper-sunk: var(--paper-sunk);
   --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
   --color-accent: var(--accent);
   --color-accent-dark: var(--accent-dark);
   --color-accent-tint: var(--accent-tint);
+  --color-warn: var(--warn);
+  --color-warn-tint: var(--warn-tint);
+  --color-go: var(--go);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* Ce qu'on n'a pas dessiné porte quand même la direction. */
+::selection {
+  background: var(--accent-tint);
+  color: var(--accent-dark);
+}
+
+:root {
+  accent-color: var(--accent);
+  caret-color: var(--accent);
+  scrollbar-color: var(--line-strong) transparent;
+  scrollbar-width: thin;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Toute mesure s'aligne en colonne et ne saute pas quand le chiffre change. */
+.font-mono {
+  font-variant-numeric: tabular-nums;
 }
 
 /*
@@ -54,4 +96,57 @@ body {
 
 .leaflet-control-attribution a {
   color: var(--ink-soft);
+}
+
+/*
+ * Le seul mouvement du carnet : une fiche qui monte. Sortie exponentielle,
+ * depuis un état déjà lisible, et rien du tout si le système le demande.
+ */
+@keyframes fiche-monte {
+  from {
+    opacity: 0;
+    transform: translateY(1.25rem) scale(0.985);
+  }
+}
+
+@keyframes voile-parait {
+  from {
+    opacity: 0;
+  }
+}
+
+dialog[open] {
+  animation: fiche-monte 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+dialog[open]::backdrop {
+  animation: voile-parait 200ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog[open],
+  dialog[open]::backdrop,
+  .animate-spin {
+    animation: none;
+  }
+}
+
+/*
+ * Le numéro d'un ravito, posé au centre de sa borne sur la carte. Leaflet
+ * habille ses infobulles d'un fond et d'une flèche : rien de tout ça ici, le
+ * chiffre est la borne.
+ */
+.leaflet-tooltip.borne-ravito {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  color: var(--paper);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.leaflet-tooltip.borne-ravito::before {
+  display: none;
 }

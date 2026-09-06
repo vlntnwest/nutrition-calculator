@@ -1,6 +1,6 @@
-import { Header } from "@/components/chrome/Header";
 import Image from "next/image";
 import type { ReactNode } from "react";
+import { Header } from "@/ui/Header";
 
 /**
  * Le bandeau plein cadre de l'écran d'import : photo de relief bornée à un
