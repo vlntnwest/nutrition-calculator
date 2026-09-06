@@ -10,7 +10,7 @@ import { Button, IconButton } from "@/ui/Button";
 import { Tag } from "@/ui/Chip";
 import { ChronoInput } from "@/ui/Chrono";
 import { MeasureField } from "@/ui/Field";
-import { CloseIcon, FlaskIcon, PlusIcon } from "@/ui/icons";
+import { ChevronIcon, CloseIcon, FlaskIcon, PlusIcon } from "@/ui/icons";
 import { Releve, Val } from "@/ui/Measure";
 import { Notice } from "@/ui/Notice";
 import { Rule } from "@/ui/Panel";
@@ -82,11 +82,16 @@ export function LegCard({
       id={`secteur-${leg.rank}`}
       className="scroll-mt-4 overflow-hidden rounded-[var(--radius-panel)] border border-line bg-paper"
     >
-      <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 pt-3.5 pb-3">
-        <h3 className="font-semibold text-[15px] text-ink">
-          Secteur {leg.rank}
-        </h3>
-        <p className="min-w-0 flex-1 text-[12px] text-ink-soft">
+      <header className="px-4 pt-3.5 pb-3">
+        <div className="flex items-baseline justify-between gap-3">
+          <h3 className="font-semibold text-[15px] text-ink">
+            Secteur {leg.rank}
+          </h3>
+          <p className="shrink-0 font-mono text-[13px] text-ink">
+            {duree(leg.durationS)}
+          </p>
+        </div>
+        <p className="mt-0.5 text-[12px] text-ink-soft">
           jusqu'à {bound(leg, totalM)}
           {leg.endName && (
             <>
@@ -94,11 +99,8 @@ export function LegCard({
               {leg.endName}
             </>
           )}
-        </p>
-        <p className="font-mono text-[13px] text-ink">
-          {duree(leg.durationS)}
           <span className="px-1.5 text-ink-faint">·</span>
-          <span className="text-ink-soft">
+          <span className="font-mono">
             +{entier(leg.ascentM)} m / −{entier(leg.descentM)} m
           </span>
         </p>
@@ -108,10 +110,15 @@ export function LegCard({
         {leg.imposedDurationS === null ? (
           <Button
             taille="sm"
-            ton="discret"
+            ton="contour"
             disabled={imposing}
             onClick={() => setDureeOuverte(!dureeOuverte)}
             aria-expanded={dureeOuverte}
+            iconeFin={
+              <ChevronIcon
+                className={`size-3.5 text-ink-faint ${dureeOuverte ? "rotate-180" : ""}`}
+              />
+            }
           >
             imposer une durée
           </Button>
@@ -133,10 +140,15 @@ export function LegCard({
         {leg.imposedCarbsGH === null ? (
           <Button
             taille="sm"
-            ton="discret"
+            ton="contour"
             disabled={imposing}
             onClick={() => setCibleOuverte(!cibleOuverte)}
             aria-expanded={cibleOuverte}
+            iconeFin={
+              <ChevronIcon
+                className={`size-3.5 text-ink-faint ${cibleOuverte ? "rotate-180" : ""}`}
+              />
+            }
           >
             cible {entier(cibleGH)} g/h
           </Button>
@@ -285,7 +297,7 @@ export function LegCard({
 
       <div className={`border-line border-t bg-paper-dim px-4 py-3 ${vieux}`}>
         <p className="text-[14px] text-ink">
-          Apport <Val>{entier(leg.supply.carbsG)} g</Val> de glucides{" "}
+          Apport <Val>{entier(leg.supply.carbsG)}</Val> g de glucides{" "}
           {ecart(leg.marginG) !== "" && (
             <span
               className={trop ? "font-medium text-accent" : "text-ink-soft"}
@@ -298,11 +310,17 @@ export function LegCard({
         <Releve
           className="mt-0.5"
           items={[
-            `${entier(leg.supply.energyKcal)} kcal`,
-            `${entier(leg.supply.sodiumMg)} mg de sodium`,
-            `${entier(leg.supply.fluidMl)} mL apportés`,
             <>
-              à boire <Val>{entier(leg.needFluidMl)} mL</Val>
+              <Val>{entier(leg.supply.energyKcal)}</Val> kcal
+            </>,
+            <>
+              <Val>{entier(leg.supply.sodiumMg)}</Val> mg de sodium
+            </>,
+            <>
+              <Val>{entier(leg.supply.fluidMl)}</Val> mL apportés
+            </>,
+            <>
+              à boire <Val>{entier(leg.needFluidMl)}</Val> mL
             </>,
           ]}
         />
@@ -350,20 +368,23 @@ export function LegCard({
                       ))}
                   </select>
                   {verse !== undefined && (
-                    <input
-                      type="number"
-                      min={1}
-                      step={10}
-                      value={verse.volumeMl}
-                      aria-label={`Volume de la flasque ${flask.rank} au secteur ${leg.rank}`}
-                      onChange={(event) =>
-                        onFill(flask.rank, {
-                          productSnapshotId: verse.productSnapshotId,
-                          volumeMl: Number(event.target.value),
-                        })
-                      }
-                      className="w-20 shrink-0 rounded-[var(--radius-control)] border border-line bg-paper px-2 py-1.5 font-mono text-[13px] outline-none focus:border-accent"
-                    />
+                    <span className="flex shrink-0 items-center rounded-[var(--radius-control)] border border-line bg-paper focus-within:border-accent">
+                      <input
+                        type="number"
+                        min={1}
+                        step={10}
+                        value={verse.volumeMl}
+                        aria-label={`Volume de la flasque ${flask.rank} au secteur ${leg.rank}`}
+                        onChange={(event) =>
+                          onFill(flask.rank, {
+                            productSnapshotId: verse.productSnapshotId,
+                            volumeMl: Number(event.target.value),
+                          })
+                        }
+                        className="w-16 bg-transparent py-1.5 pl-2 font-mono text-[13px] outline-none"
+                      />
+                      <span className="pr-2 text-[11px] text-ink-soft">mL</span>
+                    </span>
                   )}
                 </li>
               );

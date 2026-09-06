@@ -32,11 +32,17 @@ export function LegProfile({
 }) {
   const allures = legs.map((_, i) => legPaceSPerKm(legs, i, totalM));
   const connues = allures.filter((a): a is number => a !== null);
-  const plusLente = Math.max(...connues, 1);
-  const plusRapide = Math.min(...connues, plusLente);
+  // La référence est l'allure moyenne de la course, et l'échelle un écart de
+  // vingt pour cent autour d'elle. Normaliser aux extrêmes ferait passer
+  // quinze secondes de différence pour un gouffre.
+  const moyenne =
+    connues.length === 0
+      ? 0
+      : connues.reduce((t, a) => t + a, 0) / connues.length;
+  const ECART_PLEIN = 0.2;
 
   return (
-    <div className="border-line border-b bg-paper">
+    <div>
       <div className="h-32 sm:h-40">
         <ElevationChart
           points={points}
@@ -49,16 +55,20 @@ export function LegProfile({
         />
       </div>
 
-      <div className="flex gap-px px-2 pb-2">
+      <div className="flex gap-px pb-2">
         {legs.map((leg, i) => {
           const debut = startOf(legs, i);
           const fin = leg.endPositionM ?? totalM;
           const allure = allures[i];
-          // De 0 pour le secteur le plus rapide à 1 pour le plus lent.
+          // 0,5 sur la moyenne, 0 à vingt pour cent plus rapide, 1 autant
+          // plus lent.
           const lenteur =
-            allure === null || plusLente === plusRapide
-              ? 0
-              : (allure - plusRapide) / (plusLente - plusRapide);
+            allure === null || moyenne === 0
+              ? 0.5
+              : Math.min(
+                  Math.max(0.5 + (allure / moyenne - 1) / (2 * ECART_PLEIN), 0),
+                  1,
+                );
 
           return (
             <button
@@ -75,7 +85,7 @@ export function LegProfile({
               <span
                 className="h-1.5 w-full rounded-full"
                 style={{
-                  backgroundColor: `color-mix(in srgb, var(--ink) ${Math.round(12 + lenteur * 58)}%, var(--paper-sunk))`,
+                  backgroundColor: `color-mix(in srgb, var(--ink) ${Math.round(10 + lenteur * 60)}%, var(--paper-sunk))`,
                 }}
               />
               <span className="truncate font-mono text-[10px] text-ink-soft">
@@ -86,12 +96,12 @@ export function LegProfile({
         })}
       </div>
 
-      <p className="flex justify-between px-3 pb-2 text-[10px] text-ink-faint">
-        <span>départ</span>
-        <span>
+      <p className="flex items-baseline justify-between gap-4 pb-2 text-[10px] text-ink-faint">
+        <span className="shrink-0">départ</span>
+        <span className="hidden truncate text-center sm:block">
           allure moyenne par secteur, en minutes par kilomètre, arrêts exclus
         </span>
-        <span>{km(totalM)} km</span>
+        <span className="shrink-0">{km(totalM)} km</span>
       </p>
     </div>
   );

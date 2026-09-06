@@ -178,23 +178,25 @@ export function RoadbookEditor({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="sticky top-0 z-10 shrink-0">
-        <LegProfile
-          points={points}
-          legs={roadbook.legs}
-          totalM={roadbook.totalM}
-          actif={actif}
-          onChoisir={(rank) => {
-            setActif(rank);
-            document
-              .getElementById(`secteur-${rank}`)
-              ?.scrollIntoView({ behavior: "smooth", block: "start" });
-          }}
-        />
+      <div className="sticky top-0 z-10 shrink-0 border-line border-b bg-paper">
+        <div className="mx-auto w-full max-w-4xl px-4 sm:px-6">
+          <LegProfile
+            points={points}
+            legs={roadbook.legs}
+            totalM={roadbook.totalM}
+            actif={actif}
+            onChoisir={(rank) => {
+              setActif(rank);
+              document
+                .getElementById(`secteur-${rank}`)
+                ?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+          />
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
-        <div className="mx-auto flex max-w-3xl flex-col gap-4">
+        <div className="mx-auto flex max-w-4xl flex-col gap-4">
           {roadbook.warnings.length > 0 && (
             <div className={`flex flex-col gap-2 ${vieux}`}>
               {roadbook.warnings.map((w) => (
@@ -235,15 +237,22 @@ export function RoadbookEditor({
         </div>
       </div>
 
-      <div className="sticky bottom-0 z-10 flex shrink-0 items-center gap-3 border-line border-t bg-paper/92 px-4 py-3 backdrop-blur-sm sm:px-6">
-        <p className="min-w-0 flex-1 text-[12px] text-ink-soft">
-          {sale
-            ? "Les chiffres datent du dernier enregistrement, ils se mettront à jour."
-            : `${roadbook.legs.length} secteurs, ${duree(roadbook.legs.reduce((t, l) => t + l.durationS, 0))} de mouvement`}
-        </p>
-        <Button ton="encre" disabled={!sale || pending} onClick={save}>
-          {pending ? "Enregistrement" : "Enregistrer les retouches"}
-        </Button>
+      <div className="sticky bottom-0 z-10 shrink-0 border-line border-t bg-paper">
+        <div className="mx-auto flex w-full max-w-4xl items-center gap-3 px-4 py-3 sm:px-6">
+          <p className="hidden min-w-0 flex-1 text-[12px] text-ink-soft sm:block">
+            {sale
+              ? "Les chiffres datent du dernier enregistrement, ils se mettront à jour."
+              : `${roadbook.legs.length} secteurs, ${duree(roadbook.legs.reduce((t, l) => t + l.durationS, 0))} de mouvement`}
+          </p>
+          <Button
+            ton="encre"
+            disabled={!sale || pending}
+            onClick={save}
+            className="ml-auto"
+          >
+            {pending ? "Enregistrement" : "Enregistrer les retouches"}
+          </Button>
+        </div>
       </div>
     </div>
   );

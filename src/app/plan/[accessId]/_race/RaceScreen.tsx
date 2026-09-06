@@ -52,6 +52,7 @@ export function RaceScreen({
   const [ouverte, setOuverte] = useState<number | null>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [depliee, setDepliee] = useState(false);
+  const [allureOuverte, setAllureOuverte] = useState(false);
   const [modifie, setModifie] = useState(false);
   const [reproche, setReproche] = useState<string | null>(null);
   const { pending, erreur, enregistre, save, reprise } = usePlanSave(accessId);
@@ -134,7 +135,9 @@ export function RaceScreen({
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col lg:flex-row">
-      <div className="absolute inset-0 lg:static lg:order-2 lg:flex-1">
+      {/* `isolate` : Leaflet empile ses panneaux à z-index 400. Sans contexte
+          d'empilement propre, ils passeraient devant la feuille du bas. */}
+      <div className="absolute inset-0 isolate z-0 lg:static lg:order-2 lg:flex-1">
         <RouteMap
           points={points}
           hoverIndex={hoverIndex}
@@ -146,7 +149,7 @@ export function RaceScreen({
 
       <section
         className={`absolute inset-x-0 bottom-0 z-10 flex flex-col rounded-t-[var(--radius-sheet)] border border-line border-b-0 bg-paper shadow-[var(--shadow-lifted)] transition-[height] duration-300 ease-out lg:static lg:order-1 lg:h-auto lg:w-[27rem] lg:shrink-0 lg:rounded-none lg:border-0 lg:border-r lg:shadow-none ${
-          depliee ? "h-[92%]" : "h-[58%]"
+          depliee ? "h-[93%]" : "h-[68%]"
         }`}
       >
         <button
@@ -164,7 +167,7 @@ export function RaceScreen({
           </span>
         </button>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4 lg:px-5 lg:py-5">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 lg:px-5 lg:pt-5">
           <Panel>
             <PanelHead titre="Chrono visé" />
             <Rule />
@@ -191,12 +194,29 @@ export function RaceScreen({
           </Panel>
 
           <Panel>
-            <PanelHead
-              titre="Comment ce chrono se répartit"
-              aide="Deux réglages, pour que le temps ne tombe pas au même endroit chez tout le monde."
-            />
-            <Rule />
-            <div className="flex flex-col gap-5 p-4">
+            <button
+              type="button"
+              onClick={() => setAllureOuverte(!allureOuverte)}
+              aria-expanded={allureOuverte}
+              className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium text-[13px] text-ink">
+                  Comment ce chrono se répartit
+                </span>
+                <span className="block font-mono text-[11px] text-ink-faint">
+                  montée {climb.toLocaleString("fr-FR")} · dérive{" "}
+                  {split.toLocaleString("fr-FR")}
+                </span>
+              </span>
+              <ChevronIcon
+                className={`size-4 shrink-0 text-ink-faint transition-transform ${allureOuverte ? "rotate-180" : ""}`}
+              />
+            </button>
+            {allureOuverte && <Rule />}
+            <div
+              className={`flex-col gap-5 p-4 ${allureOuverte ? "flex" : "hidden"}`}
+            >
               <Slider
                 label="Effort en montée"
                 value={climb}

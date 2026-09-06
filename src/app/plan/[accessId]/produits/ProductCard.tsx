@@ -38,12 +38,12 @@ export function ProductCard({
         onClick={onOuvrir}
         className="flex flex-1 cursor-pointer flex-col text-left"
       >
-        <span className="relative block aspect-[4/3] w-full overflow-hidden bg-paper-dim">
+        <span className="relative block aspect-[3/2] w-full overflow-hidden bg-paper-dim">
           <Image
             src="/ref.webp"
             alt=""
             fill
-            sizes="(min-width: 1280px) 20vw, (min-width: 640px) 33vw, 50vw"
+            sizes="(min-width: 1280px) 18vw, (min-width: 1024px) 22vw, (min-width: 640px) 30vw, 48vw"
             className="object-cover"
           />
           <span className="absolute top-2 left-2.5">

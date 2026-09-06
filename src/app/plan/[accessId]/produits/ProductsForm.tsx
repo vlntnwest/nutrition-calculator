@@ -69,19 +69,29 @@ export function ProductsForm({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0 border-line border-b bg-paper px-4 pt-4 sm:px-6">
+      <div className="shrink-0 border-line border-b bg-paper px-4 pt-4 pb-3 sm:px-6">
         <div className="flex items-baseline justify-between gap-4">
           <h2 className="font-semibold text-[22px] text-ink tracking-tight">
             Produits
           </h2>
           <p className="font-mono text-[12px] text-ink-soft">
-            {catalogue.length} au catalogue
-            <span className="px-1.5 text-ink-faint">·</span>
+            {gardes.length < catalogue.length && (
+              <>
+                {gardes.length} sur {catalogue.length}
+                <span className="px-1.5 text-ink-faint">·</span>
+              </>
+            )}
+            {gardes.length === catalogue.length && (
+              <>
+                {catalogue.length} au catalogue
+                <span className="px-1.5 text-ink-faint">·</span>
+              </>
+            )}
             {retenus.size} dans le sac
           </p>
         </div>
 
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3 flex max-w-xl gap-2">
           <label className="flex flex-1 items-center gap-2 rounded-[var(--radius-control)] border border-line bg-paper px-3 transition-colors focus-within:border-accent">
             <SearchIcon className="size-4 shrink-0 text-ink-faint" />
             <input
@@ -168,7 +178,9 @@ export function ProductsForm({
           </div>
         )}
 
-        <div className="flex min-h-[2.75rem] flex-wrap items-center gap-2 py-2.5">
+        <div
+          className={`flex-wrap items-center gap-2 py-2.5 ${aucunFiltre(filtres) ? "hidden" : "flex"}`}
+        >
           {filtres.formats.map((format) => (
             <FilterChip
               key={format}
@@ -216,7 +228,7 @@ export function ProductsForm({
             videz la recherche.
           </EmptyNote>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {gardes.map((produit) => (
               <ProductCard
                 key={produit.codeSeed}

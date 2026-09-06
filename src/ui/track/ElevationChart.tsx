@@ -28,12 +28,26 @@ const INK_SOFT = "#635c52";
 const LINE = "#17130f1f";
 const PAPER = "#ffffff";
 
+/** L'aplat sous la courbe : de l'encre à cinq pour cent, la masse du relief. */
+const FILL = "#17130f0d";
+
 /**
  * `context.font` sur un `<canvas>` ne résout pas non plus les variables CSS
  * (`var(--font-geist-mono)` n'y vaudrait rien) : une pile mono littérale,
  * pas la police Geist chargée par `next/font` pour le reste de la page.
  */
 const MONO_STACK = "ui-monospace, Menlo, Consolas, monospace";
+
+/**
+ * Le nombre de points réellement tracés.
+ *
+ * Chaque segment porte sa propre couleur de pente et son propre
+ * remplissage : en dessous d'un pixel de large, ils se moirent et le relief
+ * se lit comme un code-barres. Quatre cents points suffisent à dessiner un
+ * profil à n'importe quelle largeur d'écran, et le survol continue de
+ * désigner le point d'origine, celui que la carte connaît.
+ */
+const POINTS_TRACES = 400;
 
 /** Une borne posée sur le profil : un ravito, ou la fin d'un secteur. */
 export type ProfileMark = {
@@ -88,6 +102,26 @@ export function ElevationChart({
   legende?: boolean;
 }) {
   const chartRef = useRef<ChartJS<"line"> | null>(null);
+  // Un point sur `pas`, et l'indice d'origine gardé en regard : le survol
+  // parle toujours du tableau que la carte partage.
+  const { traces, origine } = useMemo(() => {
+    const pas = Math.max(1, Math.ceil(points.length / POINTS_TRACES));
+    const traces: ProfilePoint[] = [];
+    const origine: number[] = [];
+
+    for (let i = 0; i < points.length; i += pas) {
+      traces.push(points[i]);
+      origine.push(i);
+    }
+    // Le dernier point ferme le tracé sur la distance totale, quel que soit
+    // l'endroit où le pas s'arrête.
+    if (origine.at(-1) !== points.length - 1 && points.length > 0) {
+      traces.push(points[points.length - 1]);
+      origine.push(points.length - 1);
+    }
+
+    return { traces, origine };
+  }, [points]);
   // Les bornes se placent avec les échelles du graphique, qui n'existent pas
   // encore au premier passage : un rendu de plus, une fois monté, suffit à
   // les poser. Les survols suivants rendent déjà pour leur propre compte.
@@ -96,30 +130,39 @@ export function ElevationChart({
   useEffect(() => setMonte(true), []);
 
   const data = useMemo(() => {
-    if (points.length < 2) return null;
+    if (traces.length < 2) return null;
 
     return {
       datasets: [
+        // La masse du relief : un seul tracé, une seule couleur. Coloré
+        // segment par segment, l'aplat laissait voir ses coutures verticales
+        // là où il n'y a qu'un relief continu.
         {
-          data: points.map((p) => ({ x: p.d / 1000, y: p.ele })),
-          borderWidth: 1.5,
+          data: traces.map((p) => ({ x: p.d / 1000, y: p.ele })),
+          borderWidth: 0,
           pointRadius: 0,
           fill: "origin" as const,
+          backgroundColor: FILL,
+        },
+        // La pente, portée par le trait seul.
+        {
+          data: traces.map((p) => ({ x: p.d / 1000, y: p.ele })),
+          borderWidth: 2,
+          pointRadius: 0,
+          fill: false as const,
           segment: {
             borderColor: (ctx: ScriptableLineSegmentContext) =>
-              slopeColor(segmentSlope(ctx, points)),
-            backgroundColor: (ctx: ScriptableLineSegmentContext) =>
-              `${slopeColor(segmentSlope(ctx, points))}66`,
+              slopeColor(segmentSlope(ctx, traces)),
           },
         },
       ],
     };
-  }, [points]);
+  }, [traces]);
 
   const options = useMemo((): ChartOptions<"line"> | null => {
-    if (points.length < 2) return null;
+    if (traces.length < 2) return null;
 
-    const elevations = points.map((p) => p.ele);
+    const elevations = traces.map((p) => p.ele);
     const min = Math.min(...elevations);
     const max = Math.max(...elevations);
     // Une marge d'un dixième de l'amplitude : sans elle, le point le plus
@@ -137,13 +180,15 @@ export function ElevationChart({
       animation: false,
       interaction: { intersect: false, mode: "index" },
       onHover: (_event, elements) => {
-        onHoverIndex?.(elements.length > 0 ? elements[0].index : null);
+        onHoverIndex?.(
+          elements.length > 0 ? (origine[elements[0].index] ?? null) : null,
+        );
       },
       scales: {
         x: {
           type: "linear",
           min: 0,
-          max: points[points.length - 1].d / 1000,
+          max: traces[traces.length - 1].d / 1000,
           grid: { display: false },
           ticks: {
             color: INK_SOFT,
@@ -174,6 +219,9 @@ export function ElevationChart({
           padding: 8,
           cornerRadius: 6,
           displayColors: false,
+          // Les deux jeux portent la même altitude : sans ce filtre,
+          // l'infobulle la donnerait deux fois.
+          filter: (item) => item.datasetIndex === 1,
           bodyFont: { family: MONO_STACK, size: 11 },
           titleFont: { family: MONO_STACK, size: 11 },
           callbacks: {
@@ -184,7 +232,7 @@ export function ElevationChart({
         },
       },
     };
-  }, [points, onHoverIndex]);
+  }, [traces, origine, onHoverIndex]);
 
   if (!data || !options) return null;
 

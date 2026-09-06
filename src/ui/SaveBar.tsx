@@ -29,7 +29,7 @@ export function SaveBar({
   children?: ReactNode;
 }) {
   return (
-    <div className="sticky bottom-0 z-20 -mx-4 mt-2 flex items-center gap-3 border-line border-t bg-paper/92 px-4 py-3 backdrop-blur-sm sm:-mx-6 sm:px-6">
+    <div className="sticky bottom-0 z-20 -mx-4 mt-2 flex items-center gap-3 border-line border-t bg-paper px-4 py-3 sm:-mx-6 sm:px-6">
       {children}
       <div className="ml-auto flex items-center gap-3">
         <p className="text-[12px] text-ink-soft">

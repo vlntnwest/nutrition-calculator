@@ -24,15 +24,13 @@ function Glyph({ children, ...props }: SVGProps<SVGSVGElement>) {
 
 type IconProps = Omit<SVGProps<SVGSVGElement>, "children">;
 
-/** Course : la trace et les bornes qu'on y pose. */
+/** Course : le relief, et la borne qu'on y pose. */
 export function RouteIcon(props: IconProps) {
   return (
     <Glyph {...props}>
-      <path d="M4 18c3.2 0 3.2-5 6.4-5s3.2 5 6.4 5" />
-      <path d="M4 18h16" strokeOpacity={0.35} />
-      <circle cx="10.4" cy="13" r="1.6" />
-      <path d="M7 8h10" strokeOpacity={0.35} />
-      <circle cx="17" cy="8" r="1.6" />
+      <path d="M3 17 8.2 8.5l3.4 5.2L15.5 6 21 17" />
+      <path d="M3 20.2h18" strokeOpacity={0.35} />
+      <circle cx="11.6" cy="13.7" r="1.5" />
     </Glyph>
   );
 }
