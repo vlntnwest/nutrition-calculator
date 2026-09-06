@@ -145,6 +145,7 @@ export function RaceScreen({
           onHoverIndex={setHoverIndex}
           stations={marqueurs}
           onPick={(index) => poser(points[index]?.d ?? 0)}
+          deplacable
         />
       </div>
 

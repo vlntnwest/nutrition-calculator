@@ -1,8 +1,22 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
-import { type LatLngBounds, latLngBounds, type Path } from "leaflet";
-import { useEffect, useId, useMemo } from "react";
+import {
+  DomEvent,
+  type LatLngBounds,
+  latLngBounds,
+  type Map,
+  type Path,
+} from "leaflet";
+import {
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+} from "react";
 import {
   CircleMarker,
   MapContainer,
@@ -11,7 +25,22 @@ import {
   Tooltip,
   useMap,
 } from "react-leaflet";
+import { FrameIcon, MinusIcon, PlusIcon } from "@/ui/icons";
 import { nearestPointIndex } from "./nearestPoint";
+
+const MARGE: [number, number] = [18, 18];
+
+/**
+ * Le recadrage ne s'anime pas, et coupe ce qui vole encore.
+ *
+ * Un `fitBounds` animé lancé alors qu'un zoom n'a pas fini atterrit court :
+ * il fallait cliquer deux fois sur « recadrer » pour revenir vraiment sur la
+ * trace. Et c'est plus juste ainsi : on demande à revenir, on revient.
+ */
+function cadrer(map: Map, bounds: LatLngBounds) {
+  map.stop();
+  map.fitBounds(bounds, { padding: MARGE, animate: false });
+}
 
 /**
  * La fiche vit dans un `<dialog>` natif, en `display:none` tant que
@@ -21,8 +50,18 @@ import { nearestPointIndex } from "./nearestPoint";
  * à la taille. Il faut aussi rejouer `fitBounds` : d'où une carte tantôt
  * juste, tantôt égarée sur un coin de la carte, selon que le montage gagne
  * ou perd la course contre l'ouverture réelle de la boîte.
+ *
+ * Sur une carte qu'on peut déplacer, ce recadrage doit s'arrêter à la
+ * première main posée dessus : la feuille du bas change de hauteur au pouce,
+ * et sans ce garde-fou chaque repli ramènerait la vue au départ.
  */
-function FitBoundsOnResize({ bounds }: { bounds: LatLngBounds }) {
+function FitBoundsOnResize({
+  bounds,
+  deplacee,
+}: {
+  bounds: LatLngBounds;
+  deplacee: RefObject<boolean>;
+}) {
   const map = useMap();
 
   useEffect(() => {
@@ -30,15 +69,124 @@ function FitBoundsOnResize({ bounds }: { bounds: LatLngBounds }) {
     const observateur = new ResizeObserver(() => {
       if (conteneur.clientWidth === 0 || conteneur.clientHeight === 0) return;
       map.invalidateSize();
-      map.fitBounds(bounds, { padding: [18, 18] });
+      if (!deplacee.current) cadrer(map, bounds);
     });
 
     observateur.observe(conteneur);
 
     return () => observateur.disconnect();
-  }, [map, bounds]);
+  }, [map, bounds, deplacee]);
 
   return null;
+}
+
+/**
+ * Retient qu'une main s'est posée sur la carte. `dragend` et `zoomend`
+ * partiraient aussi sur un `fitBounds` programmé : ce sont les gestes qui
+ * font foi, pas leurs conséquences.
+ */
+function MarqueDeplacement({ deplacee }: { deplacee: RefObject<boolean> }) {
+  const map = useMap();
+
+  useEffect(() => {
+    function marquer() {
+      deplacee.current = true;
+    }
+
+    map.on("dragstart", marquer);
+    map.on("zoomstart", marquer);
+
+    return () => {
+      map.off("dragstart", marquer);
+      map.off("zoomstart", marquer);
+    };
+  }, [map, deplacee]);
+
+  return null;
+}
+
+/**
+ * Les commandes de la carte déplaçable, dessinées dans la langue du carnet
+ * plutôt qu'avec le contrôle de zoom de Leaflet, qui arrive en boîte blanche
+ * et en Arial.
+ *
+ * `disableClickPropagation` est indispensable : Leaflet écoute en natif sur
+ * le conteneur, et un `stopPropagation` React n'atteindrait pas ces
+ * écouteurs. Sans lui, un clic sur « + » poserait aussi un ravito.
+ */
+function ControlesCarte({
+  bounds,
+  deplacee,
+}: {
+  bounds: LatLngBounds;
+  deplacee: RefObject<boolean>;
+}) {
+  const map = useMap();
+
+  const isole = useCallback((element: HTMLDivElement | null) => {
+    if (!element) return;
+    DomEvent.disableClickPropagation(element);
+    DomEvent.disableScrollPropagation(element);
+  }, []);
+
+  return (
+    <div
+      ref={isole}
+      className="absolute top-3 right-3 z-[1000] flex flex-col overflow-hidden rounded-[var(--radius-control)] border border-line bg-paper shadow-[var(--shadow-panel)]"
+    >
+      <Commande
+        libelle="Zoomer"
+        onClick={() => {
+          deplacee.current = true;
+          map.zoomIn();
+        }}
+      >
+        <PlusIcon className="size-4" />
+      </Commande>
+      <span className="h-px bg-line" aria-hidden="true" />
+      <Commande
+        libelle="Dézoomer"
+        onClick={() => {
+          deplacee.current = true;
+          map.zoomOut();
+        }}
+      >
+        <MinusIcon className="size-4" />
+      </Commande>
+      <span className="h-px bg-line" aria-hidden="true" />
+      <Commande
+        libelle="Recadrer sur la trace"
+        onClick={() => {
+          deplacee.current = false;
+          cadrer(map, bounds);
+        }}
+      >
+        <FrameIcon className="size-4" />
+      </Commande>
+    </div>
+  );
+}
+
+function Commande({
+  libelle,
+  onClick,
+  children,
+}: {
+  libelle: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={libelle}
+      title={libelle}
+      onClick={onClick}
+      className="flex size-8 cursor-pointer items-center justify-center text-ink-soft transition-colors hover:bg-paper-dim hover:text-ink"
+    >
+      {children}
+    </button>
+  );
 }
 
 /**
@@ -113,9 +261,12 @@ function DamierArrivee({ id }: { id: string }) {
  * papier/encre du reste de la fiche, filigrane désormais ses tuiles
  * anonymes d'un « API KEY » tant qu'aucune n'est fournie.
  *
- * Non interactif : c'est une confirmation d'un coup d'œil dans une fiche,
- * pas un outil de navigation. `dynamic(..., { ssr: false })` l'importe côté
- * client uniquement — Leaflet lit `window` dès son chargement.
+ * Fixe par défaut : dans la fiche d'import, c'est une confirmation d'un coup
+ * d'œil, et une carte qui se déplace y volerait le geste au formulaire.
+ * `deplacable` la rend manœuvrable là où elle sert d'instrument, sur l'écran
+ * Course, où l'on vient chercher un endroit précis de la trace pour y poser
+ * une borne. `dynamic(..., { ssr: false })` l'importe côté client
+ * uniquement — Leaflet lit `window` dès son chargement.
  *
  * `hoverIndex` vient du profil ou de la carte elle-même, au choix de qui
  * survole en premier : même tableau `points`, même indice, aucun des deux
@@ -135,6 +286,7 @@ export default function RouteMap({
   onHoverIndex,
   stations,
   onPick,
+  deplacable = false,
 }: {
   points: { lat: number; lon: number }[];
   hoverIndex?: number | null;
@@ -143,12 +295,17 @@ export default function RouteMap({
   stations?: { rank: number; index: number }[];
   /** Poser une borne au clic sur le tracé. Rend l'indice du point visé. */
   onPick?: (index: number) => void;
+  /** Glisser, zoomer, recadrer. Absent, la carte reste une image. */
+  deplacable?: boolean;
 }) {
   const positions = useMemo(
     (): [number, number][] => points.map((p) => [p.lat, p.lon]),
     [points],
   );
   const bounds = useMemo(() => latLngBounds(positions), [positions]);
+  // Une ref plutôt qu'un état : le recadrage automatique la lit depuis un
+  // `ResizeObserver`, et un rendu de plus n'apporterait rien à l'écran.
+  const deplacee = useRef(false);
   const survole = hoverIndex != null ? (points[hoverIndex] ?? null) : null;
   const idDamier = `damier-arrivee-${useId().replace(/:/g, "")}`;
 
@@ -161,15 +318,29 @@ export default function RouteMap({
     <MapContainer
       bounds={bounds}
       boundsOptions={{ padding: [18, 18] }}
-      dragging={false}
-      scrollWheelZoom={false}
-      doubleClickZoom={false}
-      touchZoom={false}
+      dragging={deplacable}
+      scrollWheelZoom={deplacable}
+      doubleClickZoom={deplacable}
+      touchZoom={deplacable}
+      keyboard={deplacable}
+      // L'inertie projette la carte loin sur un geste vif, et le tracé sort
+      // du cadre. On vient chercher un endroit précis de la trace, pas
+      // parcourir un atlas : la carte suit la main et s'arrête avec elle.
+      // Borner le déplacement était pire : à ce zoom la vue remplit déjà le
+      // cadre du tracé, et le moindre geste rebondissait. C'est le bouton
+      // « recadrer » qui rattrape une vue égarée.
+      inertia={false}
       zoomControl={false}
       className={`fond-carnet h-full w-full ${onPick ? "[&_.leaflet-interactive]:cursor-crosshair" : ""}`}
     >
       <AttributionSansPrefixe />
-      <FitBoundsOnResize bounds={bounds} />
+      <FitBoundsOnResize bounds={bounds} deplacee={deplacee} />
+      {deplacable && (
+        <>
+          <MarqueDeplacement deplacee={deplacee} />
+          <ControlesCarte bounds={bounds} deplacee={deplacee} />
+        </>
+      )}
       <DamierArrivee id={idDamier} />
       {/* Fond OpenStreetMap standard, le seul qui reste sans clé d'API. Ses
           verts et ses roses saturés appartiennent à une autre direction :

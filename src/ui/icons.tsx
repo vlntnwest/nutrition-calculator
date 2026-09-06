@@ -152,6 +152,19 @@ export function ArrowRightIcon(props: IconProps) {
   );
 }
 
+/** Recadrer : ramener la vue sur ce qu'elle a perdu de vue. */
+export function FrameIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M4 8.5V5.5a1.5 1.5 0 0 1 1.5-1.5h3" />
+      <path d="M15.5 4h3A1.5 1.5 0 0 1 20 5.5v3" />
+      <path d="M20 15.5v3a1.5 1.5 0 0 1-1.5 1.5h-3" />
+      <path d="M8.5 20h-3A1.5 1.5 0 0 1 4 18.5v-3" />
+      <circle cx="12" cy="12" r="2.2" />
+    </Glyph>
+  );
+}
+
 export function RecomputeIcon(props: IconProps) {
   return (
     <Glyph {...props}>
