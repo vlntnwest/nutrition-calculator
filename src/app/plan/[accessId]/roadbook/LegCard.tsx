@@ -5,7 +5,7 @@ import type { Roadbook } from "@/app/plans/getRoadbook";
 import type { RoadbookEdit } from "@/app/plans/saveRoadbook";
 import { type HMS, toHMS, toSecondsHMS } from "@/format/clock";
 import { duree, ecart, entier, quantite, toNumber } from "@/format/number";
-import { formatFr } from "@/format/produit";
+import { formatFr, nomProduit } from "@/format/produit";
 import { Button, IconButton } from "@/ui/Button";
 import { Tag } from "@/ui/Chip";
 import { ChronoInput } from "@/ui/Chrono";
@@ -69,7 +69,7 @@ export function LegCard({
   const nomDe = (id: string) => {
     const p = produitDe(id);
 
-    return p ? `${p.brandName ?? ""} ${p.name}`.trim() : id;
+    return p ? `${p.brandName ?? ""} ${nomProduit(p.name)}`.trim() : id;
   };
   const absents = roadbook.catalogue.filter(
     (p) => !rations.some((r) => r.productSnapshotId === p.id),
@@ -241,7 +241,7 @@ export function LegCard({
 
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[14px] text-ink">
-                  {produit?.name ?? r.productSnapshotId}
+                  {produit ? nomProduit(produit.name) : r.productSnapshotId}
                 </p>
                 <p className="font-mono text-[11px] text-ink-soft">
                   {produit?.brandName}
@@ -287,7 +287,7 @@ export function LegCard({
               <option value="">choisir dans le sac</option>
               {absents.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {`${p.brandName ?? ""} ${p.name}`.trim()}
+                  {`${p.brandName ?? ""} ${nomProduit(p.name)}`.trim()}
                 </option>
               ))}
             </Select>
@@ -363,7 +363,7 @@ export function LegCard({
                     {!flask.onlyWater &&
                       roadbook.catalogue.map((p) => (
                         <option key={p.id} value={p.id}>
-                          {`${p.brandName ?? ""} ${p.name}`.trim()}
+                          {`${p.brandName ?? ""} ${nomProduit(p.name)}`.trim()}
                         </option>
                       ))}
                   </Select>

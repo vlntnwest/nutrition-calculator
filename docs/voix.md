@@ -89,12 +89,26 @@ Il nomme ce qui bloque et l'action qui débloque, dans cet ordre, sans
 s'excuser. « Le fichier doit être un fichier GPX » plutôt que « Une erreur est
 survenue lors de l'import ».
 
-### 10. Pas d'emoji
+### 10. Ni emoji, ni glyphe Unicode en guise d'icône
 
-Les pictogrammes du carnet forment un jeu fermé, hérité des wireframes :
-`○ ● ◍` pour les pastilles d'état, `⚠` pour un avertissement, `▸ ◂ ⌃ ⌄` pour
-une direction, `·` pour séparer, `+ −` pour une quantité. Rien d'autre
-n'entre.
+Les wireframes notaient les pictogrammes en caractères (`◍ ⚠ ▸ ⌄ ✕ ⌕`). Ils se
+dessinent : le jeu vit dans `src/ui/icons.tsx`, grille de 24, trait de 1,6,
+bouts arrondis, jamais de remplissage. Un caractère posé là où une icône est
+attendue se voit, il ne suit ni le trait ni la taille du reste.
+
+Restent des caractères, parce que ce sont des signes typographiques et non des
+icônes : le point médian `·` qui sépare deux mesures, le signe moins `−` d'un
+écart chiffré, et le `+` d'une quantité.
+
+## Les noms qui viennent d'ailleurs
+
+Un nom commercial n'est pas de la copie : il ne se réécrit pas. Sa
+**ponctuation**, si. Le catalogue sépare un parfum du nom du produit tantôt
+par un tiret cadratin, tantôt par un trait d'union entouré d'espaces ;
+`nomProduit` de `src/format/produit.ts` ramène les deux à une virgule, et le
+seed écrit déjà la forme propre. Les mots restent intacts, la casse aussi.
+
+Tout nom venu de la base passe par cette fonction avant de s'afficher.
 
 ## Deux règles positives
 

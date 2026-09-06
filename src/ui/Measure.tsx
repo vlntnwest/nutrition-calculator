@@ -57,7 +57,22 @@ export function Releve({
   );
 }
 
-/** Une valeur chiffrée au fil du texte. */
-export function Val({ children }: { children: ReactNode }) {
-  return <span className="font-mono text-ink">{children}</span>;
+/**
+ * Une valeur chiffrée au fil du texte. L'unité se passe à part : dans la
+ * fonte mono son espace de séparation est large, et « 225 g » se lisait
+ * « 225  g ». Le chiffre garde le mono, l'unité reprend la fonte du texte.
+ */
+export function Val({
+  children,
+  unite,
+}: {
+  children: ReactNode;
+  unite?: string;
+}) {
+  return (
+    <>
+      <span className="font-mono text-ink">{children}</span>
+      {unite && <> {unite}</>}
+    </>
+  );
 }

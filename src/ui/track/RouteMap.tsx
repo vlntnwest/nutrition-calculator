@@ -1,7 +1,7 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
-import { control, type LatLngBounds, latLngBounds, type Path } from "leaflet";
+import { type LatLngBounds, latLngBounds, type Path } from "leaflet";
 import { useEffect, useId, useMemo } from "react";
 import {
   CircleMarker,
@@ -50,16 +50,7 @@ function AttributionSansPrefixe() {
   const map = useMap();
 
   useEffect(() => {
-    const controle = control
-      .attribution({ prefix: false })
-      .addAttribution(
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      )
-      .addTo(map);
-
-    return () => {
-      controle.remove();
-    };
+    map.attributionControl?.setPrefix(false);
   }, [map]);
 
   return null;
@@ -175,7 +166,6 @@ export default function RouteMap({
       doubleClickZoom={false}
       touchZoom={false}
       zoomControl={false}
-      attributionControl={false}
       className={`fond-carnet h-full w-full ${onPick ? "[&_.leaflet-interactive]:cursor-crosshair" : ""}`}
     >
       <AttributionSansPrefixe />
@@ -185,7 +175,10 @@ export default function RouteMap({
           verts et ses roses saturés appartiennent à une autre direction :
           `fond-carnet` les ramène au papier en CSS, et le tracé accent
           reprend tout le contraste. */}
-      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+      <TileLayer
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      />
       <Polyline
         positions={positions}
         pathOptions={{ color: "var(--accent)", weight: 3.5 }}

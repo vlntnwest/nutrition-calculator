@@ -1,5 +1,6 @@
 import type { Roadbook } from "@/app/plans/getRoadbook";
 import { ecart, entier, quantite } from "@/format/number";
+import { nomProduit } from "@/format/produit";
 import { Stat } from "@/ui/Measure";
 import { Panel, PanelHead, Rule } from "@/ui/Panel";
 
@@ -32,7 +33,7 @@ export function PackSummary({ total }: { total: Roadbook["total"] }) {
               {quantite(unite.quantity)} ×
             </span>
             <span className="min-w-0 flex-1 text-[14px] text-ink">
-              {unite.name}
+              {nomProduit(unite.name)}
             </span>
             <span className="shrink-0 font-mono text-[11px] text-ink-soft">
               {unite.brandName}

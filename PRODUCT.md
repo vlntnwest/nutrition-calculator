@@ -68,7 +68,11 @@ sources, jamais des documents commerciaux d'un fabricant.
 - Dix codes d'avertissement existent en base et se rattachent à un secteur ou au
   plan entier (glucides au-dessus du guide, sodium sous la cible, boisson
   au-delà de ce que portent les flasques, etc.).
-- **Il n'y a pas encore d'interface.** Phase 3 du projet.
+- **L'interface existe** : import GPX, puis un dossier à quatre destinations
+  (Course, Cibles, Produits, Roadbook), en desktop et en mobile. Restent hors
+  périmètre à ce jour : l'impression PDF du roadbook, et la saisie d'un produit
+  qui n'est pas au catalogue.
+- La voix du produit est tenue par dix interdits vérifiables : `docs/voix.md`.
 
 Décisions produit explicitement ouvertes, à ne pas trancher à sa place :
 

@@ -180,7 +180,7 @@ export function RaceScreen({
               <p className="text-[12px] text-ink-soft leading-relaxed">
                 {allure ? (
                   <>
-                    soit <Val>{allure} /km</Val> en mouvement
+                    soit <Val unite="/km">{allure}</Val> en mouvement
                     {arretsS > 0 && (
                       <>
                         , les <Val>{duree(arretsS)}</Val> d'arrêt déduits
@@ -319,8 +319,9 @@ export function RaceScreen({
             <PinIcon className="mt-px size-3.5 shrink-0" />
             <span>
               Le départ et l'arrivée bornent déjà la course. Il faut {km(1000)}{" "}
-              km au moins entre deux bornes, sur les <Val>{km(totalM)} km</Val>{" "}
-              et {entier(plan.track.ascentM)} m de dénivelé de cette trace.
+              km au moins entre deux bornes, sur les{" "}
+              <Val unite="km">{km(totalM)}</Val> et {entier(plan.track.ascentM)}{" "}
+              m de dénivelé de cette trace.
             </span>
           </p>
 

@@ -6,15 +6,18 @@ et l'outil produit les temps de passage par tronçon et la quantité de glucides
 d'eau et de sodium à emporter entre chaque. Sans compte, sans installation, et
 sans être enfermé dans le catalogue d'une marque.
 
-> **État : phase 2 terminée.** Le socle d'ingénierie est en place et le noyau de
-> calcul est complet, du fichier GPX au plan nutritionnel — `npm run plan`
-> produit déjà un roadbook en ligne de commande. La persistance est bouclée : un
-> plan s'écrit, se relit et se régénère entièrement — trace, réglages, flasques,
-> ravitos et produits figés d'un côté, tronçons, rations, remplissages et
-> avertissements de l'autre — contre un vrai Postgres, en local comme en CI.
-> **Il n'y a pas encore d'interface**, et c'est l'objet de la phase 3. Voir
-> [Feuille de route](#feuille-de-route). Une capture sera ajoutée dès qu'il y
-> aura quelque chose à montrer.
+> **État : phase 5 terminée.** Le noyau de calcul est complet, du fichier GPX au
+> plan nutritionnel, et `npm run plan` en produit un en ligne de commande. La
+> persistance est bouclée : un plan s'écrit, se relit et se régénère
+> entièrement, trace, réglages, flasques, ravitos et produits figés d'un côté,
+> tronçons, rations, remplissages et avertissements de l'autre, contre un vrai
+> Postgres, en local comme en CI.
+>
+> **L'interface existe** : on dépose un GPX, on confirme la course, puis on
+> ouvre un dossier à quatre destinations, Course, Cibles, Produits et Roadbook.
+> Deux choses annoncées dans les wireframes manquent encore et sont suivies
+> plus bas : l'impression PDF du roadbook, et la saisie d'un produit qui n'est
+> pas au catalogue.
 
 ## Pourquoi il existe
 
@@ -161,8 +164,10 @@ npm run test:watch
 
 Vitest tourne en environnement `node` : le noyau n'a pas besoin de DOM. **Les
 composants React ne sont pas testés unitairement** — coût élevé, valeur faible sur
-un produit à quatre écrans. Le parcours sera couvert par un test de bout en bout à
-partir de la phase 3.
+un produit à quatre écrans. Ce qui se teste vraiment est la traduction entre
+saisie et valeur, isolée dans `src/format/` et dans les modules `stations.ts`,
+`filtres.ts`, `synthese.ts` et `warnings.ts` de chaque écran. Le parcours sera
+couvert par un test de bout en bout à la mise en ligne.
 
 La suite visée, par ordre de valeur :
 
@@ -205,7 +210,8 @@ page par décision, avec les alternatives écartées et ce qu'elles coûtent.
 | 0     | Socle : TypeScript strict, Biome, Vitest, CI, ADR                 | Terminé  |
 | 1     | Le noyau de calcul, en ligne de commande, sans interface          | Terminé  |
 | 2     | Persistance : schéma, migrations, écriture et relecture d'un plan | Terminé  |
-| 3     | Écrans upload et paramètres, profil SVG                           | À venir  |
-| 4     | Placement des ravitos : champ, profil, carte                      | À venir  |
-| 5     | Plan généré et catalogue produits                                 | À venir  |
-| 6     | Mise en ligne, page sources, observabilité                        | À venir  |
+| 3     | Écrans import et paramètres, profil et carte                      | Terminé  |
+| 4     | Placement des ravitos : champ, profil, carte                      | Terminé  |
+| 5     | Roadbook retouchable et catalogue produits                        | Terminé  |
+| 6     | Impression PDF du roadbook, saisie d'un produit hors catalogue    | À venir  |
+| 7     | Mise en ligne, page sources, observabilité                        | À venir  |

@@ -35,3 +35,16 @@ export function coupeFr(divisibleBy: number): string {
     ? "se coupe en deux"
     : "ne se coupe pas, la dose est l'unité";
 }
+
+/**
+ * Le nom commercial tel qu'il s'affiche.
+ *
+ * Le catalogue sépare un parfum du nom du produit tantôt par un tiret
+ * cadratin, tantôt par un trait d'union entouré d'espaces. `docs/voix.md`
+ * bannit le premier de tout texte lu par un coureur, et les instantanés déjà
+ * figés dans un plan enregistré gardent la forme d'origine : la
+ * normalisation se fait donc aussi ici, pas seulement dans le seed.
+ */
+export function nomProduit(nom: string): string {
+  return nom.replace(/\s+[—–-]\s+/g, ", ");
+}

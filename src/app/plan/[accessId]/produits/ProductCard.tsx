@@ -3,7 +3,7 @@
 import Image from "next/image";
 import type { CatalogueEntry } from "@/app/plans/catalogue";
 import { entier, quantite } from "@/format/number";
-import { formatFr } from "@/format/produit";
+import { formatFr, nomProduit } from "@/format/produit";
 import { CheckIcon, PlusIcon } from "@/ui/icons";
 import { Onglet } from "@/ui/Panel";
 
@@ -43,7 +43,7 @@ export function ProductCard({
             src="/ref.webp"
             alt=""
             fill
-            sizes="(min-width: 1280px) 18vw, (min-width: 1024px) 22vw, (min-width: 640px) 30vw, 48vw"
+            sizes="(min-width: 1280px) 22vw, (min-width: 640px) 30vw, 48vw"
             className="object-cover"
           />
           <span className="absolute top-2 left-2.5">
@@ -56,7 +56,7 @@ export function ProductCard({
             {produit.brandName}
           </span>
           <span className="text-[14px] text-ink leading-snug">
-            {produit.name}
+            {nomProduit(produit.name)}
           </span>
           <span className="mt-1 font-mono text-[11px] text-ink-soft">
             {quantite(produit.carbsG)} g glucides
@@ -79,7 +79,7 @@ export function ProductCard({
           aria-pressed={dansLeSac}
           className={`inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border px-2.5 text-[12px] transition-colors ${
             dansLeSac
-              ? "border-accent/40 bg-accent-tint text-accent-dark"
+              ? "border-ink bg-ink text-paper"
               : "border-line text-ink-soft hover:border-line-strong hover:text-ink"
           }`}
         >

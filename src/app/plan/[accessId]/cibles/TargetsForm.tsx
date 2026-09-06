@@ -12,7 +12,7 @@ import { Button, IconButton } from "@/ui/Button";
 import { ToggleChip } from "@/ui/Chip";
 import { Hint, MeasureField } from "@/ui/Field";
 import { FlaskIcon, PlusIcon, TrashIcon } from "@/ui/icons";
-import { Stat, Val } from "@/ui/Measure";
+import { Val } from "@/ui/Measure";
 import { EmptyNote, ErrorNote, Notice } from "@/ui/Notice";
 import { Panel, PanelHead, Rule } from "@/ui/Panel";
 import { SaveBar } from "@/ui/SaveBar";
@@ -118,7 +118,7 @@ export function TargetsForm({
               <p className="mt-1 text-[14px] text-ink-soft leading-relaxed">
                 {suggestion && propose ? (
                   <>
-                    Suggérées d'après <Val>{massKg} kg</Val> et{" "}
+                    Suggérées d'après <Val unite="kg">{massKg}</Val> et{" "}
                     <Val>{duree(targetTimeS ?? 0)}</Val>. Modifiez-les si vous
                     savez mieux.
                   </>
@@ -144,8 +144,8 @@ export function TargetsForm({
                 />
                 {cibles.carbsGH > CARBS_GUIDE_G_H && (
                   <Notice code="carbs-above-guide">
-                    Au-delà de <Val>{CARBS_GUIDE_G_H} g/h</Val>, on sort des
-                    fourchettes publiées. Le calcul suivra quand même, et le
+                    Au-delà de <Val unite="g/h">{CARBS_GUIDE_G_H}</Val>, on sort
+                    des fourchettes publiées. Le calcul suivra quand même, et le
                     signalera sur le roadbook.
                   </Notice>
                 )}
@@ -173,7 +173,8 @@ export function TargetsForm({
                 />
                 {cibles.fluidMlH > FLUID_GUIDE_ML_H && (
                   <Notice code="fluid-above-guide">
-                    Au-delà de <Val>{entier(FLUID_GUIDE_ML_H)} mL/h</Val>, le
+                    Au-delà de{" "}
+                    <Val unite="mL/h">{entier(FLUID_GUIDE_ML_H)}</Val>, le
                     risque n'est plus la déshydratation mais l'excès d'eau.
                   </Notice>
                 )}
@@ -312,38 +313,28 @@ export function TargetsForm({
 
           {synthese && (
             <aside className="lg:sticky lg:top-6 lg:w-80 lg:shrink-0">
-              <Panel ton="creux" className="p-4">
-                <p className="font-mono text-[10px] text-ink-soft uppercase tracking-[0.14em]">
-                  ce que ça demande
+              <Panel className="p-4">
+                <h3 className="font-medium text-[13px] text-ink">
+                  Ce que ces cibles demandent
+                </h3>
+                <Rule className="my-3" />
+                <p className="text-[14px] text-ink leading-relaxed">
+                  Sur {duree(targetTimeS ?? 0)} de course,{" "}
+                  <Val unite="g">{entier(synthese.carbsG)}</Val> de glucides et{" "}
+                  <Val unite="mL">{entier(synthese.fluidMl)}</Val> de boisson.
                 </p>
-                <div className="mt-3 flex gap-6">
-                  <Stat
-                    value={entier(synthese.carbsG)}
-                    unite="g"
-                    label="glucides sur la course"
-                    taille="lg"
-                  />
-                  <Stat
-                    value={entier(synthese.fluidMl)}
-                    unite="mL"
-                    label="boisson sur la course"
-                    taille="lg"
-                  />
-                </div>
-                <Rule className="my-3.5" />
-                <p className="text-[13px] text-ink-soft leading-relaxed">
-                  Sur {duree(targetTimeS ?? 0)} de course.{" "}
+                <p className="mt-2 text-[13px] text-ink-soft leading-relaxed">
                   {synthese.remplissages === null ? (
                     "Aucune flasque déclarée : le calcul ne saura pas où verser la boisson."
                   ) : synthese.remplissages === 0 ? (
                     <>
-                      Les <Val>{entier(synthese.carryMl)} mL</Val> emportés
-                      couvrent la distance sans remplissage.
+                      Les <Val unite="mL">{entier(synthese.carryMl)}</Val>{" "}
+                      emportés couvrent la distance sans remplissage.
                     </>
                   ) : (
                     <>
-                      Les <Val>{entier(synthese.carryMl)} mL</Val> emportés
-                      demandent{" "}
+                      Les <Val unite="mL">{entier(synthese.carryMl)}</Val>{" "}
+                      emportés demandent{" "}
                       {synthese.remplissages === 1
                         ? "un remplissage"
                         : `${synthese.remplissages} remplissages`}{" "}

@@ -5,7 +5,7 @@ import { useId } from "react";
 import type { CatalogueEntry } from "@/app/plans/catalogue";
 import type { Targets } from "@/core/type";
 import { entier, quantite } from "@/format/number";
-import { coupeFr, formatFr } from "@/format/produit";
+import { coupeFr, formatFr, nomProduit } from "@/format/produit";
 import { Button, IconButton } from "@/ui/Button";
 import { CheckIcon, CloseIcon, PlusIcon } from "@/ui/icons";
 import { Stat, Val } from "@/ui/Measure";
@@ -57,7 +57,7 @@ export function ProductSheet({
             id={titreId}
             className="mt-0.5 font-semibold text-[18px] text-ink leading-tight"
           >
-            {produit.name}
+            {nomProduit(produit.name)}
           </h2>
           <p className="mt-1 text-[12px] text-ink-soft">
             {formatFr(produit.formatLabel)}
@@ -107,26 +107,26 @@ export function ProductSheet({
         <Ligne nom="Ce qu'il apporte à boire">
           {produit.fluidMl && produit.fluidMl > 0 ? (
             <>
-              se dilue dans <Val>{entier(produit.fluidMl)} mL</Val>
+              se dilue dans <Val unite="mL">{entier(produit.fluidMl)}</Val>
             </>
           ) : (
             "rien, il se prend à part de la boisson"
           )}
         </Ligne>
         <Ligne nom="Poids embarqué">
-          <Val>{entier(produit.weightG)} g</Val> l'unité
+          <Val unite="g">{entier(produit.weightG)}</Val> l'unité
         </Ligne>
       </dl>
 
       {parHeure && cibles && (
         <p className="px-4 pt-2 pb-4 text-[13px] text-ink-soft leading-relaxed">
-          À <Val>{cibles.carbsGH} g/h</Val> visés, il en faut{" "}
+          À <Val unite="g/h">{cibles.carbsGH}</Val> visés, il en faut{" "}
           <Val>
             {parHeure.toLocaleString("fr-FR", { maximumFractionDigits: 1 })}
           </Val>{" "}
           par heure pour couvrir la cible à lui seul, soit{" "}
-          <Val>{entier(parHeure * produit.sodiumMg)} mg</Val> de sodium dans le
-          même temps.
+          <Val unite="mg">{entier(parHeure * produit.sodiumMg)}</Val> de sodium
+          dans le même temps.
         </p>
       )}
 
