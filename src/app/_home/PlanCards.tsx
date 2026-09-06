@@ -39,7 +39,7 @@ export function PlanCards() {
       {CARTES.map((card) => (
         <article
           key={card.name}
-          className="relative min-h-[280px] min-w-[280px] flex-1 overflow-hidden rounded-[20px] bg-ink"
+          className="relative min-h-[280px] min-w-[280px] flex-1 overflow-hidden rounded-[var(--radius-sheet)] bg-ink"
         >
           <Link href="/demo" className="absolute inset-0 flex flex-col">
             <Image

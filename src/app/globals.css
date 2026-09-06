@@ -22,7 +22,11 @@
   --accent-tint: #fbe7d9;
   --warn: #8a5a00;
   --warn-tint: #fdf3dd;
+  /* Le vert d'une confirmation écrite, tenu à 4,5:1 sur le papier. */
   --go: #2f6b3f;
+  /* Celui du marqueur de départ sur la carte : un disque de six pixels sur un
+     fond de tuiles, il lui faut de la lumière plutôt que du contraste. */
+  --go-mark: #369d51;
 
   --background: var(--paper);
   --foreground: var(--ink);
@@ -52,6 +56,7 @@
   --color-warn: var(--warn);
   --color-warn-tint: var(--warn-tint);
   --color-go: var(--go);
+  --color-go-mark: var(--go-mark);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

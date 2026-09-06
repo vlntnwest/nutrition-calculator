@@ -1,0 +1,391 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-06T00:00:00.000Z",
+  "title": "Design System: Plan nutritionnel de course",
+  "extensions": {
+    "colorMeta": {
+      "ink": {
+        "role": "neutral",
+        "displayName": "Encre",
+        "canonical": "#17130f",
+        "tonalRamp": [
+          "#17130f",
+          "#635c52",
+          "#6f675c",
+          "#17130f33",
+          "#17130f1f",
+          "#efeae2",
+          "#f6f3ee",
+          "#ffffff"
+        ]
+      },
+      "ink-soft": {
+        "role": "neutral",
+        "displayName": "Encre douce",
+        "canonical": "#635c52"
+      },
+      "ink-faint": {
+        "role": "neutral",
+        "displayName": "Encre pâle",
+        "canonical": "#6f675c"
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Papier",
+        "canonical": "#ffffff",
+        "tonalRamp": ["#ffffff", "#f6f3ee", "#efeae2"]
+      },
+      "paper-dim": {
+        "role": "neutral",
+        "displayName": "Papier terne",
+        "canonical": "#f6f3ee"
+      },
+      "paper-sunk": {
+        "role": "neutral",
+        "displayName": "Papier enfoncé",
+        "canonical": "#efeae2"
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Filet",
+        "canonical": "#17130f1f"
+      },
+      "line-strong": {
+        "role": "neutral",
+        "displayName": "Filet appuyé",
+        "canonical": "#17130f33"
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "Ocre brûlé",
+        "canonical": "#c2410c",
+        "tonalRamp": [
+          "#3a1306",
+          "#7a2c08",
+          "#c2410c",
+          "#eeb27a",
+          "#fbe7d9"
+        ]
+      },
+      "accent-dark": {
+        "role": "primary",
+        "displayName": "Ocre profond",
+        "canonical": "#3a1306"
+      },
+      "accent-tint": {
+        "role": "primary",
+        "displayName": "Ocre pâle",
+        "canonical": "#fbe7d9"
+      },
+      "pente-moyenne": {
+        "role": "secondary",
+        "displayName": "Pente moyenne",
+        "canonical": "#eeb27a"
+      },
+      "pente-forte": {
+        "role": "secondary",
+        "displayName": "Pente forte",
+        "canonical": "#7a2c08"
+      },
+      "warn": {
+        "role": "tertiary",
+        "displayName": "Ambre d'avertissement",
+        "canonical": "#8a5a00"
+      },
+      "warn-tint": {
+        "role": "tertiary",
+        "displayName": "Ambre pâle",
+        "canonical": "#fdf3dd"
+      },
+      "go": {
+        "role": "tertiary",
+        "displayName": "Vert de confirmation",
+        "canonical": "#2f6b3f"
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Le seul titre de l'accueil. N'apparaît jamais dans le plan."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Le titre d'un écran du plan."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Le nom de la course dans la barre d'identité, le nom d'un produit dans sa fiche."
+      },
+      "subtitle": {
+        "displayName": "Subtitle",
+        "purpose": "L'en-tête d'un panneau."
+      },
+      "body": { "displayName": "Body", "purpose": "La ligne courante d'une liste." },
+      "body-small": {
+        "displayName": "Body small",
+        "purpose": "Les phrases explicatives sous un panneau."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Le libellé d'un champ. Un nom, jamais une phrase à l'impératif."
+      },
+      "hint": {
+        "displayName": "Hint",
+        "purpose": "Ce qui précise sans être nécessaire à la lecture."
+      },
+      "measure": {
+        "displayName": "Measure",
+        "purpose": "Une mesure autonome, posée par Stat. Geist Mono tabulaire."
+      },
+      "measure-inline": {
+        "displayName": "Measure inline",
+        "purpose": "Une valeur au fil du texte, posée par Val. Le chiffre en mono, l'unité dans la fonte du texte."
+      },
+      "onglet": {
+        "displayName": "Onglet",
+        "purpose": "L'étiquette d'une colonne ou d'un relevé sans titre à lui. Jamais au-dessus d'un titre."
+      },
+      "wordmark": {
+        "displayName": "Wordmark",
+        "purpose": "« plan nutrition », en tête de l'accueil et du rail."
+      }
+    },
+    "shadows": [
+      {
+        "name": "shadow-panel",
+        "value": "0 1px 2px #17130f0f, 0 8px 24px -16px #17130f4d",
+        "purpose": "La seule entrée active du rail, décollée de son fond paper-dim."
+      },
+      {
+        "name": "shadow-lifted",
+        "value": "0 2px 6px #17130f14, 0 24px 48px -24px #17130f59",
+        "purpose": "Une fiche modale, et la feuille montante de l'écran Course en mobile."
+      },
+      {
+        "name": "bouton-encre",
+        "value": "0 1px 2px #17130f26",
+        "purpose": "Un liseré sous le seul bouton plein. Pas une élévation."
+      },
+      {
+        "name": "curseur-slider",
+        "value": "0 1px 3px #17130f59",
+        "purpose": "Ce qui détache la pastille du slider de sa piste."
+      }
+    ],
+    "motion": [
+      {
+        "name": "fiche-monte",
+        "value": "260ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Le seul moment de mouvement du carnet : une fiche modale qui monte de 1,25rem, depuis un état déjà lisible."
+      },
+      {
+        "name": "voile-parait",
+        "value": "200ms ease-out",
+        "purpose": "Le voile d'encre sous une fiche modale."
+      },
+      {
+        "name": "repli-feuille",
+        "value": "transition-[height] 300ms ease-out",
+        "purpose": "La feuille de l'écran Course qui passe de 46dvh à 74dvh en mobile."
+      },
+      {
+        "name": "transition-colors",
+        "value": "150ms",
+        "purpose": "Le survol et l'état actif de tout ce qui se clique. Le défaut, jamais déclaré autrement."
+      },
+      {
+        "name": "prefers-reduced-motion",
+        "value": "animation: none sur dialog[open], son ::backdrop et .animate-spin",
+        "purpose": "Rien du tout si le système le demande."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ],
+    "focus": [
+      {
+        "name": "anneau-global",
+        "value": ":focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }",
+        "purpose": "Tout ce qui se focalise, sauf les champs de saisie."
+      },
+      {
+        "name": "bordure-de-champ",
+        "value": "border-color: var(--accent)",
+        "purpose": "Un champ annule l'anneau global : c'est sa bordure qui dit le focus."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Bouton d'encre",
+      "kind": "button",
+      "refersTo": "button-encre",
+      "description": "L'action de l'outil. Le seul bouton plein du carnet, et il n'est jamais accent.",
+      "html": "<button class=\"ds-btn-encre\">Enregistrer</button>",
+      "css": ".ds-btn-encre { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 20px; border: 0; border-radius: var(--radius-control, 8px); background: var(--ink, #17130f); color: var(--paper, #fff); font-family: var(--font-geist-sans), system-ui, sans-serif; font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px #17130f26; cursor: pointer; transition: background-color .15s; } .ds-btn-encre:hover { background: color-mix(in srgb, var(--ink, #17130f) 85%, transparent); } .ds-btn-encre:focus-visible { outline: 2px solid var(--accent, #c2410c); outline-offset: 2px; } .ds-btn-encre:disabled { background: color-mix(in srgb, var(--ink, #17130f) 40%, transparent); opacity: .5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Bouton contour",
+      "kind": "button",
+      "refersTo": "button-contour",
+      "description": "L'action secondaire. Du papier cerné d'un filet appuyé.",
+      "html": "<button class=\"ds-btn-contour\"><svg class=\"ds-ico\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 5.5v13M5.5 12h13\"/></svg>Ajouter un ravito</button>",
+      "css": ".ds-btn-contour { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 20px; border: 1px solid var(--line-strong, #17130f33); border-radius: var(--radius-control, 8px); background: var(--paper, #fff); color: var(--ink, #17130f); font-family: var(--font-geist-sans), system-ui, sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; transition: background-color .15s; } .ds-btn-contour:hover { background: var(--paper-dim, #f6f3ee); } .ds-btn-contour:active { background: var(--paper-sunk, #efeae2); } .ds-btn-contour:focus-visible { outline: 2px solid var(--accent, #c2410c); outline-offset: 2px; } .ds-ico { width: 16px; height: 16px; flex: none; }"
+    },
+    {
+      "name": "Chip à bascule",
+      "kind": "chip",
+      "refersTo": "chip-toggle",
+      "description": "Un choix qui se pose ou se retire d'un coup. Coché, il prend l'accent et une coche : la couleur ne dit jamais l'état à elle seule.",
+      "html": "<button class=\"ds-chip\" aria-pressed=\"false\">de l'eau</button> <button class=\"ds-chip ds-chip--actif\" aria-pressed=\"true\"><svg class=\"ds-ico-sm\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12.5 10 17.5 19 7\"/></svg>à manger</button>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--line, #17130f1f); border-radius: 9999px; background: var(--paper, #fff); color: var(--ink-soft, #635c52); font-family: var(--font-geist-sans), system-ui, sans-serif; font-size: 13px; cursor: pointer; transition: border-color .15s, color .15s, background-color .15s; } .ds-chip:hover { border-color: var(--line-strong, #17130f33); color: var(--ink, #17130f); } .ds-chip:focus-visible { outline: 2px solid var(--accent, #c2410c); outline-offset: 2px; } .ds-chip--actif { border-color: var(--accent, #c2410c); background: var(--accent-tint, #fbe7d9); color: var(--accent-dark, #3a1306); } .ds-ico-sm { width: 14px; height: 14px; flex: none; }"
+    },
+    {
+      "name": "Panneau",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "La surface de travail du plan : du papier cerné d'un filet, pas une carte qui flotte. Un nom à gauche, une mesure à droite, un filet, puis le corps.",
+      "html": "<section class=\"ds-panel\"><header class=\"ds-panel-head\"><div><h2>Ravitaillements</h2><p>Cliquez sur le relief pour en poser un.</p></div><span class=\"ds-panel-mesure\">2 posés</span></header><div class=\"ds-rule\"></div><div class=\"ds-panel-body\">Le corps du panneau.</div></section>",
+      "css": ".ds-panel { border: 1px solid var(--line, #17130f1f); border-radius: var(--radius-panel, 12px); background: var(--paper, #fff); font-family: var(--font-geist-sans), system-ui, sans-serif; color: var(--ink, #17130f); } .ds-panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 14px 16px 12px; } .ds-panel-head h2 { margin: 0; font-size: 13px; font-weight: 500; } .ds-panel-head p { margin: 2px 0 0; font-size: 11px; color: var(--ink-faint, #6f675c); } .ds-panel-mesure { flex: none; font-family: var(--font-geist-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 11px; color: var(--ink-soft, #635c52); } .ds-rule { height: 1px; background: var(--line, #17130f1f); } .ds-panel-body { padding: 16px; font-size: 14px; }"
+    },
+    {
+      "name": "Champ de mesure",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "Une mesure saisie : le nombre en Geist Mono, l'unité posée dans le cadre plutôt qu'à côté. Le focus se dit par la bordure, pas par un anneau.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-field-label\" for=\"ds-pos\">Position</label><div class=\"ds-field-box\"><input id=\"ds-pos\" class=\"ds-field-input\" inputmode=\"decimal\" placeholder=\"9,8\" value=\"9,8\"><span class=\"ds-field-unite\">km</span></div><p class=\"ds-field-hint\">repris du fichier, modifiable</p></div>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 6px; width: 160px; font-family: var(--font-geist-sans), system-ui, sans-serif; } .ds-field-label { font-size: 12px; color: var(--ink-soft, #635c52); } .ds-field-box { display: flex; align-items: center; border: 1px solid var(--line, #17130f1f); border-radius: var(--radius-control, 8px); background: var(--paper, #fff); transition: border-color .15s; } .ds-field-box:focus-within { border-color: var(--accent, #c2410c); } .ds-field-input { width: 100%; min-width: 0; padding: 8px 0 8px 12px; border: 0; background: transparent; outline: none; font-family: var(--font-geist-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 15px; color: var(--ink, #17130f); } .ds-field-input::placeholder { color: var(--ink-faint, #6f675c); } .ds-field-unite { flex: none; padding: 0 12px 0 6px; font-size: 12px; color: var(--ink-soft, #635c52); } .ds-field-hint { margin: 0; font-size: 11px; line-height: 1.625; color: var(--ink-faint, #6f675c); }"
+    },
+    {
+      "name": "Stepper de quantité",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "La quantité d'une ration. Le pas suit le produit : un gel se finit, une barre se casse en deux. Les deux crans font 36 px, atteignables au pouce.",
+      "html": "<div class=\"ds-stepper\"><button class=\"ds-cran\" aria-label=\"Retirer 0,5 de barre\"><svg class=\"ds-ico\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5.5 12h13\"/></svg></button><span class=\"ds-stepper-val\">1,5</span><button class=\"ds-cran\" aria-label=\"Ajouter 0,5 de barre\"><svg class=\"ds-ico\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 5.5v13M5.5 12h13\"/></svg></button></div>",
+      "css": ".ds-stepper { display: inline-flex; align-items: center; border: 1px solid var(--line, #17130f1f); border-radius: var(--radius-control, 8px); background: var(--paper, #fff); } .ds-cran { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 0; background: transparent; border-radius: var(--radius-control, 8px); color: var(--ink-soft, #635c52); cursor: pointer; transition: background-color .15s, color .15s; } .ds-cran:hover { background: var(--paper-dim, #f6f3ee); color: var(--ink, #17130f); } .ds-cran:focus-visible { outline: 2px solid var(--accent, #c2410c); outline-offset: 2px; } .ds-cran:disabled { opacity: .3; cursor: not-allowed; } .ds-stepper-val { min-width: 36px; text-align: center; font-family: var(--font-geist-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 15px; color: var(--ink, #17130f); } .ds-ico { width: 16px; height: 16px; }"
+    },
+    {
+      "name": "Entrée du rail",
+      "kind": "nav",
+      "refersTo": "rail-item-actif",
+      "description": "Le rail des quatre destinations. L'accent marque où l'on se trouve, la pastille dit ce qui reste à faire, et sa forme la dit aussi bien que sa couleur.",
+      "html": "<nav class=\"ds-rail\"><a class=\"ds-rail-item ds-rail-item--actif\" href=\"#\" aria-current=\"page\"><svg class=\"ds-rail-ico ds-rail-ico--actif\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 17 8.2 8.5l3.4 5.2L15.5 6 21 17\"/><path d=\"M3 20.2h18\" stroke-opacity=\".35\"/><circle cx=\"11.6\" cy=\"13.7\" r=\"1.5\"/></svg><span class=\"ds-rail-txt\"><span class=\"ds-rail-nom\">Course</span><span class=\"ds-rail-mention\">2 ravitos</span></span><svg class=\"ds-rail-dot\" viewBox=\"0 0 12 12\" fill=\"none\" aria-hidden=\"true\"><circle cx=\"6\" cy=\"6\" r=\"4\" stroke=\"currentColor\" stroke-width=\"1.4\"/><circle cx=\"6\" cy=\"6\" r=\"2.2\" fill=\"currentColor\"/></svg></a><a class=\"ds-rail-item\" href=\"#\"><svg class=\"ds-rail-ico\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"8\"/><circle cx=\"12\" cy=\"12\" r=\"3.4\"/><path d=\"M12 4v3.2M12 16.8V20M4 12h3.2M16.8 12H20\"/></svg><span class=\"ds-rail-txt\"><span class=\"ds-rail-nom\">Cibles</span><span class=\"ds-rail-mention\">aucune flasque</span></span><svg class=\"ds-rail-dot\" viewBox=\"0 0 12 12\" fill=\"none\" aria-hidden=\"true\"><circle cx=\"6\" cy=\"6\" r=\"4\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-opacity=\".5\"/></svg></a></nav>",
+      "css": ".ds-rail { display: flex; flex-direction: column; gap: 2px; width: 224px; padding: 8px 12px; background: var(--paper-dim, #f6f3ee); border-right: 1px solid var(--line, #17130f1f); font-family: var(--font-geist-sans), system-ui, sans-serif; } .ds-rail-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--radius-control, 8px); color: var(--ink-soft, #635c52); text-decoration: none; transition: background-color .15s, color .15s; } .ds-rail-item:hover { color: var(--ink, #17130f); } .ds-rail-item--actif { background: var(--paper, #fff); color: var(--ink, #17130f); box-shadow: 0 1px 2px #17130f0f, 0 8px 24px -16px #17130f4d; } .ds-rail-ico { width: 20px; height: 20px; flex: none; color: var(--ink-faint, #6f675c); } .ds-rail-ico--actif { color: var(--accent, #c2410c); } .ds-rail-txt { flex: 1; min-width: 0; } .ds-rail-nom { display: block; font-size: 14px; line-height: 1.2; } .ds-rail-mention { display: block; font-size: 11px; line-height: 1.2; color: var(--ink-faint, #6f675c); } .ds-rail-dot { width: 12px; height: 12px; flex: none; color: var(--ink-faint, #6f675c); }"
+    },
+    {
+      "name": "Remarque du calcul",
+      "kind": "custom",
+      "refersTo": "notice-alerte",
+      "description": "Le pictogramme et le mot portent l'alerte ; la teinte ne fait que confirmer, pour que la feuille imprimée en noir et blanc dise la même chose que l'écran. Le code du noyau reste lisible dessous.",
+      "html": "<div class=\"ds-notice\"><svg class=\"ds-notice-ico\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 4.2 21 19.8H3z\"/><path d=\"M12 10v4.2\"/><path d=\"M12 17.2h.01\"/></svg><div><p class=\"ds-notice-txt\">Au-delà de 90 g/h, on sort des fourchettes publiées. Le calcul suivra quand même, et le signalera sur le roadbook.</p><p class=\"ds-notice-code\">carbs-above-guide</p></div></div>",
+      "css": ".ds-notice { display: flex; gap: 10px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--warn, #8a5a00) 25%, transparent); border-radius: var(--radius-control, 8px); background: var(--warn-tint, #fdf3dd); color: var(--warn, #8a5a00); font-family: var(--font-geist-sans), system-ui, sans-serif; } .ds-notice-ico { width: 16px; height: 16px; flex: none; margin-top: 1px; } .ds-notice-txt { margin: 0; font-size: 13px; line-height: 1.625; } .ds-notice-code { margin: 4px 0 0; font-family: var(--font-geist-mono), ui-monospace, monospace; font-size: 10px; opacity: .7; }"
+    },
+    {
+      "name": "Message de refus",
+      "kind": "custom",
+      "refersTo": "error-note",
+      "description": "Ce qui bloque, puis ce qui débloque, dans cet ordre et sans s'excuser. Il emprunte l'accent plutôt que d'introduire un rouge.",
+      "html": "<p class=\"ds-error\" role=\"alert\">Le fichier doit être un fichier GPX</p>",
+      "css": ".ds-error { margin: 0; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--accent, #c2410c) 30%, transparent); border-radius: var(--radius-control, 8px); background: var(--accent-tint, #fbe7d9); color: var(--accent-dark, #3a1306); font-family: var(--font-geist-sans), system-ui, sans-serif; font-size: 13px; }"
+    },
+    {
+      "name": "Relevé",
+      "kind": "custom",
+      "refersTo": "measure",
+      "description": "Toutes les mesures du carnet passent par là, donc elles s'alignent d'un écran à l'autre : la valeur en Geist Mono tabulaire, l'unité en retrait dans la fonte du texte, ce qu'elle mesure en dessous.",
+      "html": "<div class=\"ds-stats\"><div class=\"ds-stat\"><div class=\"ds-stat-val\"><span class=\"ds-stat-nombre\">28,4</span><span class=\"ds-stat-unite\">km</span></div><p class=\"ds-stat-label\">distance</p></div><div class=\"ds-stat\"><div class=\"ds-stat-val\"><span class=\"ds-stat-nombre\">1 314</span><span class=\"ds-stat-unite\">m</span></div><p class=\"ds-stat-label\">dénivelé positif</p></div><div class=\"ds-stat\"><div class=\"ds-stat-val\"><span class=\"ds-stat-nombre\">82</span><span class=\"ds-stat-unite\">g</span></div><p class=\"ds-stat-label\">glucides (+7 g)</p></div></div>",
+      "css": ".ds-stats { display: flex; gap: 32px; font-family: var(--font-geist-sans), system-ui, sans-serif; } .ds-stat-val { display: flex; align-items: baseline; gap: 4px; } .ds-stat-nombre { font-family: var(--font-geist-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 20px; color: var(--ink, #17130f); } .ds-stat-unite { font-size: 12px; color: var(--ink-soft, #635c52); } .ds-stat-label { margin: 0; font-size: 11px; color: var(--ink-faint, #6f675c); }"
+    },
+    {
+      "name": "Barre d'enregistrement",
+      "kind": "custom",
+      "refersTo": "button-encre",
+      "description": "Le pied d'un écran de saisie, posé hors de la zone qui défile. La conséquence de l'enregistrement est dite avant qu'on le déclenche.",
+      "html": "<div class=\"ds-savebar\"><p class=\"ds-savebar-etat\">le roadbook devra être recalculé</p><button class=\"ds-btn-encre\">Enregistrer</button></div>",
+      "css": ".ds-savebar { display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--line, #17130f1f); background: var(--paper, #fff); font-family: var(--font-geist-sans), system-ui, sans-serif; } .ds-savebar-etat { margin: 0; font-size: 12px; color: var(--ink-soft, #635c52); } .ds-btn-encre { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 20px; border: 0; border-radius: var(--radius-control, 8px); background: var(--ink, #17130f); color: var(--paper, #fff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px #17130f26; cursor: pointer; transition: background-color .15s; } .ds-btn-encre:hover { background: color-mix(in srgb, var(--ink, #17130f) 85%, transparent); } .ds-btn-encre:focus-visible { outline: 2px solid var(--accent, #c2410c); outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Le carnet d'expédition",
+    "overview": "Le système s'écrit en toutes lettres en tête de src/app/globals.css : papier blanc, encre, un accent brûlé. Le produit est un atelier de préparation, pas un tunnel d'inscription. Ce que le coureur manipule ressemble à une feuille de relevé posée sur une table : du papier cerné d'un filet d'un pixel, des mesures alignées en colonne, et une seule couleur chaude qui ne sert qu'à marquer la course elle-même.\n\nLe carnet est clair par nature et l'écran s'imprime. color-scheme: light est déclaré, il n'y a pas de thème sombre, et aucun jeton n'a de variante nocturne. Le livrable est une feuille en noir et blanc pliée dans une poche : toute information portée par une teinte porte aussi un signe, une forme ou un mot, faute de quoi elle disparaît à l'impression.\n\nDeux compositions cohabitent, et c'est délibéré. L'accueil est une affiche de terrain : photographie plein cadre, panneau de dépôt vitré posé dessus, titres lourds, cartes-affiche à fond photo. Les quatre destinations d'un plan sont l'inverse : hauteur fixe, rail à gauche, papier partout, aucune image sauf la vignette d'un produit et le fond de carte, lui-même ramené au papier par un filtre. La photographie ne franchit jamais la porte du plan.",
+    "keyCharacteristics": [
+      "Papier blanc pur, encre quasi noire, un seul accent brûlé.",
+      "Filets d'un pixel plutôt que cartes flottantes ; deux ombres seulement, pour ce qui se pose par-dessus le reste.",
+      "Geist Mono tabulaire pour toute mesure, Geist Sans pour tout le reste.",
+      "Un seul jeu d'icônes dessinées, grille de 24, trait 1,6, jamais de remplissage.",
+      "Un seul moment de mouvement : la fiche qui monte.",
+      "La couleur ne porte jamais seule une information."
+    ],
+    "rules": [
+      {
+        "name": "La règle de l'accent réservé",
+        "body": "L'accent marque la course et l'endroit où l'on se trouve. Aucun bouton n'en est rempli : l'encre porte les actions de l'outil, le papier les actions secondaires, le texte nu ce qui se défait. La seule apparition de l'accent dans un bouton est le survol d'un bouton retrait, qui n'a ni fond ni bordure.",
+        "section": "colors"
+      },
+      {
+        "name": "La règle du refus sans rouge",
+        "body": "Un message d'erreur emprunte l'accent (accent-tint et accent-dark) plutôt que d'introduire un rouge d'alerte. Le carnet n'a pas de sixième teinte.",
+        "section": "colors"
+      },
+      {
+        "name": "La règle du signe",
+        "body": "La couleur ne peut jamais porter seule une information. La pastille d'état a trois formes (cercle vide, cercle plein, demi-disque), l'écart de glucides porte un signe, la légende de pente écrit ses cinq seuils, la bande d'allure du roadbook écrit l'allure dans le remplissage. Un écran qui perd sa couleur doit dire la même chose.",
+        "section": "colors"
+      },
+      {
+        "name": "La règle du relevé",
+        "body": "Une distance, un dénivelé, un chrono, une allure, une masse, un volume, un compte : tout passe par src/format/ et s'affiche en Geist Mono. La classe .font-mono porte font-variant-numeric: tabular-nums globalement, donc une mesure ne bouge pas quand le chiffre change.",
+        "section": "typography"
+      },
+      {
+        "name": "La règle de l'unité dans la fonte du texte",
+        "body": "Le chiffre garde le mono, l'unité reprend la fonte du texte (Val dans src/ui/Measure.tsx). Dans la fonte mono l'espace de séparation est large et « 225 g » se lisait « 225  g ». Dans un champ de saisie, l'unité est posée à l'intérieur du cadre, à droite, en 12px ink-soft.",
+        "section": "typography"
+      },
+      {
+        "name": "La règle de l'étiquette basse",
+        "body": "L'Onglet en capitales espacées nomme une colonne ou un relevé. Il ne se pose jamais au-dessus d'un titre, où il ne serait qu'un surtitre décoratif.",
+        "section": "typography"
+      },
+      {
+        "name": "La règle du filet",
+        "body": "Un séparateur est un trait d'un pixel : border-line, ou la Rule (h-px bg-line). C'est le seul séparateur du carnet. On ne creuse pas une zone à l'ombre, on la pose sur paper-dim.",
+        "section": "elevation"
+      },
+      {
+        "name": "La règle des deux ombres",
+        "body": "Une ombre annonce un survol du reste de la page. Ni au repos, ni au survol, ni au focus : rien d'autre ne s'élève.",
+        "section": "elevation"
+      },
+      {
+        "name": "La règle du dessin",
+        "body": "La pastille d'état (StatusDot) se dessine sur sa propre grille de 12 avec un trait de 1,4, parce qu'à 12px le trait de 1,6 du jeu devient lourd. C'est la seule exception, et elle est locale à ce composant.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "Do réserver l'accent aux marques de la course, à la destination active, au curseur et au focus. Un bouton se remplit d'encre ou reste du papier.",
+      "Do faire passer toute mesure par src/format/ et l'afficher en Geist Mono. km, entier, quantite, duree, ecart pour les nombres, toHMS et paceLabel pour le temps, nomProduit, formatFr et coupeFr pour le vocabulaire des produits.",
+      "Do doubler toute information colorée d'un signe, d'une forme ou d'un mot. Le test : passer l'écran en noir et blanc ; s'il perd du sens, il manque quelque chose.",
+      "Do séparer avec un filet d'un pixel (border-line, Rule) et distinguer une zone avec paper-dim.",
+      "Do prendre les icônes dans src/ui/icons.tsx, et en ajouter une là plutôt qu'ailleurs : viewBox 24, trait 1,6, bouts arrondis, jamais de remplissage.",
+      "Do laisser chaque écran gérer son propre défilement et poser la barre d'enregistrement en dehors, en pied.",
+      "Do écrire les bornes d'un réglage sous sa piste, et la conséquence d'un enregistrement avant de le déclencher.",
+      "Do nommer un bouton icône par aria-label et par title : rien ne se pilote à l'icône seule.",
+      "Do rappeler les jetons en dur quand le contexte de rendu ne résout pas les variables CSS (un canvas, une commande Chart.js), et signaler le miroir en commentaire comme le fait ElevationChart."
+    ],
+    "donts": [
+      "Don't poser l'accent dans le fond d'un bouton, ni comme couleur de texte courant.",
+      "Don't ajouter une ombre en dehors de --shadow-panel et --shadow-lifted. Un panneau au repos, au survol ou au focus reste plat.",
+      "Don't introduire un rouge, un bleu, ou une sixième teinte. Un refus emprunte l'accent, une alerte l'ambre, une confirmation le vert de --go, et rien d'autre n'existe.",
+      "Don't inventer un rayon. Trois valeurs et la pilule couvrent tout ce que le plan contient ; les 28px et 20px littéraux de l'accueil sont sa signature à lui, pas une quatrième marche du système.",
+      "Don't poser un emoji ou un glyphe Unicode à la place d'une icône. Le point médian, le signe moins et le + restent, ce sont des signes typographiques.",
+      "Don't ajouter un deuxième moment de mouvement. Le carnet en a un, la fiche qui monte (fiche-monte, 260ms, cubic-bezier(0.16, 1, 0.3, 1), depuis un état déjà lisible), son voile (voile-parait, 200ms), la roue d'attente, et le repli de la feuille en mobile (300ms). Tout le reste est une transition de couleur. Toute animation nouvelle passe par @media (prefers-reduced-motion: reduce).",
+      "Don't écrire un tiret cadratin ou demi-cadratin dans une chaîne affichée, ni un superlatif, ni un verbe d'accroche. Les dix interdits de docs/voix.md valent pour tout texte lu par un coureur.",
+      "Don't habiller un select autrement qu'en retirant le chevron du système pour poser celui du jeu. Le reste du comportement natif est ce que le clavier et le tactile attendent.",
+      "Don't faire entrer une photographie dans les quatre destinations du plan. Elle vit sur l'accueil, et la vignette d'un produit est un substitut de catalogue, pas une image d'ambiance."
+    ]
+  }
+}

@@ -92,9 +92,9 @@ function DamierArrivee({ id }: { id: string }) {
     pattern.setAttribute("patternUnits", "objectBoundingBox");
     pattern.setAttribute("viewBox", "0 0 2 2");
     pattern.innerHTML =
-      '<rect width="2" height="2" fill="#ffffff" />' +
-      '<rect width="1" height="1" fill="#171717" />' +
-      '<rect x="1" y="1" width="1" height="1" fill="#171717" />';
+      '<rect width="2" height="2" fill="var(--paper)" />' +
+      '<rect width="1" height="1" fill="var(--ink)" />' +
+      '<rect x="1" y="1" width="1" height="1" fill="var(--ink)" />';
     defs.appendChild(pattern);
 
     return () => {
@@ -208,9 +208,9 @@ export default function RouteMap({
         center={[depart.lat, depart.lon]}
         radius={6}
         pathOptions={{
-          color: "#ffffff",
+          color: "var(--paper)",
           weight: 2,
-          fillColor: "#369d51",
+          fillColor: "var(--go-mark)",
           fillOpacity: 1,
         }}
         interactive={false}
@@ -219,7 +219,7 @@ export default function RouteMap({
         center={[arrivee.lat, arrivee.lon]}
         radius={6}
         pathOptions={{
-          color: "#171717",
+          color: "var(--ink)",
           weight: 1.5,
           fillColor: `url(#${idDamier})`,
           fillOpacity: 1,
@@ -236,7 +236,7 @@ export default function RouteMap({
             center={[point.lat, point.lon]}
             radius={9}
             pathOptions={{
-              color: "#ffffff",
+              color: "var(--paper)",
               weight: 2,
               fillColor: "var(--accent)",
               fillOpacity: 1,
@@ -254,7 +254,7 @@ export default function RouteMap({
           center={[survole.lat, survole.lon]}
           radius={6}
           pathOptions={{
-            color: "#ffffff",
+            color: "var(--paper)",
             weight: 2,
             fillColor: "var(--accent)",
             fillOpacity: 1,
