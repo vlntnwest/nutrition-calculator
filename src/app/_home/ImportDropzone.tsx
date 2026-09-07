@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { SpinnerIcon, UploadIcon } from "@/ui/icons";
 
 export type ImportStatus =
@@ -9,10 +9,15 @@ export type ImportStatus =
   | { kind: "erreur"; message: string };
 
 /**
- * Le panneau de dépôt : bouton et glisser-déposer, tous deux vers `onFile`.
- * Le glisser-déposer est actif sur tout l'écran — un fichier survolant la
- * page où que ce soit fait apparaître le cadre plein écran, pas seulement
- * le panneau au centre.
+ * Le panneau de dépôt : le champ de fichier et le glisser-déposer, tous deux
+ * vers `onFile`. Le glisser-déposer est actif sur tout l'écran — un fichier
+ * survolant la page où que ce soit fait apparaître le cadre plein écran, pas
+ * seulement le panneau au centre.
+ *
+ * Le déclencheur est une étiquette liée au champ, jamais un bouton qui
+ * appellerait `input.click()` : les navigateurs mobiles refusent d'ouvrir le
+ * sélecteur pour un champ qu'ils tiennent pour invisible, et le tap ne
+ * donnait rien. Une étiquette, elle, active le champ nativement.
  */
 export function ImportDropzone({
   status,
@@ -23,7 +28,7 @@ export function ImportDropzone({
 }) {
   const [draggingOverPage, setDraggingOverPage] = useState(false);
   const dragDepth = useRef(0);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const champ = useId();
   const lecture = status.kind === "lecture";
 
   useEffect(() => {
@@ -91,25 +96,32 @@ export function ImportDropzone({
               <p className="text-ink/70 text-sm">.gpx</p>
             </div>
 
-            <button
-              type="button"
-              disabled={lecture}
-              onClick={() => inputRef.current?.click()}
-              className="rounded-full bg-paper px-6 py-2.5 font-medium text-ink text-sm transition hover:bg-paper-dim focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-ink disabled:opacity-50 cursor-pointer"
-            >
-              Choisir un fichier
-            </button>
-
+            {/* Le champ précède son étiquette : `peer` ne parle qu'aux
+                frères qui le suivent, et c'est lui qui porte l'état. */}
             <input
-              ref={inputRef}
+              id={champ}
               type="file"
               accept=".gpx,application/gpx+xml"
-              className="sr-only"
+              disabled={lecture}
+              className="peer sr-only"
               onChange={(e) => {
                 const file = e.target.files?.[0];
+
+                // Le champ se vide aussitôt : reprendre le même fichier après
+                // une erreur ou une annulation doit relancer la lecture, et
+                // `change` ne repart pas sur une valeur inchangée.
+                e.target.value = "";
+
                 if (file) onFile(file);
               }}
             />
+
+            <label
+              htmlFor={champ}
+              className="cursor-pointer rounded-full bg-paper px-6 py-2.5 font-medium text-ink text-sm transition hover:bg-paper-dim peer-focus-visible:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-ink peer-disabled:pointer-events-none peer-disabled:opacity-50"
+            >
+              Choisir un fichier
+            </label>
           </div>
         </div>
       </div>
@@ -117,7 +129,7 @@ export function ImportDropzone({
       {status.kind === "erreur" && (
         <p
           role="alert"
-          className="mx-auto mb-6 w-full max-w-md rounded-2xl border border-line bg-paper-dim px-5 py-3 text-center text-sm"
+          className="mx-auto mb-6 w-full max-w-md rounded-2xl border border-line bg-paper px-5 py-3 text-center text-sm"
         >
           Import impossible. {status.message}
         </p>

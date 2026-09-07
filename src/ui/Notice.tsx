@@ -58,7 +58,7 @@ export function EmptyNote({
   children?: ReactNode;
 }) {
   return (
-    <div className="rounded-[var(--radius-panel)] border border-line border-dashed px-5 py-8 text-center">
+    <div className="rounded-[var(--radius-panel)] border border-line bg-paper border-dashed px-5 py-8 text-center">
       <p className="text-[15px] text-ink">{titre}</p>
       {children && (
         <p className="mx-auto mt-1.5 max-w-sm text-[13px] text-ink-soft leading-relaxed">

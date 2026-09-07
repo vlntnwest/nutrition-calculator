@@ -42,3 +42,22 @@ export function legPaceSPerKm(
     ? leg.durationS / (distanceM / 1000)
     : null;
 }
+
+/**
+ * Ce qui se verse dans une flasque.
+ *
+ * Une flasque contient une boisson, et rien d'autre : une poudre à diluer, un
+ * liquide à couper. Un gel, une barre, une gaufre se mangent — les proposer
+ * au remplissage laissait poser une barre dans cinq cents millilitres, et le
+ * calcul comptait alors ses glucides comme bus. Une capsule ne s'y verse pas
+ * davantage : elle s'avale avec l'eau, elle ne la prépare pas.
+ *
+ * La liste nomme ce qui passe plutôt que ce qui ne passe pas, sur les
+ * libellés du noyau (`src/format/produit.ts`) : un format nouveau ne se
+ * retrouve pas versable par oubli.
+ */
+const VERSABLES = new Set(["drink"]);
+
+export function estVersable(formatLabel: string): boolean {
+  return VERSABLES.has(formatLabel);
+}

@@ -1,6 +1,12 @@
 import { expect, test } from "vitest";
 import type { Roadbook } from "@/app/plans/getRoadbook";
-import { bound, excessive, legPaceSPerKm, startOf } from "./format";
+import {
+  bound,
+  estVersable,
+  excessive,
+  legPaceSPerKm,
+  startOf,
+} from "./format";
 
 type Leg = Roadbook["legs"][number];
 
@@ -14,6 +20,8 @@ function leg(patch: Partial<Leg>): Leg {
     ascentM: 420,
     descentM: 180,
     durationS: 4500,
+    stopS: null,
+    elapsedS: 4500,
     servings: [],
     fills: [],
     opensLiquidSpan: true,
@@ -53,4 +61,11 @@ test("seul un dépassement franc du besoin se signale", () => {
   expect(excessive(80, 75)).toBe(false);
   expect(excessive(110, 75)).toBe(true);
   expect(excessive(50, 0)).toBe(false);
+});
+
+test("une flasque ne prend que ce qui se dilue", () => {
+  expect(estVersable("drink")).toBe(true);
+  expect(estVersable("bar")).toBe(false);
+  expect(estVersable("gel")).toBe(false);
+  expect(estVersable("capsule")).toBe(false);
 });

@@ -43,7 +43,7 @@ export function PlanRail({
   const segment = useSelectedLayoutSegment();
 
   return (
-    <aside className="hidden w-56 shrink-0 flex-col border-line border-r bg-paper-dim lg:flex">
+    <aside className="hidden w-56 shrink-0 flex-col border-line border-r bg-paper lg:flex">
       <Link
         href="/"
         className="flex items-center px-5 py-5 font-mono text-ink-soft text-xs uppercase tracking-[0.2em] transition-colors hover:text-ink"

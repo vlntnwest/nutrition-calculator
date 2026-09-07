@@ -100,3 +100,65 @@ export function paceLabel(
 
   return `${String(report.minutes).padStart(2, "0")}:${String(report.seconds).padStart(2, "0")}`;
 }
+
+/**
+ * L'heure de départ, telle qu'elle se saisit : deux cases de deux chiffres.
+ * Même forme que le chrono, amputée des secondes — personne ne part à 5 h 30
+ * et 12 secondes.
+ */
+export type HM = { h: string; m: string };
+
+export const HM_VIDE: HM = { h: "", m: "" };
+
+/** `"05:30"` → `{ h: "05", m: "30" }`. Absent rend deux cases vides. */
+export function toHM(heure: string | undefined): HM {
+  if (heure === undefined || heure === "") return HM_VIDE;
+
+  const [h = "", m = ""] = heure.split(":");
+
+  return { h: h.padStart(2, "0"), m: m.padStart(2, "0") };
+}
+
+/**
+ * `{ h: "5", m: "30" }` → `"05:30"`, la forme que la colonne `time` attend.
+ *
+ * Deux cases vides rendent `undefined` : c'est ainsi que l'heure s'efface.
+ * Une seule case remplie ne suffit pas — « 5 h » sans minutes se lit 5 h 00,
+ * mais « à la minute 30 » de quelle heure ? Une heure incomplète est une
+ * heure fausse, et le champ la refuse plutôt que de la deviner.
+ */
+export function fromHM({ h, m }: HM): string | undefined {
+  if (h.trim() === "" && m.trim() === "") return undefined;
+
+  const heures = Number(h);
+  const minutes = m.trim() === "" ? 0 : Number(m);
+
+  if (!Number.isInteger(heures) || heures < 0 || heures > 23) return undefined;
+  if (!Number.isInteger(minutes) || minutes < 0 || minutes > 59) {
+    return undefined;
+  }
+
+  return `${String(heures).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+/**
+ * L'heure qu'il sera après `elapsedS` de course, partie à `startTime`.
+ *
+ * `05:30` et 8 h 18 de course rendent `13 h 48`. Un ultra franchit minuit :
+ * le jour de report s'écrit alors derrière l'heure, `05 h 12 +1 j`, faute de
+ * quoi deux passages du roadbook porteraient la même heure sans qu'on sache
+ * lequel vient en premier.
+ */
+export function clockLabel(startTime: string, elapsedS: number): string {
+  const [h, m] = startTime.split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return "";
+
+  const minutes = h * 60 + m + Math.round(elapsedS / 60);
+  const jours = Math.floor(minutes / 1440);
+  const reste = ((minutes % 1440) + 1440) % 1440;
+  const heure = `${String(Math.floor(reste / 60)).padStart(2, "0")} h ${String(
+    reste % 60,
+  ).padStart(2, "0")}`;
+
+  return jours === 0 ? heure : `${heure} +${jours} j`;
+}

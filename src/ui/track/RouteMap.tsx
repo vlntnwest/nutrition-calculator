@@ -4,8 +4,8 @@ import "leaflet/dist/leaflet.css";
 import {
   DomEvent,
   type LatLngBounds,
+  type Map as LeafletMap,
   latLngBounds,
-  type Map,
   type Path,
 } from "leaflet";
 import {
@@ -28,7 +28,23 @@ import {
 import { FrameIcon, MinusIcon, PlusIcon } from "@/ui/icons";
 import { nearestPointIndex } from "./nearestPoint";
 
-const MARGE: [number, number] = [18, 18];
+const MARGE = 18;
+
+/**
+ * Ce qui recouvre la carte sans faire partie d'elle, en pixels.
+ *
+ * La carte occupe tout le cadre et l'interface se pose dessus : la feuille de
+ * papier qui monte du bas au pouce, la colonne de saisie à gauche sur grand
+ * écran. Sans ces réserves, le recadrage centre la trace sur le cadre entier,
+ * donc à moitié sous ce qui la couvre. Les réserves la ramènent au centre de
+ * ce qui se voit vraiment.
+ */
+export type Reserves = {
+  top?: number;
+  right?: number;
+  bottom?: number;
+  left?: number;
+};
 
 /**
  * Le recadrage ne s'anime pas, et coupe ce qui vole encore.
@@ -37,9 +53,23 @@ const MARGE: [number, number] = [18, 18];
  * il fallait cliquer deux fois sur « recadrer » pour revenir vraiment sur la
  * trace. Et c'est plus juste ainsi : on demande à revenir, on revient.
  */
-function cadrer(map: Map, bounds: LatLngBounds) {
+function cadrer(map: LeafletMap, bounds: LatLngBounds, reserves: Reserves) {
   map.stop();
-  map.fitBounds(bounds, { padding: MARGE, animate: false });
+  map.fitBounds(bounds, { ...bornage(reserves), animate: false });
+}
+
+/** Les réserves en options de `fitBounds`. Un point Leaflet se lit `[x, y]`. */
+function bornage(reserves: Reserves): {
+  paddingTopLeft: [number, number];
+  paddingBottomRight: [number, number];
+} {
+  return {
+    paddingTopLeft: [MARGE + (reserves.left ?? 0), MARGE + (reserves.top ?? 0)],
+    paddingBottomRight: [
+      MARGE + (reserves.right ?? 0),
+      MARGE + (reserves.bottom ?? 0),
+    ],
+  };
 }
 
 /**
@@ -57,9 +87,11 @@ function cadrer(map: Map, bounds: LatLngBounds) {
  */
 function FitBoundsOnResize({
   bounds,
+  reserves,
   deplacee,
 }: {
   bounds: LatLngBounds;
+  reserves: Reserves;
   deplacee: RefObject<boolean>;
 }) {
   const map = useMap();
@@ -69,13 +101,13 @@ function FitBoundsOnResize({
     const observateur = new ResizeObserver(() => {
       if (conteneur.clientWidth === 0 || conteneur.clientHeight === 0) return;
       map.invalidateSize();
-      if (!deplacee.current) cadrer(map, bounds);
+      if (!deplacee.current) cadrer(map, bounds, reserves);
     });
 
     observateur.observe(conteneur);
 
     return () => observateur.disconnect();
-  }, [map, bounds, deplacee]);
+  }, [map, bounds, reserves, deplacee]);
 
   return null;
 }
@@ -126,9 +158,11 @@ function MarqueDeplacement({ deplacee }: { deplacee: RefObject<boolean> }) {
  */
 function ControlesCarte({
   bounds,
+  reserves,
   deplacee,
 }: {
   bounds: LatLngBounds;
+  reserves: Reserves;
   deplacee: RefObject<boolean>;
 }) {
   const map = useMap();
@@ -168,7 +202,7 @@ function ControlesCarte({
         libelle="Recadrer sur la trace"
         onClick={() => {
           deplacee.current = false;
-          cadrer(map, bounds);
+          cadrer(map, bounds, reserves);
         }}
       >
         <FrameIcon className="size-4" />
@@ -296,6 +330,8 @@ export default function RouteMap({
   onHoverIndex,
   stations,
   onPick,
+  onChoisirStation,
+  reserves = {},
   deplacable = false,
 }: {
   points: { lat: number; lon: number }[];
@@ -305,6 +341,10 @@ export default function RouteMap({
   stations?: { rank: number; index: number }[];
   /** Poser une borne au clic sur le tracé. Rend l'indice du point visé. */
   onPick?: (index: number) => void;
+  /** Rappelle le rang du ravito cliqué. Absent, le marqueur reste inerte. */
+  onChoisirStation?: (rank: number) => void;
+  /** Ce que l'interface pose par-dessus la carte. Voir `Reserves`. */
+  reserves?: Reserves;
   /** Glisser, zoomer, recadrer. Absent, la carte reste une image. */
   deplacable?: boolean;
 }) {
@@ -327,7 +367,7 @@ export default function RouteMap({
   return (
     <MapContainer
       bounds={bounds}
-      boundsOptions={{ padding: [18, 18] }}
+      boundsOptions={bornage(reserves)}
       dragging={deplacable}
       scrollWheelZoom={deplacable}
       doubleClickZoom={deplacable}
@@ -341,14 +381,26 @@ export default function RouteMap({
       // « recadrer » qui rattrape une vue égarée.
       inertia={false}
       zoomControl={false}
-      className={`h-full w-full ${onPick ? "[&_.leaflet-interactive]:cursor-crosshair" : ""}`}
+      // Le curseur en croix dit qu'on pose une borne, et il ne vaut donc que
+      // pour le tracé : sur la borne elle-même, où le clic ouvre une carte,
+      // c'est la main. La négation tient la cascade, deux règles de même
+      // portée s'y départageant autrement à l'ordre d'écriture.
+      className={`h-full w-full [&_.borne]:cursor-pointer ${onPick ? "[&_.leaflet-interactive:not(.borne)]:cursor-crosshair" : ""}`}
     >
       <AttributionSansPrefixe />
-      <FitBoundsOnResize bounds={bounds} deplacee={deplacee} />
+      <FitBoundsOnResize
+        bounds={bounds}
+        reserves={reserves}
+        deplacee={deplacee}
+      />
       {deplacable && (
         <>
           <MarqueDeplacement deplacee={deplacee} />
-          <ControlesCarte bounds={bounds} deplacee={deplacee} />
+          <ControlesCarte
+            bounds={bounds}
+            reserves={reserves}
+            deplacee={deplacee}
+          />
         </>
       )}
       <DamierArrivee id={idDamier} />
@@ -427,6 +479,11 @@ export default function RouteMap({
         }}
         interactive={false}
       />
+      {/* Le marqueur d'un ravito est sa poignée : le viser ouvre sa carte
+          plutôt que d'en poser un de plus par-dessus. Le disque se dessine
+          au-dessus du tracé, le navigateur lui donne donc le clic sans que
+          la ligne invisible qui pose les bornes ne le voie passer. Sans
+          `onChoisirStation` il reste inerte, comme sur la fiche d'import. */}
       {stations?.map((station) => {
         const point = points[station.index];
         if (!point) return null;
@@ -441,8 +498,17 @@ export default function RouteMap({
               weight: 2,
               fillColor: "var(--accent)",
               fillOpacity: 1,
+              className: onChoisirStation ? "borne" : undefined,
             }}
-            interactive={false}
+            interactive={onChoisirStation != null}
+            eventHandlers={
+              onChoisirStation && {
+                click: (event) => {
+                  DomEvent.stop(event.originalEvent);
+                  onChoisirStation(station.rank);
+                },
+              }
+            }
           >
             <Tooltip permanent direction="center" className="borne-ravito">
               {station.rank}

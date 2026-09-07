@@ -219,12 +219,37 @@ ne résout pas les variables CSS ; le miroir y est signalé en commentaire.
 ### Secondary
 
 L'échelle de pente du profil altimétrique (`src/ui/track/slopeColor.ts`), cinq
-paliers plutôt qu'un dégradé continu, prise dans la famille de l'accent et jamais
-dans un jaune-vert-rouge d'emprunt.
+paliers plutôt qu'un dégradé continu, et cinq gris plutôt qu'une teinte : une
+échelle de valeur dit une intensité mieux qu'une échelle de teinte, elle survit à
+l'impression en noir et blanc, et elle laisse l'accent libre de porter l'allure
+par-dessus le même graphique.
 
-- `{colors.accent-tint}` jusqu'à 5 %, `{colors.pente-moyenne}` jusqu'à 7 %,
-  `{colors.accent}` jusqu'à 10 %, `{colors.pente-forte}` jusqu'à 15 %,
-  `{colors.accent-dark}` au-delà. Le signe de la pente n'y change rien.
+- `#d9d9d9` jusqu'à 5 %, `#a8a8a8` jusqu'à 7 %, `#787878` jusqu'à 10 %, `#454545`
+  jusqu'à 15 %, `#000000` au-delà. Le signe de la pente n'y change rien.
+
+**La rampe d'allure** (`src/ui/track/paceColor.ts`), seule couleur hors palette du
+produit et seule rampe continue : `#2b7bd6` bleu pour le plus lent, `#3fa9c9`,
+`#3f9e4d` vert au passage de l'allure moyenne, `#e0a91b`, `#e2721f`, `#cf3b1f`
+rouge pour le plus rapide. Elle est empruntée telle quelle au PacePro des montres
+de course, où les coureurs la lisent déjà : lui substituer une échelle de gris
+demanderait de la réapprendre, pour dire la même chose moins vite. Elle est
+continue là où l'échelle de pente est à paliers, parce qu'une allure n'a pas de
+seuil naturel où basculer.
+
+Elle se pose sur la **hauteur**, pas sur le tronçon : un `CanvasGradient` vertical, et
+le trait prend la couleur de l'endroit où il passe, contremarches comprises, qui se
+dégradent donc sur toute leur longueur. Il est tendu entre les deux allures extrêmes
+de la trace affichée, jamais entre les bords du cadre : l'axe se donne 8 % de marge
+au-dessus et en dessous des données, et le tronçon le plus rapide n'atteindrait donc
+jamais le rouge. Les deux moitiés du dégradé s'étirent séparément pour que le vert
+tombe pile sur l'allure moyenne : elle n'est presque jamais à mi-hauteur, la queue
+lente étant plus longue que la rapide, et un dégradé régulier mettrait le vert là où
+rien ne se passe. Le revers assumé est qu'une couleur ne se compare pas d'un plan à
+l'autre : elle double l'axe gradué qu'elle longe, elle ne le remplace pas.
+
+Les deux échelles de couleur ne coexistent jamais sur un même cadre : sous une bande
+d'allure, le relief rend sa couleur de pente et redevient une silhouette
+`line-strong` d'un pixel, et la légende ne montre que la rampe.
 
 ### Tertiary
 
@@ -585,6 +610,20 @@ de 12px cerné de blanc, partagé avec la carte par le seul indice du point.
 La légende de pente est écrite : cinq pastilles de 6px suivies de leur seuil en
 toutes lettres, en 9px `ink-soft`. Elle n'est pas décorative, elle est la condition
 pour que la couleur ait le droit d'exister ici.
+
+**Les marches d'allure.** La prop `paceBand` superpose au relief l'allure de chaque
+tronçon, en marches d'escalier de 2px teintées par la rampe d'allure, sur une échelle
+qui lui est propre : le relief est ce que la course impose, l'allure ce que le coureur
+y répond. Deux points par tronçon, la contremarche qui les joint traversant la rampe.
+L'allure prend l'axe de gauche et renvoie l'altitude à
+droite, parce qu'à gauche se lit ce qu'on est venu régler ; son échelle est inversée,
+le rapide en haut du cadre. Un pointillé `line-strong` d'un pixel y pose l'allure
+moyenne : sans lui, les marches disent laquelle est la plus lente mais pas laquelle est
+en retard. La règle du signe tient parce que l'allure est d'abord une hauteur sur un axe
+gradué en minutes par kilomètre, que le pointillé nomme la moyenne, et que l'infobulle
+écrit l'allure du tronçon survolé sous son altitude : la teinte accélère la lecture,
+elle ne la porte pas. C'est le seul endroit du produit qui montre en direct ce que le
+chrono, la dérive et l'effort en montée font au parcours, avant tout enregistrement.
 
 ### RouteMap (composant signature)
 

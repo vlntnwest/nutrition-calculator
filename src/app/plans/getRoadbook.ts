@@ -56,6 +56,14 @@ export type RoadbookLeg = {
   ascentM: number;
   descentM: number;
   durationS: number;
+  /** L'arrêt prévu à la borne qui clôt le secteur. Nul s'il n'y en a pas. */
+  stopS: number | null;
+  /**
+   * Le temps écoulé depuis le départ à l'arrivée sur la borne : les durées de
+   * mouvement des secteurs parcourus, plus les arrêts déjà faits. L'arrêt de
+   * cette borne-ci n'y est pas — on arrive avant de s'arrêter.
+   */
+  elapsedS: number;
   servings: RoadbookServing[];
   fills: RoadbookFill[];
   /**
@@ -82,6 +90,8 @@ export type RoadbookLeg = {
 
 export type Roadbook = {
   legs: RoadbookLeg[];
+  /** L'heure de départ, `HH:MM`, ou nulle tant qu'elle n'est pas renseignée. */
+  startTime: string | null;
   /** Les produits retenus pour ce plan — de quoi poser ce que le calcul n'a
    * pas proposé. */
   catalogue: {
@@ -89,6 +99,8 @@ export type Roadbook = {
     name: string;
     brandName: string | null;
     divisibleBy: number;
+    /** Le libellé du noyau — `gel`, `bar`, `drink`. Traduit à l'affichage. */
+    formatLabel: string;
   }[];
   /** Les contenants déclarés, pour retoucher les remplissages. */
   flasks: { rank: number; volumeMl: number; onlyWater: boolean }[];
@@ -201,6 +213,7 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
         name: productSnapshots.name,
         brandName: productSnapshots.brandName,
         divisibleBy: productSnapshots.divisibleBy,
+        formatLabel: productSnapshots.formatLabel,
       })
       .from(productSnapshots)
       .where(eq(productSnapshots.planId, accessId))
@@ -239,7 +252,14 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
     stationRows.map((a) => [a.positionM, a.providesLiquid]),
   );
   const nomAu = new Map(stationRows.map((a) => [a.positionM, a.name]));
+  const arretAu = new Map(
+    stationRows.map((a) => [a.positionM, a.stopDurationS]),
+  );
   const consigneAu = new Map(overrideRows.map((o) => [o.endPositionM, o]));
+
+  // Le temps de course accumulé au fil des secteurs : le mouvement de chacun,
+  // puis l'arrêt de la borne qui le clôt, qui compte pour le suivant.
+  let ecoule = 0;
 
   const legsOut = legRows.map((leg, i) => {
     const rations = byLeg(servingRows, leg.rank);
@@ -256,6 +276,14 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
     const cible = imposed.get(boundOf(leg.endPositionM)) ?? targets;
     const needG = (cible.carbsGH * leg.durationS) / 3600;
     const needFluidMl = (cible.fluidMlH * leg.durationS) / 3600;
+    const stopS =
+      leg.endPositionM === null
+        ? null
+        : (arretAu.get(leg.endPositionM) ?? null);
+
+    ecoule += leg.durationS;
+    const elapsedS = ecoule;
+    ecoule += stopS ?? 0;
 
     return {
       rank: leg.rank,
@@ -268,6 +296,8 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
       ascentM: leg.ascentM,
       descentM: leg.descentM,
       durationS: leg.durationS,
+      stopS,
+      elapsedS,
       servings: rations.map((s) => ({
         productSnapshotId: s.productSnapshotId,
         name: s.name,
@@ -308,6 +338,9 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
 
   return {
     legs: legsOut,
+    // La colonne `time` de Postgres rend `HH:MM:SS` ; le roadbook n'affiche
+    // que les heures et les minutes.
+    startTime: settings.startTime?.slice(0, 5) ?? null,
     catalogue,
     flasks: flaskRows.map((f) => ({
       rank: f.rank,

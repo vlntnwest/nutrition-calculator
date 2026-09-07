@@ -195,7 +195,7 @@ export function RoadbookEditor({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6">
         <div className="mx-auto flex max-w-4xl flex-col gap-4">
           {roadbook.warnings.length > 0 && (
             <div className={`flex flex-col gap-2 ${vieux}`}>

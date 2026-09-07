@@ -24,15 +24,46 @@ export default function Page() {
 
   async function read(file: File) {
     setStatus({ kind: "lecture" });
-    if (!file.name.endsWith(".gpx")) {
+    // L'extension sans égard à la casse : les exports d'ordinateur écrivent
+    // parfois `.GPX`, et le sélecteur du téléphone rend le nom tel quel.
+    if (!file.name.toLowerCase().endsWith(".gpx")) {
       setStatus({
         kind: "erreur",
         message: "Le fichier doit être un fichier GPX",
       });
       return;
     }
+
+    // La lecture à part de l'analyse : sur un téléphone, le fichier choisi
+    // dans un stockage en ligne n'est parfois qu'une référence que le
+    // système n'arrive pas à livrer, et l'erreur du navigateur ne dit rien
+    // de ce qu'il faut faire.
+    let xml: string;
+
     try {
-      const analysis = await analyzeGpx(await file.text());
+      xml = await file.text();
+    } catch {
+      setStatus({
+        kind: "erreur",
+        message:
+          "Le fichier n'a pas pu être lu. S'il est rangé dans un stockage en ligne, téléchargez-le d'abord sur l'appareil.",
+      });
+
+      return;
+    }
+
+    if (xml.trim() === "") {
+      setStatus({
+        kind: "erreur",
+        message:
+          "Le fichier est arrivé vide. S'il est rangé dans un stockage en ligne, téléchargez-le d'abord sur l'appareil.",
+      });
+
+      return;
+    }
+
+    try {
+      const analysis = await analyzeGpx(xml);
       setStatus({ kind: "vide" });
       setParsed({
         fileName: file.name,

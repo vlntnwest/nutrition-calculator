@@ -221,7 +221,7 @@ export function ProductsForm({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6">
         {gardes.length === 0 ? (
           <EmptyNote titre="Rien ne correspond">
             Aucun produit du catalogue ne passe ces filtres. Retirez-en un, ou

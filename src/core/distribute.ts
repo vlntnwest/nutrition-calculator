@@ -155,11 +155,21 @@ export function timeAt(points: TimedPoint[], distanceM: number): number {
   // elle, mais `timeAt` est exportée et `timeSegments` l'appelle directement.
   if (points.length < 2) return points[0]?.t ?? 0;
 
-  let i = 1;
-  while (i < points.length - 1 && points[i].d < distanceM) i++;
+  // Le premier point dont la distance atteint celle cherchée, par dichotomie :
+  // `d` est croissante. Un balayage linéaire donnait le même indice, mais il
+  // reprenait à zéro à chaque appel, et l'écran Course rappelle `timeSegments`
+  // sur toute la trace à chaque déplacement d'un curseur.
+  let lo = 1;
+  let hi = points.length - 1;
 
-  const a = points[i - 1];
-  const b = points[i];
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (points[mid].d < distanceM) lo = mid + 1;
+    else hi = mid;
+  }
+
+  const a = points[lo - 1];
+  const b = points[lo];
   if (b.d === a.d) return a.t;
 
   return a.t + ((distanceM - a.d) / (b.d - a.d)) * (b.t - a.t);

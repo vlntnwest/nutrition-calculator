@@ -171,6 +171,25 @@ test("timeAt interpole entre deux points", () => {
   expect(timeAt(points, 505)).toBeCloseTo(0.505 * 3600, 3);
 });
 
+/**
+ * La dichotomie doit trouver le même intervalle que le balayage qu'elle
+ * remplace, y compris hors des bornes et sur deux points confondus, que
+ * `distributeTime` laisse passer avec le même `t`.
+ */
+test("timeAt encadre comme un balayage, doublons compris", () => {
+  const points: TimedPoint[] = [
+    { d: 0, ele: 0, t: 0 },
+    { d: 500, ele: 0, t: 100 },
+    { d: 500, ele: 0, t: 100 },
+    { d: 1000, ele: 0, t: 300 },
+  ];
+
+  expect(timeAt(points, 500)).toBe(100);
+  expect(timeAt(points, 750)).toBeCloseTo(200, 6);
+  expect(timeAt(points, -50)).toBeCloseTo(-10, 6);
+  expect(timeAt(points, 5000)).toBeCloseTo(1900, 6);
+});
+
 function segment(startM: number, endM: number, ascentM: number): Segment {
   return {
     startM,

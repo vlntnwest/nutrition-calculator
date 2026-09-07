@@ -58,6 +58,36 @@ export function rowAt(positionM: number, rang: number): Row {
 }
 
 /**
+ * Pose un ravito neuf à sa place sur la trace, et rend la liste avec son rang.
+ *
+ * L'ordre de la colonne est celui de la course, jamais celui de la saisie :
+ * une borne posée au kilomètre 8 après une borne au kilomètre 30 prenait le
+ * dernier rang, et la pastille du profil, numérotée sur ce rang, désignait
+ * alors la mauvaise carte. L'enregistrement trie déjà, mais trop tard pour
+ * l'œil.
+ *
+ * Une ligne dont la distance n'est pas encore lisible — une saisie en cours,
+ * un champ vidé — reste où elle est, en queue : on ne peut pas la ranger sur
+ * une valeur qu'elle n'a pas, et la déplacer sous les doigts serait pire.
+ */
+export function insererTriee(
+  lignes: Row[],
+  positionM: number,
+): { lignes: Row[]; rang: number } {
+  const suivante = lignes.findIndex((ligne) => {
+    const valeur = toNumber(ligne.km);
+
+    return valeur !== undefined && valeur * 1000 > positionM;
+  });
+  const rang = (suivante === -1 ? lignes.length : suivante) + 1;
+
+  const suite = [...lignes];
+  suite.splice(rang - 1, 0, rowAt(positionM, rang));
+
+  return { lignes: suite, rang };
+}
+
+/**
  * Les ravitos saisis, rangés sur l'abscisse, ou le premier reproche à faire.
  *
  * Le contrôle d'écartement se fait ici plutôt qu'au serveur : celui-ci refuse

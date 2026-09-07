@@ -15,9 +15,10 @@ import { FlaskIcon, PlusIcon, TrashIcon } from "@/ui/icons";
 import { Val } from "@/ui/Measure";
 import { EmptyNote, ErrorNote, Notice } from "@/ui/Notice";
 import { Panel, PanelHead, Rule } from "@/ui/Panel";
+import { Reglage } from "@/ui/Reglage";
 import { SaveBar } from "@/ui/SaveBar";
-import { Slider } from "@/ui/Slider";
 import { usePlanSave } from "../save";
+import { paliersBoisson, paliersGlucides, paliersSodium } from "./paliers";
 import { synthetiser } from "./synthese";
 
 /** `id` n'est jamais écrit : il tient l'identité d'une ligne pendant la saisie. */
@@ -108,7 +109,7 @@ export function TargetsForm({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-6 sm:px-6">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 lg:flex-row lg:items-start">
           <div className="flex min-w-0 flex-1 flex-col gap-5">
             <div>
@@ -128,16 +129,29 @@ export function TargetsForm({
               </p>
             </div>
 
+            {/* Le poids ouvre l'écran : c'est de lui que la suggestion
+                descend, et le sodium se lit juste après ce dont il dépend.
+                Il se tape, quand les trois cibles se choisissent — un poids
+                n'a pas de crans. */}
+            <Panel className="p-4">
+              <MeasureField
+                label="Poids du coureur"
+                unite="kg"
+                value={masse}
+                placeholder="70"
+                largeur="w-40"
+                onChange={(event) => change(() => setMasse(event.target.value))}
+                hint="La suggestion de boisson et la dépense en dépendent."
+              />
+            </Panel>
+
             <Panel className="p-4">
               <div className="flex flex-col gap-5">
-                <Slider
+                <Reglage
                   label="Glucides"
                   unite="g/h"
                   value={cibles.carbsGH}
-                  min={0}
-                  max={120}
-                  step={5}
-                  bornes={["0", "120 g/h"]}
+                  crans={paliersGlucides(cibles.carbsGH)}
                   onChange={(carbsGH) =>
                     change(() => setCibles({ ...cibles, carbsGH }))
                   }
@@ -159,14 +173,11 @@ export function TargetsForm({
 
                 <Rule />
 
-                <Slider
+                <Reglage
                   label="Boisson"
                   unite="mL/h"
                   value={cibles.fluidMlH}
-                  min={100}
-                  max={1200}
-                  step={25}
-                  bornes={["100", "1 200 mL/h"]}
+                  crans={paliersBoisson(cibles.fluidMlH)}
                   onChange={(fluidMlH) =>
                     change(() => setCibles({ ...cibles, fluidMlH }))
                   }
@@ -181,32 +192,17 @@ export function TargetsForm({
 
                 <Rule />
 
-                <Slider
+                <Reglage
                   label="Sodium dans la boisson"
                   unite="mg/L"
                   value={cibles.sodiumMgL}
-                  min={0}
-                  max={1600}
-                  step={50}
-                  bornes={["0", "1 600 mg/L"]}
+                  crans={paliersSodium(cibles.sodiumMgL)}
                   aide="La concentration de la boisson préparée, par litre bu."
                   onChange={(sodiumMgL) =>
                     change(() => setCibles({ ...cibles, sodiumMgL }))
                   }
                 />
               </div>
-            </Panel>
-
-            <Panel className="p-4">
-              <MeasureField
-                label="Poids du coureur"
-                unite="kg"
-                value={masse}
-                placeholder="70"
-                largeur="w-40"
-                onChange={(event) => change(() => setMasse(event.target.value))}
-                hint="La suggestion de boisson et la dépense en dépendent."
-              />
             </Panel>
 
             <Panel>
@@ -346,16 +342,6 @@ export function TargetsForm({
             </aside>
           )}
         </div>
-      </div>
-
-      <div className="shrink-0">
-        <SaveBar
-          pending={pending}
-          modifie={modifie}
-          enregistre={enregistre && !modifie}
-          consequence="le roadbook devra être recalculé"
-          onSave={submit}
-        />
       </div>
     </div>
   );

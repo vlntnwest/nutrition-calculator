@@ -1,10 +1,13 @@
 import { expect, test } from "vitest";
 import {
   baseChronoHMS,
+  clockLabel,
   digitsOnly,
+  fromHM,
   type HMS,
   paceLabel,
   raceNameFromFileName,
+  toHM,
   toHMS,
   toSecondsHMS,
 } from "./clock";
@@ -80,4 +83,26 @@ test("le chrono de base se relit bien à 6 min/km", () => {
       "06:00",
     );
   }
+});
+
+test("une heure de départ se relit en deux cases et se réécrit en `HH:MM`", () => {
+  expect(toHM("05:30")).toEqual({ h: "05", m: "30" });
+  expect(toHM(undefined)).toEqual({ h: "", m: "" });
+  expect(fromHM({ h: "5", m: "30" })).toBe("05:30");
+  expect(fromHM({ h: "", m: "" })).toBeUndefined();
+});
+
+test("une heure de départ hors du cadran est refusée, pas ramenée", () => {
+  expect(fromHM({ h: "24", m: "00" })).toBeUndefined();
+  expect(fromHM({ h: "12", m: "60" })).toBeUndefined();
+});
+
+test("l'heure de passage suit le temps écoulé depuis le départ", () => {
+  expect(clockLabel("05:30", 8 * 3600 + 18 * 60)).toBe("13 h 48");
+  expect(clockLabel("05:30", 0)).toBe("05 h 30");
+});
+
+test("un passage après minuit porte son jour de report", () => {
+  expect(clockLabel("22:00", 9 * 3600)).toBe("07 h 00 +1 j");
+  expect(clockLabel("22:00", 30 * 3600)).toBe("04 h 00 +2 j");
 });

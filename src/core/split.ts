@@ -1,15 +1,19 @@
 import simplify from "simplify-js";
-import type { Mark, ResolvedPoint, Segment, SegmentType } from "./type";
+import type { Mark, ProfilePoint, Segment, SegmentType } from "./type";
 
 /**
  * Découpe la trace en tronçons de pente homogène.
+ *
+ * Ne lit que la distance et l'altitude : le profil stocké avec le plan suffit,
+ * là où la trace complète n'est disponible qu'à l'import. C'est ce qui permet
+ * à l'écran Course de retrouver les mêmes tronçons que le roadbook.
  *
  * @param toleranceM Écart maximal du profil à la corde du tronçon.
  * @param minLengthM Plancher sous lequel un tronçon est fusionné.
  * @param flatMax Pente en deçà de laquelle un tronçon est « roulant ».
  */
 export function splitBySlope(
-  points: ResolvedPoint[],
+  points: ProfilePoint[],
   toleranceM = 30,
   minLengthM = 300,
   flatMax = 0.02,
@@ -31,7 +35,7 @@ export function splitBySlope(
   return segments;
 }
 
-function slope(points: ResolvedPoint[], a: number, b: number): number {
+function slope(points: ProfilePoint[], a: number, b: number): number {
   const distance = points[b].d - points[a].d;
 
   return distance > 0 ? (points[b].ele - points[a].ele) / distance : 0;
@@ -45,7 +49,7 @@ function slope(points: ResolvedPoint[], a: number, b: number): number {
  * l'ordre de parcours.
  */
 function mergeShortSegments(
-  points: ResolvedPoint[],
+  points: ProfilePoint[],
   bounds: number[],
   minLengthM: number,
 ): void {
@@ -69,7 +73,7 @@ function mergeShortSegments(
 
 /** Quelle borne retirer pour fusionner le tronçon `k` avec son meilleur voisin. */
 function boundaryToDrop(
-  points: ResolvedPoint[],
+  points: ProfilePoint[],
   bounds: number[],
   k: number,
 ): number {
@@ -84,7 +88,7 @@ function boundaryToDrop(
 }
 
 function buildSegment(
-  points: ResolvedPoint[],
+  points: ProfilePoint[],
   a: number,
   b: number,
   flatMax: number,

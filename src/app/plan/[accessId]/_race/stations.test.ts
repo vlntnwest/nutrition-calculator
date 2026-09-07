@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import {
+  insererTriee,
   pointIndexAt,
   type Row,
   rowAt,
@@ -106,4 +107,42 @@ test("le point de trace le plus proche d'une abscisse", () => {
 
   expect(pointIndexAt(points, 9800)).toBe(2);
   expect(pointIndexAt(points, 400)).toBe(0);
+});
+
+test("une borne posée avant les autres prend leur rang, pas le dernier", () => {
+  const { lignes, rang } = insererTriee(
+    [
+      { ...LIGNE, id: "a", km: "12" },
+      { ...LIGNE, id: "b", km: "30" },
+    ],
+    8000,
+  );
+
+  expect(rang).toBe(1);
+  expect(lignes.map((l) => l.km)).toEqual(["8,0", "12", "30"]);
+});
+
+test("une borne posée après toutes les autres reste en queue", () => {
+  const { lignes, rang } = insererTriee(
+    [
+      { ...LIGNE, id: "a", km: "12" },
+      { ...LIGNE, id: "b", km: "30" },
+    ],
+    40000,
+  );
+
+  expect(rang).toBe(3);
+  expect(lignes.map((l) => l.km)).toEqual(["12", "30", "40,0"]);
+});
+
+test("une ligne dont la distance n'est pas lisible ne se fait pas ranger", () => {
+  const { lignes } = insererTriee(
+    [
+      { ...LIGNE, id: "a", km: "12" },
+      { ...LIGNE, id: "b", km: "" },
+    ],
+    8000,
+  );
+
+  expect(lignes.map((l) => l.km)).toEqual(["8,0", "12", ""]);
 });

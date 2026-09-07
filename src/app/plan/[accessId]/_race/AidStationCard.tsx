@@ -27,8 +27,11 @@ export function AidStationCard({
   onRetirer: () => void;
 }) {
   return (
+    // L'identifiant est la cible du marqueur : cliquer une borne sur le
+    // profil ou sur la carte amène ici.
     <article
-      className={`overflow-hidden rounded-[var(--radius-panel)] border transition-colors ${
+      id={`ravito-${rang}`}
+      className={`scroll-mt-2 overflow-hidden rounded-[var(--radius-panel)] border transition-colors ${
         ouverte
           ? "border-accent bg-paper"
           : "border-line bg-paper hover:border-line-strong"

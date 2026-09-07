@@ -10,7 +10,7 @@ type Taille = "sm" | "md";
 
 const TONS: Record<Ton, string> = {
   encre:
-    "bg-ink text-paper hover:bg-ink/85 active:bg-ink disabled:bg-ink/40 shadow-[0_1px_2px_#13131326]",
+    "bg-ink text-paper hover:bg-ink/85 active:bg-ink disabled:bg-ink/40 disabled:shadow-none shadow-[0_1px_2px_#13131326]",
   contour:
     "border border-line-strong bg-paper text-ink hover:bg-paper-dim active:bg-paper-sunk",
   discret: "text-ink-soft hover:text-ink hover:bg-paper-dim",

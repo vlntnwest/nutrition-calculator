@@ -8,6 +8,12 @@ import { CheckIcon, SpinnerIcon } from "./icons";
  * Le pied d'un écran de saisie, posé hors de la zone qui défile : sur un
  * formulaire long, le bouton reste sous le pouce sans qu'on ait à remonter
  * le chercher, et rien ne passe derrière lui.
+ *
+ * Le bouton prend toute la largeur au pouce, où la colonne est étroite et où
+ * la cible se vise au doigt, et retrouve sa largeur propre à partir de `sm` :
+ * étiré sur un catalogue en quatre colonnes, « Enregistrer » cessait d'être
+ * un bouton pour devenir une bande. L'état passe alors à sa gauche, sur la
+ * même ligne.
  */
 export function SaveBar({
   pending,
@@ -29,28 +35,31 @@ export function SaveBar({
   children?: ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-3 border-line border-t bg-veil px-4 py-3 sm:px-6">
+    <div className="flex flex-col gap-2 bg-paper py-3 sm:flex-row sm:items-center sm:gap-3 lg:bg-transparent">
       {children}
-      <div className="ml-auto flex items-center gap-3">
-        <p className="text-[12px] text-ink-soft">
-          {pending ? (
-            <span className="flex items-center gap-1.5">
-              <SpinnerIcon className="size-3.5" />
-              Enregistrement
-            </span>
-          ) : enregistre ? (
-            <span className="flex items-center gap-1.5 text-ink">
-              <CheckIcon className="size-3.5" />
-              Enregistré
-            </span>
-          ) : (
-            modifie && consequence
-          )}
-        </p>
-        <Button ton="encre" disabled={pending || !modifie} onClick={onSave}>
-          Enregistrer
-        </Button>
-      </div>
+      <Button
+        ton="encre"
+        disabled={pending || !modifie}
+        onClick={onSave}
+        className="order-1 w-full sm:order-2 sm:w-auto"
+      >
+        Enregistrer
+      </Button>
+      <p className="order-2 text-center text-[12px] text-ink sm:order-1 sm:ml-auto sm:text-right">
+        {pending ? (
+          <span className="flex items-center justify-center gap-1.5 sm:justify-end">
+            <SpinnerIcon className="size-3.5" />
+            Enregistrement
+          </span>
+        ) : enregistre ? (
+          <span className="flex items-center justify-center gap-1.5 sm:justify-end">
+            <CheckIcon className="size-3.5" />
+            Enregistré
+          </span>
+        ) : (
+          modifie && consequence
+        )}
+      </p>
     </div>
   );
 }

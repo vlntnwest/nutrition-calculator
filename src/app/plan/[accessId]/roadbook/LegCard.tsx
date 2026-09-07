@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Roadbook } from "@/app/plans/getRoadbook";
 import type { RoadbookEdit } from "@/app/plans/saveRoadbook";
-import { type HMS, toHMS, toSecondsHMS } from "@/format/clock";
+import { clockLabel, type HMS, toHMS, toSecondsHMS } from "@/format/clock";
 import { duree, ecart, entier, quantite, toNumber } from "@/format/number";
 import { formatFr, nomProduit } from "@/format/produit";
 import { Button, IconButton } from "@/ui/Button";
@@ -16,7 +16,7 @@ import { Notice } from "@/ui/Notice";
 import { Rule } from "@/ui/Panel";
 import { Select } from "@/ui/Select";
 import { Stepper } from "@/ui/Stepper";
-import { bound, excessive } from "./format";
+import { bound, estVersable, excessive } from "./format";
 import { warningText } from "./warnings";
 
 type Edit = RoadbookEdit["servings"][number];
@@ -74,6 +74,13 @@ export function LegCard({
   const absents = roadbook.catalogue.filter(
     (p) => !rations.some((r) => r.productSnapshotId === p.id),
   );
+  // Ce qui se verse dans une flasque se dilue : une poudre, une pastille,
+  // un liquide à couper. Une barre ne se verse pas, et le noyau qui reçoit
+  // un solide en remplissage compte ses glucides comme bus. La liste ne
+  // propose donc que ce qui se boit.
+  const versables = roadbook.catalogue.filter((p) =>
+    estVersable(p.formatLabel),
+  );
   const ration = (id: string) =>
     leg.servings.find((s) => s.productSnapshotId === id);
   const trop = excessive(leg.supply.carbsG, leg.needG);
@@ -84,12 +91,21 @@ export function LegCard({
       className="scroll-mt-4 overflow-hidden rounded-[var(--radius-panel)] border border-line bg-paper"
     >
       <header className="px-4 pt-3.5 pb-3">
-        <div className="flex items-baseline justify-between gap-3">
+        <div className="flex items-start justify-between gap-3">
           <h3 className="font-semibold text-[15px] text-ink">
             Secteur {leg.rank}
           </h3>
-          <p className="shrink-0 font-mono text-[13px] text-ink">
-            {duree(leg.durationS)}
+          {/* Un chrono nu en haut d'une carte se lit comme une heure de la
+              journée. Il porte donc ce qu'il est : la durée de mouvement de
+              ce seul secteur, arrêts exclus (ADR 010). Ce qui se lit vraiment
+              comme une heure est la ligne d'en dessous, et elle le dit. */}
+          <p className="shrink-0 text-right">
+            <span className="block font-mono text-[13px] text-ink">
+              {duree(leg.durationS)}
+            </span>
+            <span className="block text-[11px] text-ink-faint">
+              de mouvement
+            </span>
           </p>
         </div>
         <p className="mt-0.5 text-[12px] text-ink-soft">
@@ -105,6 +121,35 @@ export function LegCard({
             +{entier(leg.ascentM)} m / −{entier(leg.descentM)} m
           </span>
         </p>
+        {/* L'heure de passage quand la course a une heure de départ, le temps
+            écoulé sinon : dans les deux cas, où l'on en est.
+ 
+            Sur le premier secteur et sans heure de départ, le temps écoulé
+            est la durée du secteur : la répéter en dessous n'apprend rien.
+            L'heure de passage, elle, vaut dès le premier — c'est un nombre
+            que la durée ne donne pas. */}
+        <Releve
+          className="mt-1 text-[12px]"
+          items={[
+            roadbook.startTime ? (
+              <>
+                passage vers{" "}
+                <Val>{clockLabel(roadbook.startTime, leg.elapsedS)}</Val>
+              </>
+            ) : (
+              leg.rank > 1 && (
+                <>
+                  <Val>{duree(leg.elapsedS)}</Val> depuis le départ
+                </>
+              )
+            ),
+            leg.stopS !== null && (
+              <>
+                <Val>{duree(leg.stopS)}</Val> d'arrêt
+              </>
+            ),
+          ]}
+        />
       </header>
 
       <div className="flex flex-wrap items-center gap-2 px-4 pb-3">
@@ -361,7 +406,7 @@ export function LegCard({
                     <option value="vide">rien</option>
                     <option value="eau">eau claire</option>
                     {!flask.onlyWater &&
-                      roadbook.catalogue.map((p) => (
+                      versables.map((p) => (
                         <option key={p.id} value={p.id}>
                           {`${p.brandName ?? ""} ${nomProduit(p.name)}`.trim()}
                         </option>
@@ -396,6 +441,14 @@ export function LegCard({
             dernier ravito qui donnait de l'eau.
           </p>
         )}
+        {leg.opensLiquidSpan &&
+          versables.length === 0 &&
+          roadbook.flasks.some((f) => !f.onlyWater) && (
+            <p className="mt-2 text-[12px] text-ink-faint leading-relaxed">
+              Rien à diluer dans le sac : les flasques ne prennent que de l'eau
+              claire tant qu'aucune boisson n'est retenue sur l'écran Produits.
+            </p>
+          )}
       </div>
 
       {leg.warnings.length > 0 && (

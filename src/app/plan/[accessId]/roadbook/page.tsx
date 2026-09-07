@@ -6,6 +6,7 @@ import { EmptyNote } from "@/ui/Notice";
 import { calculable, destinations } from "../_shell/destinations";
 import { planOf, roadbookOf } from "../plan";
 import { CalculeDepuis, ComputeButton } from "./ComputeButton";
+import { RaceStart } from "./RaceStart";
 import { RoadbookEditor } from "./RoadbookEditor";
 
 /** Écran 7 — le calcul, et ce qu'il donne. */
@@ -61,6 +62,23 @@ export default async function Page(
           pret={calculable(plan)}
         />
       </div>
+
+      {/* Le départ vit ici : c'est de lui que descendent toutes les heures
+          de passage du roadbook. Il n'a de sens qu'une fois le plan calculé
+          — sans secteurs, il n'y a aucune heure à traduire. */}
+      {roadbook !== null && (
+        <div className="mx-auto w-full max-w-4xl shrink-0 px-4 pb-4 sm:px-6">
+          <RaceStart
+            accessId={accessId}
+            raceDate={plan.settings.raceDate}
+            startTime={plan.settings.startTime}
+            arriveeS={roadbook.legs.reduce(
+              (total, leg) => total + leg.durationS + (leg.stopS ?? 0),
+              0,
+            )}
+          />
+        </div>
+      )}
 
       {roadbook === null ? (
         <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 sm:px-6">
