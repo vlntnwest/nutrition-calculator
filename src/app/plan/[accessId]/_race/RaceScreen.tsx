@@ -20,8 +20,10 @@ import { AidStationCard } from "./AidStationCard";
 import { paceBand, paceSegments } from "./pacing";
 import {
   insererTriee,
+  kmTexte,
   pointIndexAt,
   type Row,
+  rangees,
   survivingOverrides,
   toRow,
   toStations,
@@ -49,7 +51,7 @@ export function RaceScreen({
   plan: NewPlan;
 }) {
   const [chrono, setChrono] = useState<HMS>(toHMS(plan.settings.targetTimeS));
-  const [climb, setClimb] = useState(plan.settings.climbIntensity ?? 0.25);
+  const [climb, setClimb] = useState(plan.settings.climbIntensity ?? 0.5);
   const [split, setSplit] = useState(plan.settings.paceSplit ?? 0);
   const [lignes, setLignes] = useState<Row[]>(plan.aidStations.map(toRow));
   const [ouverte, setOuverte] = useState<number | null>(null);
@@ -113,6 +115,28 @@ export function RaceScreen({
     setOuverte(rang - 1);
     setDepliee(true);
     setVise(rang);
+  }
+
+  /**
+   * Glisse une borne le long du profil : sa position suit le doigt, et la
+   * colonne se range derrière elle comme à la frappe dans sa carte — voir
+   * `rangees`. Pas de `setVise` ici : `ouvrir` a déjà amené la carte sous les
+   * yeux au premier contact, la faire défiler à chaque frame giflerait la
+   * colonne.
+   */
+  function deplacer(rang: number, positionM: number) {
+    const cible = lignes[rang - 1];
+    if (!cible) return;
+
+    change(() => {
+      const suite = rangees(
+        lignes.map((l) =>
+          l.id === cible.id ? { ...l, km: kmTexte(positionM) } : l,
+        ),
+      );
+      setLignes(suite);
+      setOuverte(suite.findIndex((l) => l.id === cible.id));
+    });
   }
 
   // Les bornes lisibles alimentent à la fois le profil et la carte : une
@@ -296,7 +320,7 @@ export function RaceScreen({
                   min={0}
                   max={1}
                   step={0.05}
-                  bornes={["les côtes coûtent cher", "les côtes passent bien"]}
+                  bornes={["plus difficile", "plus facile"]}
                   onChange={(value) => change(() => setClimb(value))}
                 />
                 <Slider
@@ -353,6 +377,7 @@ export function RaceScreen({
                 marks={bornes}
                 onPick={poser}
                 onChoisirMark={ouvrir}
+                onDeplacerMark={deplacer}
                 paceBand={bande}
               />
             </div>
@@ -384,17 +409,21 @@ export function RaceScreen({
                   ouverte={ouverte === i}
                   onOuvrir={() => setOuverte(ouverte === i ? null : i)}
                   onChange={(patch) =>
-                    change(() =>
-                      setLignes(
-                        lignes.map((l, j) =>
-                          j === i ? { ...l, ...patch } : l,
+                    change(() => {
+                      // Retoucher la position doit ranger la borne à sa place,
+                      // pas la laisser à son rang de saisie : voir `rangees`.
+                      const suite = rangees(
+                        lignes.map((l) =>
+                          l.id === ligne.id ? { ...l, ...patch } : l,
                         ),
-                      ),
-                    )
+                      );
+                      setLignes(suite);
+                      setOuverte(suite.findIndex((l) => l.id === ligne.id));
+                    })
                   }
                   onRetirer={() =>
                     change(() => {
-                      setLignes(lignes.filter((_, j) => j !== i));
+                      setLignes(lignes.filter((l) => l.id !== ligne.id));
                       setOuverte(null);
                     })
                   }
@@ -420,18 +449,18 @@ export function RaceScreen({
               m de dénivelé de cette trace.
             </span>
           </p> */}
+        </div>
 
+        <div className="shrink-0 border-line border-t bg-paper px-4 sm:px-6">
           {reproche && <ErrorNote>{reproche}</ErrorNote>}
           {erreur && <ErrorNote>{erreur}</ErrorNote>}
-          <div className="shrink-0">
-            <SaveBar
-              pending={pending}
-              modifie={modifie}
-              enregistre={enregistre && !modifie}
-              consequence="le roadbook devra être recalculé"
-              onSave={submit}
-            />
-          </div>
+          <SaveBar
+            pending={pending}
+            modifie={modifie}
+            enregistre={enregistre && !modifie}
+            consequence="le roadbook devra être recalculé"
+            onSave={submit}
+          />
         </div>
       </section>
     </div>

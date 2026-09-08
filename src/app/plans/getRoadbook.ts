@@ -80,6 +80,8 @@ export type RoadbookLeg = {
    * volumes des flasques, qui partent pleines : on emporte souvent plus.
    */
   needFluidMl: number;
+  /** Le sodium visé sur le secteur : la concentration ciblée fois `needFluidMl`. */
+  needSodiumMg: number;
   /**
    * L'écart aux glucides visés, **signé** : un secteur peut passer sous son
    * besoin propre, la répartition se faisant sur toute la course.
@@ -92,8 +94,11 @@ export type Roadbook = {
   legs: RoadbookLeg[];
   /** L'heure de départ, `HH:MM`, ou nulle tant qu'elle n'est pas renseignée. */
   startTime: string | null;
-  /** Les produits retenus pour ce plan — de quoi poser ce que le calcul n'a
-   * pas proposé. */
+  /**
+   * Les produits retenus pour ce plan — de quoi poser ce que le calcul n'a
+   * pas proposé, et de quoi recalculer un apport à l'écran sans attendre
+   * l'enregistrement (voir `liveSupply`, côté Roadbook).
+   */
   catalogue: {
     id: string;
     name: string;
@@ -101,6 +106,11 @@ export type Roadbook = {
     divisibleBy: number;
     /** Le libellé du noyau — `gel`, `bar`, `drink`. Traduit à l'affichage. */
     formatLabel: string;
+    carbsG: number;
+    energyKcal: number;
+    sodiumMg: number;
+    fluidMl: number;
+    weightG: number;
   }[];
   /** Les contenants déclarés, pour retoucher les remplissages. */
   flasks: { rank: number; volumeMl: number; onlyWater: boolean }[];
@@ -214,6 +224,11 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
         brandName: productSnapshots.brandName,
         divisibleBy: productSnapshots.divisibleBy,
         formatLabel: productSnapshots.formatLabel,
+        carbsG: productSnapshots.carbsG,
+        energyKcal: productSnapshots.energyKcal,
+        sodiumMg: productSnapshots.sodiumMg,
+        fluidMl: productSnapshots.fluidMl,
+        weightG: productSnapshots.weightG,
       })
       .from(productSnapshots)
       .where(eq(productSnapshots.planId, accessId))
@@ -236,6 +251,7 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
       {
         carbsGH: o.carbsOverrideG_H ?? targets.carbsGH,
         fluidMlH: o.fluidOverrideMl_L ?? targets.fluidMlH,
+        sodiumMgL: o.sodiumOverrideMg_L ?? targets.sodiumMgL,
       },
     ]),
   );
@@ -276,6 +292,7 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
     const cible = imposed.get(boundOf(leg.endPositionM)) ?? targets;
     const needG = (cible.carbsGH * leg.durationS) / 3600;
     const needFluidMl = (cible.fluidMlH * leg.durationS) / 3600;
+    const needSodiumMg = (cible.sodiumMgL * needFluidMl) / 1000;
     const stopS =
       leg.endPositionM === null
         ? null
@@ -319,6 +336,7 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
       supply,
       needG,
       needFluidMl,
+      needSodiumMg,
       marginG: supply.carbsG - needG,
       warnings: warningRows
         .filter((w) => w.legRank === leg.rank)
@@ -341,7 +359,7 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
     // La colonne `time` de Postgres rend `HH:MM:SS` ; le roadbook n'affiche
     // que les heures et les minutes.
     startTime: settings.startTime?.slice(0, 5) ?? null,
-    catalogue,
+    catalogue: catalogue.map((p) => ({ ...p, fluidMl: p.fluidMl ?? 0 })),
     flasks: flaskRows.map((f) => ({
       rank: f.rank,
       volumeMl: f.volumeMl,

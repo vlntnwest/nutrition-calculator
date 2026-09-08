@@ -69,7 +69,7 @@ function Case({
   ref?: Ref<HTMLInputElement>;
 }) {
   return (
-    <label className="flex flex-1 flex-col items-center gap-1">
+    <label className="flex flex-col items-center gap-1">
       <input
         ref={ref}
         value={value}
@@ -77,8 +77,11 @@ function Case({
         inputMode="numeric"
         placeholder="00"
         aria-label={label}
-        className={`w-full rounded-[var(--radius-control)] border border-line bg-paper text-center font-mono text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-accent ${
-          taille === "sm" ? "py-1.5 text-base" : "py-2 text-lg"
+        // Une case tient deux chiffres, jamais la largeur qu'un parent lui
+        // cède : en `flex-1` elle s'étirait à la largeur de la colonne, un
+        // chrono ne se lit plus alors comme sur une montre.
+        className={`rounded-[var(--radius-control)] border border-line bg-paper text-center font-mono text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-accent ${
+          taille === "sm" ? "w-11 py-1.5 text-base" : "w-14 py-2 text-lg"
         }`}
       />
       {unite && (

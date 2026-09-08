@@ -20,15 +20,29 @@ export function pacingError(issue: PacingIssue, message: string): Error {
   return new Error(message, { cause: issue });
 }
 
+/** Les codes que `pacingError` pose, et les seuls que `pacingIssue` relit. */
+const PACING_CODES = new Set<PacingIssue["code"]>([
+  "stops-above-target",
+  "fixed-above-target",
+  "fixed-miss-target",
+]);
+
 /**
  * L'empêchement porté par une erreur, `null` si elle vient d'ailleurs — une
  * exception du runtime n'est pas un plan infaisable, et l'appelant doit
  * pouvoir la laisser passer.
+ *
+ * Le code se vérifie contre la liste connue, pas seulement sa présence : une
+ * erreur du pilote Postgres porte, elle aussi, un `code` (`23514`…), et le
+ * confondre avec un plan infaisable ferait dire n'importe quoi à l'écran.
  */
 export function pacingIssue(error: unknown): PacingIssue | null {
   const cause = error instanceof Error ? error.cause : null;
 
-  return typeof cause === "object" && cause !== null && "code" in cause
+  return typeof cause === "object" &&
+    cause !== null &&
+    "code" in cause &&
+    PACING_CODES.has(cause.code as PacingIssue["code"])
     ? (cause as PacingIssue)
     : null;
 }

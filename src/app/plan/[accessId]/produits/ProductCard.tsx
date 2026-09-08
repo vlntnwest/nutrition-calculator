@@ -77,10 +77,10 @@ export function ProductCard({
           type="button"
           onClick={onBasculer}
           aria-pressed={dansLeSac}
-          className={`inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border px-2.5 text-[12px] transition-colors ${
+          className={`inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border px-2.5 font-medium text-[12px] transition-colors ${
             dansLeSac
               ? "border-ink bg-ink text-paper"
-              : "border-line text-ink-soft hover:border-line-strong hover:text-ink"
+              : "border-line-strong text-ink hover:border-ink hover:bg-paper-dim"
           }`}
         >
           {dansLeSac ? (

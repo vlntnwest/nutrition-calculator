@@ -35,7 +35,7 @@ export function SaveBar({
   children?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-2 bg-paper py-3 sm:flex-row sm:items-center sm:gap-3 lg:bg-transparent">
+    <div className="flex flex-col gap-2 bg-paper py-3 sm:flex-row sm:items-center sm:gap-3">
       {children}
       <Button
         ton="encre"

@@ -2,6 +2,7 @@ import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { db, type Tx } from "@/db";
 import { aidStations } from "@/db/schema/aidStations";
 import { flasks } from "@/db/schema/flasks";
+import { formats } from "@/db/schema/formats";
 import { legOverrides } from "@/db/schema/legOverrides";
 import { legs } from "@/db/schema/legs";
 import { planSettings } from "@/db/schema/planSettings";
@@ -44,11 +45,17 @@ export type PlanPatch = Partial<Omit<NewPlan, "track" | "settings">> & {
  * sections ont bougé : les autres ne se réécrivent pas, une section refaite à
  * l'identique emportant par cascade des lignes que le calcul avait gardées.
  *
- * Régénérer reste la décision de l'appelant.
+ * Régénérer reste la décision de l'appelant — mais quand cette décision
+ * suit dans la même opération (`imposeOnLegs`), `tx` laisse l'appelant
+ * partager sa transaction : sans elle, une consigne qui rend le calcul
+ * infaisable s'écrivait quand même, secteurs effacés à l'appui, avant que le
+ * recalcul qui suit n'échoue à son tour. Le plan restait alors bloqué sur un
+ * roadbook vide, avec la consigne fautive déjà enregistrée.
  */
 export async function updatePlan(
   accessId: string,
   patch: PlanPatch,
+  tx?: Tx,
 ): Promise<void> {
   const current = await getPlan(accessId);
   if (!current) throw new PlanError(`Unknown plan: ${accessId}`);
@@ -62,6 +69,27 @@ export async function updatePlan(
     productCodes: patch.productCodes ?? current.productCodes,
   });
 
+  // Une boisson glucidique ne se porte que dans une flasque qui l'accepte :
+  // si plus aucune flasque n'en prend (ou qu'il n'y en a plus), la garder au
+  // sac n'aurait nulle part où aller. Elle en sort avec les flasques, sans
+  // que l'écran Produits n'ait à s'en soucier.
+  const aucuneFlasqueBoisson =
+    merged.flasks.length === 0 || merged.flasks.every((f) => f.onlyWater);
+  if (aucuneFlasqueBoisson && merged.productCodes.length > 0) {
+    const boissons = await db
+      .select({ codeSeed: products.codeSeed })
+      .from(products)
+      .innerJoin(formats, eq(products.formatId, formats.id))
+      .where(
+        and(
+          inArray(products.codeSeed, merged.productCodes),
+          eq(formats.label, "drink"),
+        ),
+      );
+    const enSac = new Set(boissons.map((b) => b.codeSeed));
+    merged.productCodes = merged.productCodes.filter((c) => !enSac.has(c));
+  }
+
   // Sur le plan entier, jamais sur le patch : déplacer un ravito peut faire
   // tomber à côté une consigne que le patch ne porte même pas.
   assertValid(merged);
@@ -69,7 +97,7 @@ export async function updatePlan(
   const garde = survives(current, merged);
   const bouge = changed(current, merged);
 
-  await db.transaction(async (tx) => {
+  const ecrire = async (tx: Tx) => {
     if (!garde) {
       // Les avertissements globaux portent `leg_rank` à null : aucune cascade
       // ne les emporte, d'où le premier `delete`. Les rations et remplissages
@@ -133,7 +161,9 @@ export async function updatePlan(
         expiresAt: sql`greatest(now(), ${merged.settings.raceDate ?? null}::timestamptz) + interval '6 months'`,
       })
       .where(eq(plans.accessId, accessId));
-  });
+  };
+
+  await (tx ? ecrire(tx) : db.transaction(ecrire));
 }
 
 /**

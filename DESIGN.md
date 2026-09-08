@@ -384,8 +384,10 @@ respirent en `px-4`, `sm:px-6`.
 **Deux colonnes quand l'écran le permet.** Course : la feuille de papier à gauche
 (`lg:w-[27rem]`, largeur fixe), la carte à droite en `flex-1`. Cibles : le
 formulaire en `flex-1`, une synthèse `lg:w-80` collante à `lg:top-6`. Roadbook : le
-profil collant en haut (`sticky top-0`), les secteurs qui défilent dessous, le pied
-d'enregistrement collant en bas.
+titre, le bouton Calculer et le départ défilent avec les secteurs — sur un petit
+écran, ils ne doivent pas retenir en permanence la place que la liste réclame —, le
+profil devient collant (`sticky top-0`) une fois qu'on a défilé jusqu'à lui, et le
+pied d'enregistrement reste collant en bas.
 
 **Le repli mobile de l'écran Course.** La carte passe en fond plein cadre
 (`absolute inset-0`, dans un contexte `isolate` que Leaflet impose), la feuille de
@@ -675,14 +677,17 @@ dès que la carte a été manœuvrée. Il écoute les gestes plutôt que leurs
 conséquences, `dragstart` et `zoomstart` sur la carte, et les deux boutons de zoom
 se marquent eux-mêmes ; « recadrer » est le seul geste qui le remet à zéro.
 
-### LegProfile, la bande d'allure (composant signature)
+### LegProfile, le profil du roadbook
 
-Sous le profil du roadbook, une bande découpée en secteurs, chacun large à
-proportion de sa distance et rempli à proportion de sa lenteur
-(`color-mix` entre `ink` et `paper-sunk`, de 10 % à 70 %, échelle centrée sur
-l'allure moyenne à plus ou moins vingt pour cent). Le remplissage n'est jamais seul
-à dire quoi que ce soit : l'allure est écrite dessous en Geist Mono 10px. Le secteur
-en cours de lecture prend un anneau accent d'un pixel en retrait.
+Reprend telle quelle la lecture de l'écran Course : `ElevationChart` avec sa prop
+`paceBand`, l'allure des secteurs superposée en dégradé sur le relief plutôt que
+répétée dans une bande à part. Les bornes de secteur sont les mêmes pastilles
+numérotées cliquables que sur Course (`marks`/`onChoisirMark`), et amènent la carte
+du secteur sous les yeux. Une ancienne bande dédiée, découpée en secteurs et
+sous-titrée de l'allure en Geist Mono 10px, existait avant elle : au pouce, ce texte
+descendait sous la taille lisible et la cible de clic sous la largeur qu'on vise
+juste. L'unification règle les deux du même geste, en plus de dire la même chose que
+Course avec le même vocabulaire.
 
 ### L'accueil, une autre composition
 

@@ -1,7 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import { nutritionPlan } from "@/core/nutrition";
 import type { NutritionPlan } from "@/core/type";
-import { db } from "@/db";
+import { db, type Tx } from "@/db";
 import { fill } from "@/db/schema/fill";
 import { legs } from "@/db/schema/legs";
 import { plans } from "@/db/schema/plans";
@@ -9,16 +9,22 @@ import { servings } from "@/db/schema/servings";
 import { warnings } from "@/db/schema/warnings";
 import { planInputs } from "./planInputs";
 
-/** Recalcule le plan et réécrit tout le côté droit du modèle. */
-export async function regeneratePlan(accessId: string): Promise<void> {
+/**
+ * Recalcule le plan et réécrit tout le côté droit du modèle.
+ *
+ * `tx` laisse un appelant qui vient d'écrire autre chose (`imposeOnLegs`)
+ * partager sa transaction : si le calcul se révèle infaisable, l'écriture
+ * qui précède doit tomber avec lui, pas rester seule en base.
+ */
+export async function regeneratePlan(accessId: string, tx?: Tx): Promise<void> {
   const { timed, stations, runner, targets, products, finishTargets } =
-    await planInputs(accessId);
+    await planInputs(accessId, tx);
 
   const plan = nutritionPlan(timed, stations, runner, targets, products, {
     finishTargets,
   });
 
-  await write(accessId, plan, { edited: false });
+  await write(accessId, plan, { edited: false }, tx);
 }
 
 /**
@@ -47,10 +53,11 @@ export async function write(
   accessId: string,
   plan: NutritionPlan,
   { edited }: { edited: boolean },
+  tx?: Tx,
 ): Promise<void> {
   const durations = integerDurations(plan);
 
-  await db.transaction(async (tx) => {
+  const ecrire = async (tx: Tx) => {
     // Les avertissements globaux portent `leg_rank` à null : aucune cascade ne
     // les emporte, d'où le premier `delete`.
     await tx.delete(warnings).where(eq(warnings.planId, accessId));
@@ -109,5 +116,7 @@ export async function write(
         editedAt: edited ? sql`now()` : null,
       })
       .where(eq(plans.accessId, accessId));
-  });
+  };
+
+  await (tx ? ecrire(tx) : db.transaction(ecrire));
 }

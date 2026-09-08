@@ -38,11 +38,12 @@ export function duree(secondes: number): string {
 }
 
 /**
- * L'écart aux glucides visés, signé et arrondi : `-12.4` → `−12 g`. Rend une
- * chaîne vide sous le gramme, où l'écart n'apprend rien.
+ * Un écart à un besoin, signé et arrondi : `-12.4` → `−12 g`. Rend une chaîne
+ * vide sous le seuil, où l'écart n'apprend rien — un gramme de glucides, mais
+ * plus pour le sodium ou l'eau, mesurés par centaines.
  */
-export function ecart(grammes: number): string {
-  if (Math.abs(grammes) < 1) return "";
+export function ecart(valeur: number, unite = "g", seuil = 1): string {
+  if (Math.abs(valeur) < seuil) return "";
 
-  return `${grammes > 0 ? "+" : "−"}${Math.round(Math.abs(grammes))} g`;
+  return `${valeur > 0 ? "+" : "−"}${Math.round(Math.abs(valeur))} ${unite}`;
 }

@@ -6,8 +6,9 @@ import type { Targets } from "@/core/type";
 import { formatPluriel } from "@/format/produit";
 import { Button } from "@/ui/Button";
 import { FilterChip, ToggleChip } from "@/ui/Chip";
-import { CloseIcon, SearchIcon } from "@/ui/icons";
+import { ChevronIcon, CloseIcon, SearchIcon } from "@/ui/icons";
 import { EmptyNote, ErrorNote } from "@/ui/Notice";
+import { Pagination } from "@/ui/Pagination";
 import { Rule } from "@/ui/Panel";
 import { SaveBar } from "@/ui/SaveBar";
 import { usePlanSave } from "../save";
@@ -21,6 +22,10 @@ import {
 } from "./filtres";
 import { ProductCard } from "./ProductCard";
 import { ProductSheet } from "./ProductSheet";
+
+/** Le nombre de fiches par page : un compte rond sur deux, trois et quatre
+ * colonnes, pour que la dernière ligne ne se retrouve jamais orpheline. */
+const PAR_PAGE = 24;
 
 /**
  * Écran Produits : le catalogue entier, et ce qu'on en retient pour cette
@@ -39,11 +44,18 @@ export function ProductsForm({
   cibles: Targets | undefined;
 }) {
   const [retenus, setRetenus] = useState(new Set(choisis));
-  const [filtres, setFiltres] = useState<Filtres>(FILTRES_VIDES);
+  const [filtres, setFiltresBrut] = useState<Filtres>(FILTRES_VIDES);
   const [ouvert, setOuvert] = useState<string | null>(null);
   const [filtresOuverts, setFiltresOuverts] = useState(false);
   const [modifie, setModifie] = useState(false);
+  const [page, setPage] = useState(1);
   const { pending, erreur, enregistre, save, reprise } = usePlanSave(accessId);
+
+  /** Un filtre qui bouge rouvre toujours sur la première page. */
+  function setFiltres(suite: Filtres) {
+    setFiltresBrut(suite);
+    setPage(1);
+  }
 
   const formats = useMemo(
     () => [...new Set(catalogue.map((p) => p.formatLabel))].sort(),
@@ -56,6 +68,15 @@ export function ProductsForm({
   const gardes = useMemo(
     () => filtrer(catalogue, filtres),
     [catalogue, filtres],
+  );
+  // Une page qui n'existe plus une fois les filtres resserrés retombe sur la
+  // dernière valide, plutôt que de laisser la grille vide sous une pagination
+  // qui pointe dans le vide.
+  const pages = Math.max(1, Math.ceil(gardes.length / PAR_PAGE));
+  const pageActuelle = Math.min(page, pages);
+  const visibles = gardes.slice(
+    (pageActuelle - 1) * PAR_PAGE,
+    pageActuelle * PAR_PAGE,
   );
   const detaille = catalogue.find((p) => p.codeSeed === ouvert);
 
@@ -74,24 +95,15 @@ export function ProductsForm({
           <h2 className="font-semibold text-[22px] text-ink tracking-tight">
             Produits
           </h2>
+          {/* La taille du catalogue ne sert à rien au coureur : ce qu'il
+              vient vérifier ici, c'est ce qu'il a déjà retenu. Le compte de
+              résultats filtrés vit plus bas, à côté des filtres eux-mêmes. */}
           <p className="font-mono text-[12px] text-ink-soft">
-            {gardes.length < catalogue.length && (
-              <>
-                {gardes.length} sur {catalogue.length}
-                <span className="px-1.5 text-ink-faint">·</span>
-              </>
-            )}
-            {gardes.length === catalogue.length && (
-              <>
-                {catalogue.length} au catalogue
-                <span className="px-1.5 text-ink-faint">·</span>
-              </>
-            )}
             {retenus.size} dans le sac
           </p>
         </div>
 
-        <div className="mt-3 flex max-w-xl gap-2">
+        <div className="mt-3 flex max-w-xl items-center gap-2">
           <label className="flex flex-1 items-center gap-2 rounded-[var(--radius-control)] border border-line bg-paper px-3 transition-colors focus-within:border-accent">
             <SearchIcon className="size-4 shrink-0 text-ink-faint" />
             <input
@@ -115,8 +127,15 @@ export function ProductsForm({
           </label>
 
           <Button
+            ton="discret"
+            taille="sm"
             onClick={() => setFiltresOuverts(!filtresOuverts)}
             aria-expanded={filtresOuverts}
+            iconeFin={
+              <ChevronIcon
+                className={`size-3.5 text-ink-faint transition-transform ${filtresOuverts ? "rotate-180" : ""}`}
+              />
+            }
           >
             Filtrer
           </Button>
@@ -216,7 +235,7 @@ export function ProductsForm({
           )}
 
           <span className="ml-auto font-mono text-[11px] text-ink-soft">
-            {gardes.length} montré{gardes.length > 1 ? "s" : ""}
+            {gardes.length} résultat{gardes.length > 1 ? "s" : ""}
           </span>
         </div>
       </div>
@@ -228,17 +247,27 @@ export function ProductsForm({
             videz la recherche.
           </EmptyNote>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
-            {gardes.map((produit) => (
-              <ProductCard
-                key={produit.codeSeed}
-                produit={produit}
-                dansLeSac={retenus.has(produit.codeSeed)}
-                onOuvrir={() => setOuvert(produit.codeSeed)}
-                onBasculer={() => basculer(produit.codeSeed)}
+          <>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+              {visibles.map((produit) => (
+                <ProductCard
+                  key={produit.codeSeed}
+                  produit={produit}
+                  dansLeSac={retenus.has(produit.codeSeed)}
+                  onOuvrir={() => setOuvert(produit.codeSeed)}
+                  onBasculer={() => basculer(produit.codeSeed)}
+                />
+              ))}
+            </div>
+
+            <div className="mt-5">
+              <Pagination
+                page={pageActuelle}
+                total={pages}
+                onChange={setPage}
               />
-            ))}
-          </div>
+            </div>
+          </>
         )}
 
         {aucunFiltre(filtres) && (
@@ -250,7 +279,7 @@ export function ProductsForm({
         )}
       </div>
 
-      <div className="shrink-0 px-4 sm:px-6">
+      <div className="shrink-0 border-line border-t bg-paper px-4 sm:px-6">
         {erreur && <ErrorNote>{erreur}</ErrorNote>}
 
         <SaveBar

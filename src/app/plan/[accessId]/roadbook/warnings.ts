@@ -23,6 +23,19 @@ function pourcent(payload: unknown, cle: string): string | null {
   return part === null ? null : `${Math.round(part * 100)} %`;
 }
 
+/**
+ * Le ton d'une remarque : alerte par défaut, sauf pour celles qui décrivent un
+ * fonctionnement normal plutôt qu'un problème à corriger.
+ *
+ * `leg-drink-unused` existe pour ne plus faire disparaître ce cas en silence
+ * (ADR 007), pas pour le présenter comme une erreur : sur un plan avec une
+ * seule boisson, la plupart des secteurs n'en reçoivent aucune dose, et
+ * l'afficher en alerte à chaque fois ferait crier au loup partout.
+ */
+export function warningTon(code: string): "alerte" | "neutre" {
+  return code === "leg-drink-unused" ? "neutre" : "alerte";
+}
+
 export function warningText(code: string, payload: unknown): string {
   switch (code) {
     case "no-carb-product":

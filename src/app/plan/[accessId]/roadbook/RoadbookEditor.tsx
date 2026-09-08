@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { type ReactNode, useState, useTransition } from "react";
 import { imposeOnLegs, saveEditedRoadbook } from "@/app/plans/actions";
 import type { Roadbook } from "@/app/plans/getRoadbook";
 import type { LegOverride } from "@/app/plans/planInput";
@@ -9,7 +9,9 @@ import type { RoadbookEdit } from "@/app/plans/saveRoadbook";
 import type { ProfilePoint } from "@/core/type";
 import { duree } from "@/format/number";
 import { Button } from "@/ui/Button";
-import { ErrorNote, Notice } from "@/ui/Notice";
+import { Notice } from "@/ui/Notice";
+import { Toast } from "@/ui/Toast";
+import { liveTotal } from "./format";
 import { LegCard } from "./LegCard";
 import { LegProfile } from "./LegProfile";
 import { PackSummary } from "./PackSummary";
@@ -62,18 +64,22 @@ export function RoadbookEditor({
   roadbook,
   points,
   cibleGH,
+  entete,
 }: {
   accessId: string;
   roadbook: Roadbook;
   points: ProfilePoint[];
   /** La cible du plan, celle qui vaut pour un secteur sans consigne. */
   cibleGH: number;
+  /** Le titre, le bouton Calculer et le départ : ils défilent avec la liste
+   * plutôt que de rester fixes, pour rendre au pouce la place qu'ils
+   * prenaient en haut de l'écran. */
+  entete: ReactNode;
 }) {
   const router = useRouter();
   const [rendu, setRendu] = useState(roadbook);
   const [edit, setEdit] = useState(() => editOf(roadbook));
   const [sale, setSale] = useState(false);
-  const [actif, setActif] = useState<number | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [imposing, startImpose] = useTransition();
@@ -89,19 +95,48 @@ export function RoadbookEditor({
     setErreur(null);
   }
 
-  /** Pose une quantité sur un secteur. À zéro, la ration disparaît. */
+  /**
+   * Pose une quantité sur un secteur. À zéro, la ration disparaît.
+   *
+   * Une ration déjà présente se retouche sur place : la renvoyer en queue
+   * faisait sauter le produit en bas de la carte à chaque frappe du stepper.
+   *
+   * Un remplissage qui versait ce produit repasse à l'eau claire : la flasque
+   * reste emportée et préparée, elle ne peut pas se vider seule parce que sa
+   * boisson a quitté le secteur.
+   */
   function setServing(leg: number, snapshotId: string, quantity: number) {
     setSale(true);
     setEdit((e) => ({
       ...e,
       servings: e.servings.map((rations, l) => {
         if (l !== leg) return rations;
-        const reste = rations.filter((r) => r.productSnapshotId !== snapshotId);
+        if (quantity <= 0) {
+          return rations.filter((r) => r.productSnapshotId !== snapshotId);
+        }
 
-        return quantity > 0
-          ? [...reste, { productSnapshotId: snapshotId, quantity }]
-          : reste;
+        const presente = rations.some(
+          (r) => r.productSnapshotId === snapshotId,
+        );
+
+        return presente
+          ? rations.map((r) =>
+              r.productSnapshotId === snapshotId ? { ...r, quantity } : r,
+            )
+          : [...rations, { productSnapshotId: snapshotId, quantity }];
       }),
+      fills:
+        quantity > 0
+          ? e.fills
+          : e.fills.map((remplissages, l) =>
+              l === leg
+                ? remplissages.map((f) =>
+                    f.productSnapshotId === snapshotId
+                      ? { ...f, productSnapshotId: null }
+                      : f,
+                  )
+                : remplissages,
+            ),
     }));
   }
 
@@ -171,77 +206,92 @@ export function RoadbookEditor({
     });
   }
 
-  // Les chiffres agrégés viennent du serveur : tant qu'on n'a pas enregistré,
-  // ils décrivent l'état d'avant. On les estompe plutôt que de les resommer
-  // ici, ce serait rouvrir la divergence que getRoadbook évite. ADR 011.
+  // Les avertissements viennent du serveur et ne rejouent pas ici — seule la
+  // règle qui les déclenche compte, pas leur texte — donc tant qu'on n'a pas
+  // enregistré, ils décrivent l'état d'avant. On les estompe plutôt que de
+  // les refaire, ce serait rouvrir la divergence que getRoadbook évite (ADR
+  // 011). L'apport en glucides, lui, se resomme en direct dans `LegCard` et
+  // `PackSummary` : c'est une simple somme des retouches, pas un calcul du
+  // noyau, et rien n'y diverge.
   const vieux = sale ? "opacity-50" : "";
+  const total = liveTotal(
+    edit.servings,
+    roadbook.legs.map((leg) => leg.needG),
+    roadbook.catalogue,
+  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="sticky top-0 z-10 shrink-0 border-line border-b bg-veil backdrop-blur-xl">
-        <div className="mx-auto w-full max-w-4xl px-4 sm:px-6">
-          <LegProfile
-            points={points}
-            legs={roadbook.legs}
-            totalM={roadbook.totalM}
-            actif={actif}
-            onChoisir={(rank) => {
-              setActif(rank);
-              document
-                .getElementById(`secteur-${rank}`)
-                ?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }}
-          />
-        </div>
-      </div>
+      {/* L'en-tête et la date de départ défilent avec le reste : sur un
+          petit écran, ils ne doivent pas retenir en permanence la place que
+          les secteurs réclament. Le profil, lui, garde son collant une fois
+          qu'on a défilé jusqu'à lui. */}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        {entete}
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6">
-        <div className="mx-auto flex max-w-4xl flex-col gap-4">
-          {roadbook.warnings.length > 0 && (
-            <div className={`flex flex-col gap-2 ${vieux}`}>
-              {roadbook.warnings.map((w) => (
-                <Notice key={w.code} code={w.code}>
-                  {warningText(w.code, w.payload)}
-                </Notice>
-              ))}
-            </div>
-          )}
-
-          {roadbook.legs.map((leg, l) => (
-            <LegCard
-              key={leg.rank}
-              leg={leg}
-              rations={edit.servings[l]}
-              remplissages={edit.fills[l]}
-              roadbook={roadbook}
-              cibleGH={leg.imposedCarbsGH ?? cibleGH}
+        <div className="sticky top-0 z-10 border-line border-b bg-veil backdrop-blur-xl">
+          <div className="mx-auto w-full max-w-4xl px-4 sm:px-6">
+            <LegProfile
+              points={points}
+              legs={roadbook.legs}
               totalM={roadbook.totalM}
-              vieux={vieux}
-              imposing={imposing}
-              onServing={(id, quantity) => setServing(l, id, quantity)}
-              onFill={(rank, contenu) => setFill(l, rank, contenu)}
-              onImposerDuree={(durationS) =>
-                imposer(leg.rank, { durationS: durationS ?? undefined })
-              }
-              onImposerCible={(carbsGH) =>
-                imposer(leg.rank, {
-                  targets: carbsGH === null ? undefined : { carbsGH },
-                })
+              onChoisir={(rank) =>
+                document
+                  .getElementById(`secteur-${rank}`)
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" })
               }
             />
-          ))}
+          </div>
+        </div>
 
-          <PackSummary total={roadbook.total} />
+        <div className="px-4 py-4 sm:px-6">
+          <div className="mx-auto flex max-w-4xl flex-col gap-4">
+            {roadbook.warnings.length > 0 && (
+              <div className={`flex flex-col gap-2 ${vieux}`}>
+                {roadbook.warnings.map((w) => (
+                  <Notice key={w.code} code={w.code}>
+                    {warningText(w.code, w.payload)}
+                  </Notice>
+                ))}
+              </div>
+            )}
 
-          {erreur && <ErrorNote>{erreur}</ErrorNote>}
+            {roadbook.legs.map((leg, l) => (
+              <LegCard
+                key={leg.rank}
+                leg={leg}
+                rations={edit.servings[l]}
+                remplissages={edit.fills[l]}
+                roadbook={roadbook}
+                cibleGH={leg.imposedCarbsGH ?? cibleGH}
+                totalM={roadbook.totalM}
+                vieux={vieux}
+                imposing={imposing}
+                onServing={(id, quantity) => setServing(l, id, quantity)}
+                onFill={(rank, contenu) => setFill(l, rank, contenu)}
+                onImposerDuree={(durationS) =>
+                  imposer(leg.rank, { durationS: durationS ?? undefined })
+                }
+                onImposerCible={(carbsGH) =>
+                  imposer(leg.rank, {
+                    targets: carbsGH === null ? undefined : { carbsGH },
+                  })
+                }
+              />
+            ))}
+
+            <PackSummary total={total} />
+          </div>
         </div>
       </div>
+
+      {erreur && <Toast onFermer={() => setErreur(null)}>{erreur}</Toast>}
 
       <div className="sticky bottom-0 z-10 shrink-0 border-line border-t bg-paper">
         <div className="mx-auto flex w-full max-w-4xl items-center gap-3 px-4 py-3 sm:px-6">
           <p className="hidden min-w-0 flex-1 text-[12px] text-ink-soft sm:block">
             {sale
-              ? "Les chiffres datent du dernier enregistrement, ils se mettront à jour."
+              ? "Les avertissements affichés datent du dernier enregistrement."
               : `${roadbook.legs.length} secteurs, ${duree(roadbook.legs.reduce((t, l) => t + l.durationS, 0))} de mouvement`}
           </p>
           <Button

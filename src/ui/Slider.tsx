@@ -38,10 +38,15 @@ export function Slider({
         <label className="text-ink text-[13px]" htmlFor={id}>
           {label}
         </label>
-        <span className="font-mono text-[15px] text-ink">
-          {value.toLocaleString("fr-FR", { maximumFractionDigits: 2 })}
-          {unite && <span className="pl-1 text-ink-soft text-xs">{unite}</span>}
-        </span>
+        {/* Un réglage sans unité déclarée n'a pas de nombre qui parle : le
+            curseur se lit à sa position et aux bornes écrites dessous, pas à
+            une valeur brute (0,25) que rien ne traduit. */}
+        {unite && (
+          <span className="font-mono text-[15px] text-ink">
+            {value.toLocaleString("fr-FR", { maximumFractionDigits: 2 })}
+            <span className="pl-1 text-ink-soft text-xs">{unite}</span>
+          </span>
+        )}
       </div>
 
       <input

@@ -56,16 +56,16 @@ test.each([
 test.each([
   [undefined, 10000, undefined],
   [13500, 0, undefined],
-  [3600, 10000, "06:00"],
+  [3600, 10000, "6'00"],
   // 28,4 km en 3 h 45 : 475,4 s/km, arrondies à la seconde.
-  [13500, 28400, "07:55"],
+  [13500, 28400, "7'55"],
 ])("paceLabel(%o, %o) → %o", (targetTimeS, distanceM, attendu) => {
   expect(paceLabel(targetTimeS, distanceM)).toBe(attendu);
 });
 
 test("l'arrondi des secondes ne rend jamais une allure à 60 s", () => {
-  // 1 km en 59,6 s par kilomètre : le report doit donner 01:00, pas 00:60.
-  expect(paceLabel(60, 1000)).toBe("01:00");
+  // 1 km en 59,6 s par kilomètre : le report doit donner 1'00, pas 0'60.
+  expect(paceLabel(60, 1000)).toBe("1'00");
 });
 
 test.each<[number, HMS]>([
@@ -80,7 +80,7 @@ test.each<[number, HMS]>([
 test("le chrono de base se relit bien à 6 min/km", () => {
   for (const distanceM of [5000, 21097, 42195, 168000]) {
     expect(paceLabel(toSecondsHMS(baseChronoHMS(distanceM)), distanceM)).toBe(
-      "06:00",
+      "6'00",
     );
   }
 });

@@ -20,7 +20,7 @@ export const planSettings = snakeCase.table(
     targetTimeS: integer(),
     climbIntensity: numeric({ precision: 3, scale: 2, mode: "number" })
       .notNull()
-      .default(0.25),
+      .default(0.5),
     paceSplit: numeric({ precision: 3, scale: 2, mode: "number" })
       .notNull()
       .default(0),

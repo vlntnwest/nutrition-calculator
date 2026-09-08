@@ -9,7 +9,7 @@ import type {
   Targets,
   TimedPoint,
 } from "@/core/type";
-import { db } from "@/db";
+import { db, type Tx } from "@/db";
 import { aidStations } from "@/db/schema/aidStations";
 import { flasks } from "@/db/schema/flasks";
 import { legOverrides } from "@/db/schema/legOverrides";
@@ -40,9 +40,17 @@ export type PlanInputs = {
  *
  * L'identifiant d'un instantané sert de `Product.id` : les rations rendues par
  * le noyau se rattachent alors à leur ligne sans table de correspondance.
+ *
+ * `tx` laisse relire dans la transaction d'un appelant qui vient d'écrire
+ * juste avant (`imposeOnLegs`) : la connexion par défaut ne verrait pas une
+ * écriture pas encore validée, et régénérerait sur l'état d'avant plutôt que
+ * sur la consigne qu'on cherche justement à tester.
  */
-export async function planInputs(accessId: string): Promise<PlanInputs> {
-  const [row] = await db
+export async function planInputs(
+  accessId: string,
+  tx: Tx | typeof db = db,
+): Promise<PlanInputs> {
+  const [row] = await tx
     .select()
     .from(plans)
     .innerJoin(tracks, eq(tracks.planId, plans.accessId))
@@ -51,23 +59,28 @@ export async function planInputs(accessId: string): Promise<PlanInputs> {
 
   if (!row) throw new PlanError(`Unknown plan: ${accessId}`);
 
-  const [flaskRows, aidRows, snapshots, overrideRows] = await Promise.all([
-    db
-      .select()
-      .from(flasks)
-      .where(eq(flasks.planId, accessId))
-      .orderBy(flasks.rank),
-    db
-      .select()
-      .from(aidStations)
-      .where(eq(aidStations.planId, accessId))
-      .orderBy(aidStations.positionM),
-    db
-      .select()
-      .from(productSnapshots)
-      .where(eq(productSnapshots.planId, accessId)),
-    db.select().from(legOverrides).where(eq(legOverrides.planId, accessId)),
-  ]);
+  // Séquentiel, jamais `Promise.all` : une transaction tient une connexion
+  // unique, et la lui faire servir quatre requêtes de front la fait sortir
+  // de son tour plutôt que de les paralléliser — `pg` le tolère aujourd'hui
+  // en avertissant, plus demain.
+  const flaskRows = await tx
+    .select()
+    .from(flasks)
+    .where(eq(flasks.planId, accessId))
+    .orderBy(flasks.rank);
+  const aidRows = await tx
+    .select()
+    .from(aidStations)
+    .where(eq(aidStations.planId, accessId))
+    .orderBy(aidStations.positionM);
+  const snapshots = await tx
+    .select()
+    .from(productSnapshots)
+    .where(eq(productSnapshots.planId, accessId));
+  const overrideRows = await tx
+    .select()
+    .from(legOverrides)
+    .where(eq(legOverrides.planId, accessId));
 
   const settings = row.plan_settings;
 

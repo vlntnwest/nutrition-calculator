@@ -79,9 +79,12 @@ export function baseChronoHMS(distanceM: number): HMS {
 }
 
 /**
- * L'allure moyenne que suppose le chrono visé, en `mm:ss`. C'est la seule
+ * L'allure moyenne que suppose le chrono visé, en `m'ss`. C'est la seule
  * confirmation immédiate qu'un chrono tapé est plausible avant d'aller
  * jusqu'au roadbook. `undefined` tant qu'aucun chrono n'est renseigné.
+ *
+ * L'écriture reprend celle d'un chrono de course à pied — `9'27`, jamais
+ * `09:27` — les minutes ne se paddent donc pas, contrairement aux secondes.
  */
 export function paceLabel(
   targetTimeS: number | undefined,
@@ -98,7 +101,7 @@ export function paceLabel(
       ? { minutes: minutes + 1, seconds: 0 }
       : { minutes, seconds };
 
-  return `${String(report.minutes).padStart(2, "0")}:${String(report.seconds).padStart(2, "0")}`;
+  return `${report.minutes}'${String(report.seconds).padStart(2, "0")}`;
 }
 
 /**

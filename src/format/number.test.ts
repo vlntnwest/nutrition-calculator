@@ -50,3 +50,9 @@ test.each([
 ])("ecart(%o) → %o", (grammes, attendu) => {
   expect(ecart(grammes)).toBe(attendu);
 });
+
+test("ecart prend une unité et un seuil au besoin du sodium et de l'eau", () => {
+  expect(ecart(4, "mg", 5)).toBe("");
+  expect(ecart(120, "mg", 5)).toBe("+120 mg");
+  expect(ecart(-80, "mL", 5)).toBe("−80 mL");
+});

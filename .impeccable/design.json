@@ -59,13 +59,7 @@
         "role": "primary",
         "displayName": "Ocre brûlé",
         "canonical": "#c2410c",
-        "tonalRamp": [
-          "#3a1306",
-          "#7a2c08",
-          "#c2410c",
-          "#eeb27a",
-          "#fbe7d9"
-        ]
+        "tonalRamp": ["#3a1306", "#7a2c08", "#c2410c", "#eeb27a", "#fbe7d9"]
       },
       "accent-dark": {
         "role": "primary",
@@ -125,7 +119,10 @@
         "displayName": "Subtitle",
         "purpose": "L'en-tête d'un panneau."
       },
-      "body": { "displayName": "Body", "purpose": "La ligne courante d'une liste." },
+      "body": {
+        "displayName": "Body",
+        "purpose": "La ligne courante d'une liste."
+      },
       "body-small": {
         "displayName": "Body small",
         "purpose": "Les phrases explicatives sous un panneau."

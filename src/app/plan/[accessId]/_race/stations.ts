@@ -45,12 +45,17 @@ export function toRow(aid: NewAidStation): Row {
   };
 }
 
+/** Une abscisse lue au geste, au dixième de kilomètre : `9843,7` → `"9,8"`. */
+export function kmTexte(positionM: number): string {
+  return (Math.round(positionM) / 1000).toFixed(1).replace(".", ",");
+}
+
 /** Un ravito neuf, posé à une abscisse lue sur le profil ou sur la carte. */
 export function rowAt(positionM: number, rang: number): Row {
   return {
     id: nouvelId(),
     name: `Ravito ${rang}`,
-    km: (Math.round(positionM) / 1000).toFixed(1).replace(".", ","),
+    km: kmTexte(positionM),
     stopMin: "",
     eau: true,
     solide: true,
@@ -85,6 +90,27 @@ export function insererTriee(
   suite.splice(rang - 1, 0, rowAt(positionM, rang));
 
   return { lignes: suite, rang };
+}
+
+/**
+ * Range les bornes sur leur abscisse, comme `insererTriee` le fait à la pose.
+ *
+ * Sans ce tri, retoucher la position d'une borne à la main dans sa carte la
+ * laissait à son rang de saisie : la carte, la pastille du profil et son
+ * marqueur sur la carte auraient alors désigné trois bornes différentes. Une
+ * ligne dont la distance n'est pas encore lisible reste en queue, pour la
+ * même raison qu'à la pose.
+ */
+export function rangees(lignes: Row[]): Row[] {
+  return [...lignes].sort((a, b) => {
+    const va = toNumber(a.km);
+    const vb = toNumber(b.km);
+
+    if (va === undefined) return vb === undefined ? 0 : 1;
+    if (vb === undefined) return -1;
+
+    return va - vb;
+  });
 }
 
 /**

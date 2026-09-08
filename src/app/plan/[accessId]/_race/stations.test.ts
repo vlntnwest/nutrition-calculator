@@ -3,6 +3,7 @@ import {
   insererTriee,
   pointIndexAt,
   type Row,
+  rangees,
   rowAt,
   survivingOverrides,
   toRow,
@@ -145,4 +146,24 @@ test("une ligne dont la distance n'est pas lisible ne se fait pas ranger", () =>
   );
 
   expect(lignes.map((l) => l.km)).toEqual(["8,0", "12", ""]);
+});
+
+test("retoucher la position d'une borne la range à sa nouvelle place", () => {
+  const rangs = rangees([
+    { ...LIGNE, id: "a", km: "5" },
+    { ...LIGNE, id: "b", km: "30" },
+    { ...LIGNE, id: "c", km: "12" },
+  ]);
+
+  expect(rangs.map((l) => l.id)).toEqual(["a", "c", "b"]);
+});
+
+test("une ligne dont la distance n'est pas encore lisible reste en queue", () => {
+  const rangs = rangees([
+    { ...LIGNE, id: "a", km: "20" },
+    { ...LIGNE, id: "b", km: "" },
+    { ...LIGNE, id: "c", km: "5" },
+  ]);
+
+  expect(rangs.map((l) => l.id)).toEqual(["c", "a", "b"]);
 });

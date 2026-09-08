@@ -16,8 +16,8 @@ import { Notice } from "@/ui/Notice";
 import { Rule } from "@/ui/Panel";
 import { Select } from "@/ui/Select";
 import { Stepper } from "@/ui/Stepper";
-import { bound, estVersable, excessive } from "./format";
-import { warningText } from "./warnings";
+import { bound, estVersable, excessive, liveSupply } from "./format";
+import { warningText, warningTon } from "./warnings";
 
 type Edit = RoadbookEdit["servings"][number];
 
@@ -47,7 +47,7 @@ export function LegCard({
   /** La cible horaire qui s'applique ici, imposée ou héritée du plan. */
   cibleGH: number;
   totalM: number;
-  /** Les agrégats datent du dernier enregistrement. */
+  /** Les avertissements datent du dernier enregistrement. */
   vieux: string;
   onServing: (snapshotId: string, quantity: number) => void;
   onFill: (
@@ -81,9 +81,11 @@ export function LegCard({
   const versables = roadbook.catalogue.filter((p) =>
     estVersable(p.formatLabel),
   );
-  const ration = (id: string) =>
-    leg.servings.find((s) => s.productSnapshotId === id);
-  const trop = excessive(leg.supply.carbsG, leg.needG);
+  // Recalculé sur les retouches en cours : `leg.supply` date du dernier
+  // enregistrement, et doubler une gaufre doit se voir tout de suite plutôt
+  // que d'attendre la sauvegarde pour savoir où l'on en est.
+  const supply = liveSupply(rations, roadbook.catalogue);
+  const trop = excessive(supply.carbsG, leg.needG);
 
   return (
     <article
@@ -258,6 +260,54 @@ export function LegCard({
 
       <Rule />
 
+      <div className="border-line border-b bg-paper-dim px-4 py-3">
+        <p className="text-[14px] text-ink">
+          Apport <Val>{entier(supply.carbsG)}</Val> g de glucides{" "}
+          {ecart(supply.carbsG - leg.needG) !== "" && (
+            <span
+              className={trop ? "font-medium text-accent" : "text-ink-soft"}
+            >
+              ({ecart(supply.carbsG - leg.needG)}
+              {trop ? ", au-dessus du besoin" : ""})
+            </span>
+          )}
+        </p>
+        <Releve
+          className="mt-0.5"
+          items={[
+            <>
+              <Val>{entier(supply.energyKcal)}</Val> kcal
+            </>,
+            <>
+              <Val>{entier(supply.sodiumMg)}</Val> mg de sodium
+              {ecart(supply.sodiumMg - leg.needSodiumMg, "mg", 5) && (
+                <span className="text-ink-faint">
+                  {" "}
+                  ({ecart(supply.sodiumMg - leg.needSodiumMg, "mg", 5)})
+                </span>
+              )}
+            </>,
+            // Presque tous les secteurs solides n'apportent aucune boisson :
+            // l'écrire à zéro sur chacun n'apprend rien, seul « à boire »
+            // reste utile dans ce cas.
+            supply.fluidMl > 0 && (
+              <>
+                <Val>{entier(supply.fluidMl)}</Val> mL apportés
+                {ecart(supply.fluidMl - leg.needFluidMl, "mL", 5) && (
+                  <span className="text-ink-faint">
+                    {" "}
+                    ({ecart(supply.fluidMl - leg.needFluidMl, "mL", 5)})
+                  </span>
+                )}
+              </>
+            ),
+            <>
+              à boire <Val>{entier(leg.needFluidMl)}</Val> mL
+            </>,
+          ]}
+        />
+      </div>
+
       <ul className="flex flex-col">
         {rations.length === 0 && (
           <li className="px-4 py-3 text-[13px] text-ink-faint">
@@ -267,7 +317,6 @@ export function LegCard({
 
         {rations.map((r) => {
           const produit = produitDe(r.productSnapshotId);
-          const detail = ration(r.productSnapshotId);
           const pas = 1 / (produit?.divisibleBy ?? 1);
 
           return (
@@ -290,13 +339,13 @@ export function LegCard({
                 </p>
                 <p className="font-mono text-[11px] text-ink-soft">
                   {produit?.brandName}
-                  {detail && (
+                  {produit && (
                     <>
                       <span className="px-1.5 text-ink-faint">·</span>
-                      {formatFr(detail.formatLabel)}
+                      {formatFr(produit.formatLabel)}
                       <span className="px-1.5 text-ink-faint">·</span>
                       {quantite(
-                        Math.round(detail.carbsG * r.quantity * 10) / 10,
+                        Math.round(produit.carbsG * r.quantity * 10) / 10,
                       )}{" "}
                       g glucides
                     </>
@@ -339,37 +388,6 @@ export function LegCard({
           </span>
         </div>
       )}
-
-      <div className={`border-line border-t bg-paper-dim px-4 py-3 ${vieux}`}>
-        <p className="text-[14px] text-ink">
-          Apport <Val>{entier(leg.supply.carbsG)}</Val> g de glucides{" "}
-          {ecart(leg.marginG) !== "" && (
-            <span
-              className={trop ? "font-medium text-accent" : "text-ink-soft"}
-            >
-              ({ecart(leg.marginG)}
-              {trop ? ", au-dessus du besoin" : ""})
-            </span>
-          )}
-        </p>
-        <Releve
-          className="mt-0.5"
-          items={[
-            <>
-              <Val>{entier(leg.supply.energyKcal)}</Val> kcal
-            </>,
-            <>
-              <Val>{entier(leg.supply.sodiumMg)}</Val> mg de sodium
-            </>,
-            <>
-              <Val>{entier(leg.supply.fluidMl)}</Val> mL apportés
-            </>,
-            <>
-              à boire <Val>{entier(leg.needFluidMl)}</Val> mL
-            </>,
-          ]}
-        />
-      </div>
 
       <div className={`border-line border-t px-4 py-3 ${vieux}`}>
         {leg.opensLiquidSpan ? (
@@ -454,7 +472,7 @@ export function LegCard({
       {leg.warnings.length > 0 && (
         <div className={`flex flex-col gap-2 px-4 pb-3 ${vieux}`}>
           {leg.warnings.map((w) => (
-            <Notice key={w.code} code={w.code}>
+            <Notice key={w.code} code={w.code} ton={warningTon(w.code)}>
               {warningText(w.code, w.payload)}
             </Notice>
           ))}

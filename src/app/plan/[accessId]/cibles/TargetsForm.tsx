@@ -11,7 +11,7 @@ import { duree, entier, toNumber } from "@/format/number";
 import { Button, IconButton } from "@/ui/Button";
 import { ToggleChip } from "@/ui/Chip";
 import { Hint, MeasureField } from "@/ui/Field";
-import { FlaskIcon, PlusIcon, TrashIcon } from "@/ui/icons";
+import { PlusIcon, TrashIcon } from "@/ui/icons";
 import { Val } from "@/ui/Measure";
 import { EmptyNote, ErrorNote, Notice } from "@/ui/Notice";
 import { Panel, PanelHead, Rule } from "@/ui/Panel";
@@ -140,68 +140,94 @@ export function TargetsForm({
                 value={masse}
                 placeholder="70"
                 largeur="w-40"
-                onChange={(event) => change(() => setMasse(event.target.value))}
+                onChange={(event) => {
+                  const saisie = event.target.value;
+
+                  change(() => {
+                    setMasse(saisie);
+                    // Le débit de boisson suit le poids : 7 mL/kg/h, au cran
+                    // de 50 mL le plus proche. Retaper le poids remet donc à
+                    // jour la cible, même après une première sauvegarde.
+                    const kg = toNumber(saisie);
+                    if (kg !== undefined && kg > 0) {
+                      setCibles((c) => ({
+                        ...c,
+                        fluidMlH: Math.round((7 * kg) / 50) * 50,
+                      }));
+                    }
+                  });
+                }}
                 hint="La suggestion de boisson et la dépense en dépendent."
               />
             </Panel>
 
             <Panel className="p-4">
-              <div className="flex flex-col gap-5">
-                <Reglage
-                  label="Glucides"
-                  unite="g/h"
-                  value={cibles.carbsGH}
-                  crans={paliersGlucides(cibles.carbsGH)}
-                  onChange={(carbsGH) =>
-                    change(() => setCibles({ ...cibles, carbsGH }))
-                  }
-                />
-                {cibles.carbsGH > CARBS_GUIDE_G_H && (
-                  <Notice code="carbs-above-guide">
-                    Au-delà de <Val unite="g/h">{CARBS_GUIDE_G_H}</Val>, on sort
-                    des fourchettes publiées. Le calcul suivra quand même, et le
-                    signalera sur le roadbook.
-                  </Notice>
-                )}
-                {cibles.carbsGH > CARBS_SINGLE_SOURCE_MAX_G_H && (
-                  <Hint>
-                    Au-dessus de {CARBS_SINGLE_SOURCE_MAX_G_H} g/h, un seul type
-                    de sucre ne passe plus : il faut au moins un produit qui
-                    annonce un mélange glucose et fructose.
-                  </Hint>
-                )}
+              {/* Trois réglages indépendants, côte à côte dès que la largeur
+                  le permet : chacun se lit d'un regard, sans faire défiler
+                  les deux autres pour l'atteindre. `items-start` évite
+                  qu'une remarque conditionnelle, plus haute dans une
+                  colonne, n'étire les deux autres. */}
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:gap-0 lg:divide-x lg:divide-line">
+                <div className="flex flex-col gap-3 lg:flex-1 lg:px-5 lg:first:pl-0 lg:last:pr-0">
+                  <Reglage
+                    label="Glucides"
+                    unite="g/h"
+                    value={cibles.carbsGH}
+                    crans={paliersGlucides(cibles.carbsGH)}
+                    onChange={(carbsGH) =>
+                      change(() => setCibles({ ...cibles, carbsGH }))
+                    }
+                  />
+                  {cibles.carbsGH > CARBS_GUIDE_G_H && (
+                    <Notice code="carbs-above-guide">
+                      Au-delà de <Val unite="g/h">{CARBS_GUIDE_G_H}</Val>, on
+                      sort des fourchettes publiées. Le calcul suivra quand
+                      même, et le signalera sur le roadbook.
+                    </Notice>
+                  )}
+                  {cibles.carbsGH > CARBS_SINGLE_SOURCE_MAX_G_H && (
+                    <Hint>
+                      Au-dessus de {CARBS_SINGLE_SOURCE_MAX_G_H} g/h, un seul
+                      type de sucre ne passe plus : il faut au moins un produit
+                      qui annonce un mélange glucose et fructose.
+                    </Hint>
+                  )}
+                </div>
 
-                <Rule />
+                <Rule className="lg:hidden" />
 
-                <Reglage
-                  label="Boisson"
-                  unite="mL/h"
-                  value={cibles.fluidMlH}
-                  crans={paliersBoisson(cibles.fluidMlH)}
-                  onChange={(fluidMlH) =>
-                    change(() => setCibles({ ...cibles, fluidMlH }))
-                  }
-                />
-                {cibles.fluidMlH > FLUID_GUIDE_ML_H && (
-                  <Notice code="fluid-above-guide">
-                    Au-delà de{" "}
-                    <Val unite="mL/h">{entier(FLUID_GUIDE_ML_H)}</Val>, le
-                    risque n'est plus la déshydratation mais l'excès d'eau.
-                  </Notice>
-                )}
+                <div className="flex flex-col gap-3 lg:flex-1 lg:px-5 lg:first:pl-0 lg:last:pr-0">
+                  <Reglage
+                    label="Boisson"
+                    unite="mL/h"
+                    value={cibles.fluidMlH}
+                    crans={paliersBoisson(cibles.fluidMlH)}
+                    onChange={(fluidMlH) =>
+                      change(() => setCibles({ ...cibles, fluidMlH }))
+                    }
+                  />
+                  {cibles.fluidMlH > FLUID_GUIDE_ML_H && (
+                    <Notice code="fluid-above-guide">
+                      Au-delà de{" "}
+                      <Val unite="mL/h">{entier(FLUID_GUIDE_ML_H)}</Val>, le
+                      risque n'est plus la déshydratation mais l'excès d'eau.
+                    </Notice>
+                  )}
+                </div>
 
-                <Rule />
+                <Rule className="lg:hidden" />
 
-                <Reglage
-                  label="Sodium dans la boisson"
-                  unite="mg/L"
-                  value={cibles.sodiumMgL}
-                  crans={paliersSodium(cibles.sodiumMgL)}
-                  aide="La concentration de la boisson préparée, par litre bu."
-                  onChange={(sodiumMgL) =>
-                    change(() => setCibles({ ...cibles, sodiumMgL }))
-                  }
-                />
+                <div className="flex flex-col gap-3 lg:flex-1 lg:px-5 lg:first:pl-0 lg:last:pr-0">
+                  <Reglage
+                    label="Sodium dans la boisson"
+                    unite="mg/L"
+                    value={cibles.sodiumMgL}
+                    crans={paliersSodium(cibles.sodiumMgL)}
+                    onChange={(sodiumMgL) =>
+                      change(() => setCibles({ ...cibles, sodiumMgL }))
+                    }
+                  />
+                </div>
               </div>
             </Panel>
 
@@ -222,10 +248,9 @@ export function TargetsForm({
 
                 {lignes.map((ligne, i) => (
                   <div key={ligne.id} className="flex items-end gap-3">
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-paper-dim text-ink-soft">
-                      <FlaskIcon className="size-5" />
-                    </span>
-
+                    {/* Le libellé du champ dit déjà « Flasque N » : une icône
+                        de flasque identique à côté ne distingue rien, elle
+                        répète ce que le texte a déjà dit. */}
                     <MeasureField
                       label={`Flasque ${i + 1}`}
                       unite="mL"
@@ -294,17 +319,6 @@ export function TargetsForm({
                 </Button>
               </div>
             </Panel>
-
-            {reproche && <ErrorNote>{reproche}</ErrorNote>}
-            {erreur && <ErrorNote>{erreur}</ErrorNote>}
-
-            <SaveBar
-              pending={pending}
-              modifie={modifie}
-              enregistre={enregistre && !modifie}
-              consequence="le roadbook devra être recalculé"
-              onSave={submit}
-            />
           </div>
 
           {synthese && (
@@ -341,6 +355,20 @@ export function TargetsForm({
               </Panel>
             </aside>
           )}
+        </div>
+      </div>
+
+      <div className="shrink-0 border-line border-t bg-paper">
+        <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
+          {reproche && <ErrorNote>{reproche}</ErrorNote>}
+          {erreur && <ErrorNote>{erreur}</ErrorNote>}
+          <SaveBar
+            pending={pending}
+            modifie={modifie}
+            enregistre={enregistre && !modifie}
+            consequence="le roadbook devra être recalculé"
+            onSave={submit}
+          />
         </div>
       </div>
     </div>

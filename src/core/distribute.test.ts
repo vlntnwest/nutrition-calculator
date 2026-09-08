@@ -417,6 +417,12 @@ test("un plan infaisable porte ses chiffres, pas une phrase", () => {
 
   // Une exception ordinaire n'est pas un plan infaisable.
   expect(pacingIssue(new Error("boum"))).toBeNull();
+
+  // Ni une erreur d'ailleurs qui porte elle aussi un `code` — le pilote
+  // Postgres, par exemple, sur une contrainte violée.
+  expect(
+    pacingIssue(new Error("check violation", { cause: { code: "23514" } })),
+  ).toBeNull();
   expect(pacingIssue("boum")).toBeNull();
 });
 

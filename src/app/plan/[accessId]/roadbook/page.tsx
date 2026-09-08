@@ -32,9 +32,9 @@ export default async function Page(
     plan.settings.targetTimeS ?? 0,
   );
 
-  return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="mx-auto flex w-full max-w-4xl shrink-0 flex-wrap items-start justify-between gap-4 px-4 py-4 sm:px-6">
+  const entete = (
+    <div className="mx-auto w-full max-w-4xl px-4 py-4 sm:px-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="font-semibold text-[22px] text-ink tracking-tight">
             Roadbook
@@ -67,7 +67,7 @@ export default async function Page(
           de passage du roadbook. Il n'a de sens qu'une fois le plan calculé
           — sans secteurs, il n'y a aucune heure à traduire. */}
       {roadbook !== null && (
-        <div className="mx-auto w-full max-w-4xl shrink-0 px-4 pb-4 sm:px-6">
+        <div className="pt-4">
           <RaceStart
             accessId={accessId}
             raceDate={plan.settings.raceDate}
@@ -79,46 +79,52 @@ export default async function Page(
           />
         </div>
       )}
-
-      {roadbook === null ? (
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 sm:px-6">
-          <div className="mx-auto max-w-xl">
-            <EmptyNote titre="Ce plan n'a pas encore été calculé">
-              Il lui faut un chrono visé, un poids de coureur et au moins un
-              produit dans le sac. Le calcul répartit ensuite le temps secteur
-              par secteur, puis la nutrition dessus.
-            </EmptyNote>
-
-            <ul className="mt-4 flex flex-col gap-2">
-              {destinations(plan, false)
-                .filter((d) => d.segment !== "roadbook" && d.etat === "vide")
-                .map((manquant) => (
-                  <li key={manquant.nom}>
-                    <Link
-                      href={`/plan/${accessId}/${manquant.segment}`}
-                      className="flex items-center gap-2 rounded-[var(--radius-control)] border border-line px-3 py-2.5 text-[14px] text-ink transition-colors hover:border-line-strong hover:bg-paper-dim"
-                    >
-                      <span className="flex-1">
-                        {manquant.nom}
-                        <span className="pl-2 text-[12px] text-ink-soft">
-                          {manquant.mention}
-                        </span>
-                      </span>
-                      <ArrowRightIcon className="size-4 text-ink-faint" />
-                    </Link>
-                  </li>
-                ))}
-            </ul>
-          </div>
-        </div>
-      ) : (
-        <RoadbookEditor
-          accessId={accessId}
-          roadbook={roadbook}
-          points={plan.track.points}
-          cibleGH={cibles.carbsGH}
-        />
-      )}
     </div>
+  );
+
+  if (roadbook === null) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        {entete}
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 sm:px-6">
+          <EmptyNote titre="Ce plan n'a pas encore été calculé">
+            Il lui faut un chrono visé, un poids de coureur et au moins un
+            produit dans le sac. Le calcul répartit ensuite le temps secteur par
+            secteur, puis la nutrition dessus.
+          </EmptyNote>
+
+          <ul className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {destinations(plan, false)
+              .filter((d) => d.segment !== "roadbook" && d.etat === "vide")
+              .map((manquant) => (
+                <li key={manquant.nom}>
+                  <Link
+                    href={`/plan/${accessId}/${manquant.segment}`}
+                    className="flex items-center gap-2 rounded-[var(--radius-control)] border border-line px-3 py-2.5 text-[14px] text-ink transition-colors hover:border-line-strong hover:bg-paper-dim"
+                  >
+                    <span className="flex-1">
+                      {manquant.nom}
+                      <span className="pl-2 text-[12px] text-ink-soft">
+                        {manquant.mention}
+                      </span>
+                    </span>
+                    <ArrowRightIcon className="size-4 text-ink-faint" />
+                  </Link>
+                </li>
+              ))}
+          </ul>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <RoadbookEditor
+      accessId={accessId}
+      roadbook={roadbook}
+      points={plan.track.points}
+      cibleGH={cibles.carbsGH}
+      entete={entete}
+    />
   );
 }

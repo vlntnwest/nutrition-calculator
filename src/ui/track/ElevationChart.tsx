@@ -196,6 +196,7 @@ export function ElevationChart({
   marks,
   onPick,
   onChoisirMark,
+  onDeplacerMark,
   onCadre,
   paceBand,
   legende = true,
@@ -208,6 +209,13 @@ export function ElevationChart({
   /** Rappelle le rang de la borne cliquée. Absent, la pastille est inerte. */
   onChoisirMark?: (rank: number) => void;
   /**
+   * Rend l'abscisse visée pendant qu'on glisse une pastille, en continu.
+   * Absent, la pastille s'ouvre au clic mais ne se déplace pas — c'est le cas
+   * du roadbook, où une borne de secteur n'est pas à elle seule un ravito
+   * qu'on repose.
+   */
+  onDeplacerMark?: (rank: number, positionM: number) => void;
+  /**
    * Rend les gouttières d'axes du cadre tracé, en pixels, pour ce qui vient
    * s'aligner sous le graphique. Voir `Gouttieres`.
    */
@@ -216,6 +224,8 @@ export function ElevationChart({
   legende?: boolean;
 }) {
   const chartRef = useRef<ChartJS<"line"> | null>(null);
+  /** Le rang de la pastille en cours de glisser, tant qu'un doigt la tient. */
+  const [glissee, setGlissee] = useState<number | null>(null);
   // Un point sur `pas`, et l'indice d'origine gardé en regard : le survol
   // parle toujours du tableau que la carte partage.
   const { traces, origine } = useMemo(() => {
@@ -591,7 +601,11 @@ export function ElevationChart({
 
             return (
               <span
-                key={`${mark.rank}-${mark.positionM}`}
+                // Le rang seul, jamais l'abscisse : au glisser, la position
+                // change à chaque frame, et une clé qui bouge avec elle
+                // démonterait la pastille en plein geste — perdant la capture
+                // du pointeur qui le porte.
+                key={mark.rank}
                 className="pointer-events-none absolute top-0 bottom-0"
                 style={{ left: x }}
               >
@@ -606,11 +620,54 @@ export function ElevationChart({
                       event.stopPropagation();
                       onChoisirMark(mark.rank);
                     }}
+                    onPointerDown={
+                      onDeplacerMark &&
+                      ((event) => {
+                        event.stopPropagation();
+                        onChoisirMark(mark.rank);
+                        event.currentTarget.setPointerCapture(event.pointerId);
+                        setGlissee(mark.rank);
+                      })
+                    }
+                    onPointerMove={
+                      onDeplacerMark &&
+                      ((event) => {
+                        const cadre = cadreRef.current;
+                        if (glissee !== mark.rank || !chart || !cadre) return;
+
+                        const zone = cadre.getBoundingClientRect();
+                        const km = chart.scales.x.getValueForPixel(
+                          event.clientX - zone.left,
+                        );
+                        if (km == null) return;
+
+                        const total = points[points.length - 1].d;
+                        onDeplacerMark(
+                          mark.rank,
+                          Math.min(Math.max(km * 1000, 0), total),
+                        );
+                      })
+                    }
+                    onPointerUp={
+                      onDeplacerMark &&
+                      ((event) => {
+                        event.currentTarget.releasePointerCapture(
+                          event.pointerId,
+                        );
+                        setGlissee(null);
+                      })
+                    }
                     aria-label={mark.libelle ?? `Ouvrir le ravito ${mark.rank}`}
                     title={mark.libelle ?? `Ravito ${mark.rank}`}
                     // `before` élargit la cible à 32px sans grossir la
                     // pastille : seize pixels se lisent bien et se visent mal.
-                    className="-translate-x-1/2 pointer-events-auto absolute top-0 flex size-4 cursor-pointer items-center justify-center rounded-full bg-accent font-mono text-[9px] text-paper transition-colors before:absolute before:-inset-2 before:content-[''] hover:bg-accent-dark"
+                    // `touch-none` retire le geste tactile par défaut (faire
+                    // défiler la page) là où la pastille se glisse au doigt.
+                    className={`-translate-x-1/2 pointer-events-auto absolute top-0 flex size-4 items-center justify-center rounded-full bg-accent font-mono text-[9px] text-paper transition-colors before:absolute before:-inset-2 before:content-[''] hover:bg-accent-dark ${
+                      onDeplacerMark
+                        ? "touch-none cursor-grab active:cursor-grabbing"
+                        : "cursor-pointer"
+                    }`}
                   >
                     {mark.rank}
                   </button>
