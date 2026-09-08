@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { expect, test } from "vitest";
 import { CATALOG } from "@/core/products";
 import { db } from "@/db";
@@ -7,16 +7,25 @@ import { formats } from "@/db/schema/formats";
 import { products } from "@/db/schema/products";
 import { seed } from "./seed";
 
-const marques = new Set(CATALOG.map((p) => p.brand)).size;
-const formatsAttendus = new Set(CATALOG.map((p) => p.type)).size;
+const codes = CATALOG.map((p) => p.id);
+const marques = [...new Set(CATALOG.map((p) => p.brand))];
+const libelles = [...new Set(CATALOG.map((p) => p.type))];
 
 test("deux passages du seed ne laissent qu'un seul catalogue", async () => {
   await seed();
   await seed();
 
-  expect(await db.select().from(products)).toHaveLength(CATALOG.length);
-  expect(await db.select().from(brands)).toHaveLength(marques);
-  expect(await db.select().from(formats)).toHaveLength(formatsAttendus);
+  // Sur les lignes du seed seules : les tables portent aussi ce que
+  // l'application y ajoute, et compter tout reviendrait à l'interdire.
+  expect(
+    await db.select().from(products).where(inArray(products.codeSeed, codes)),
+  ).toHaveLength(codes.length);
+  expect(
+    await db.select().from(brands).where(inArray(brands.name, marques)),
+  ).toHaveLength(marques.length);
+  expect(
+    await db.select().from(formats).where(inArray(formats.label, libelles)),
+  ).toHaveLength(libelles.length);
 });
 
 test("un produit retrouve sa marque, son format et ses valeurs", async () => {
