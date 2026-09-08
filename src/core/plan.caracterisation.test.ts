@@ -70,6 +70,12 @@ const STATIONS: Record<string, AidStation[]> = {
 // sac (3 boissons et 2 gels au lieu de 2,5 et 3), le liquide qui suit, et
 // l'avertissement `leg-fluid-above-target` que ce sachet entier déclenche.
 // andlau et uthk sont inchangés.
+//
+// Les trois gagnent une alerte le 8 septembre : `sodium-above-target`
+// (nouveau code) juge désormais le sodium réellement servi, pas seulement sa
+// cible — `naak-drink-ultra` porte 800 mg/L quand PRODUCTS et TARGETS visent
+// 600, et rien ne le compensait avant. Vérifié : chaque plan sert bien
+// `sodium-above-target` en plus, aucune autre alerte n'a bougé.
 const EXPECTED: Array<
   [string, number, number[], number[][], number, number, number, string]
 > = [
@@ -80,7 +86,7 @@ const EXPECTED: Array<
     [[0], [1], [2]],
     219,
     1500,
-    1,
+    2,
     "naak-drink-ultra:3 naak-gel-ultra:2",
   ],
   [
@@ -90,7 +96,7 @@ const EXPECTED: Array<
     [[0]],
     190,
     500,
-    1,
+    2,
     "naak-drink-ultra:1 naak-gel-ultra:5",
   ],
   [
@@ -98,10 +104,10 @@ const EXPECTED: Array<
     55800,
     [10293, 8141, 18000, 18166],
     [[0], [1, 2], [3]],
-    922,
-    2000,
+    921,
+    1500,
     4,
-    "naak-drink-ultra:4 naak-gel-ultra:26",
+    "naak-drink-ultra:3 naak-gel-ultra:28",
   ],
 ];
 

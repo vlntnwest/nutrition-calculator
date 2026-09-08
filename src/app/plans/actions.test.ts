@@ -2,7 +2,13 @@ import { eq } from "drizzle-orm";
 import { afterEach, expect, test, vi } from "vitest";
 import { db } from "@/db";
 import { plans } from "@/db/schema/plans";
-import { computePlan, importTrack, loadPlan, savePlan } from "./actions";
+import {
+  computePlan,
+  importTrack,
+  imposeOnLegs,
+  loadPlan,
+  savePlan,
+} from "./actions";
 import { newPlan as input } from "./newPlan.fixture";
 
 const written: string[] = [];
@@ -28,7 +34,7 @@ test("importer une trace ouvre un plan et rend son identifiant", async () => {
       settings: {
         massKg: undefined,
         targetTimeS: undefined,
-        climbIntensity: 0.25,
+        climbIntensity: 0.5,
         paceSplit: 0,
         raceDate: undefined,
         startTime: undefined,
@@ -86,6 +92,74 @@ test("calculer un plan sans poids ni chrono est refusé, pas planté", async () 
     ok: false,
     error: "Plan not ready: missing mass or target time",
   });
+});
+
+test("un chrono mangé par les arrêts est un refus lisible, pas un bug", async () => {
+  const created = await importTrack({ ...input.track, name: "Trop courte" });
+  if (!created.ok) throw new Error(created.error);
+  written.push(created.value);
+
+  const saved = await savePlan(created.value, {
+    settings: { massKg: 70, targetTimeS: 60 },
+    aidStations: [{ name: "Ravito", distanceM: 9800, stopS: 300 }],
+  });
+  if (!saved.ok) throw new Error(saved.error);
+
+  expect(await computePlan(created.value)).toEqual({
+    ok: false,
+    error:
+      "Les arrêts aux ravitos (5 min) valent déjà autant que le chrono visé (1 min) : il ne reste rien à courir. Réduisez les arrêts, ou allongez le chrono.",
+  });
+});
+
+test("une consigne qui rend le plan infaisable n'efface pas le roadbook existant", async () => {
+  const created = await importTrack({
+    ...input.track,
+    name: "Consigne fautive",
+  });
+  if (!created.ok) throw new Error(created.error);
+  written.push(created.value);
+  const accessId = created.value;
+
+  const saved = await savePlan(accessId, {
+    settings: { massKg: 70, targetTimeS: 13500 },
+    aidStations: [
+      { name: "Ravito Haberacker", distanceM: 9800, stopS: 300 },
+      { name: "Ravito Ochsenstein", distanceM: 20800, stopS: 240 },
+    ],
+    productCodes: ["naak-gel-ultra"],
+  });
+  if (!saved.ok) throw new Error(saved.error);
+
+  expect(await computePlan(accessId)).toEqual({ ok: true, value: null });
+
+  const [avant] = await db
+    .select({ generatedAt: plans.generatedAt })
+    .from(plans)
+    .where(eq(plans.accessId, accessId));
+
+  // Une consigne qui, à elle seule, dépasse le temps de mouvement disponible
+  // (12 960 s une fois les arrêts déduits de 13 500 s visés).
+  const echec = await imposeOnLegs(accessId, [
+    { endPositionM: 28350, durationS: 20_000 },
+  ]);
+
+  expect(echec.ok).toBe(false);
+  if (echec.ok) throw new Error("un refus était attendu");
+  expect(echec.error).toContain(
+    "dépassent à elles seules le temps de mouvement disponible",
+  );
+
+  // Ni le roadbook, ni la consigne fautive ne doivent être restés en base :
+  // le refus défait tout, il ne laisse pas le plan bloqué à moitié écrit.
+  const [apres] = await db
+    .select({ generatedAt: plans.generatedAt })
+    .from(plans)
+    .where(eq(plans.accessId, accessId));
+  expect(apres.generatedAt).toEqual(avant.generatedAt);
+
+  const relu = await loadPlan(accessId);
+  expect(relu.ok && relu.value.legOverrides).toEqual([]);
 });
 
 test("un bug ne raconte pas le schéma au client", async () => {

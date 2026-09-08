@@ -1,26 +1,184 @@
 @import "tailwindcss";
 
+/*
+ * Encre, papier, et un accent brûlé.
+ *
+ * Les gris sont neutres : aucune teinte chaude ne traîne dans le papier ni
+ * dans l'encre, parce que le livrable de ce produit est une feuille imprimée
+ * en noir et blanc. Ce que la couleur ferait ailleurs, deux choses le font
+ * ici — le filet d'un pixel pour séparer, le voile translucide pour dire
+ * qu'une surface flotte au-dessus d'une autre. L'accent, lui, est réservé :
+ * il marque la course, jamais l'interface.
+ *
+ * Les autres couleurs de l'écran viennent du dehors et gardent les leurs :
+ * les photos, et les tuiles de la carte.
+ *
+ * Clair par nature, et l'écran s'imprime : pas de thème sombre.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+
+  --ink: #131313;
+  --ink-soft: #5c5c5c;
+  /* Le plus clair des trois encres reste à 5:1 sur le papier : rien de ce
+     qui se lit ne descend sous le seuil, même une mention de bas de fiche. */
+  --ink-faint: #6e6e6e;
+  --paper: #ffffff;
+  --paper-dim: #f4f4f4;
+  --paper-sunk: #e9e9e9;
+  --line: #1313131f;
+  --line-strong: #13131333;
+
+  /* Le seul écart à l'encre et au papier : l'accent brûlé. Il ne décore
+     rien. Il marque ce que le coureur pose sur sa course — bornes, tracé,
+     destination active, curseur — et se tait partout ailleurs. C'est
+     précisément parce que le reste est gris qu'il porte. */
+  --accent: #c2410c;
+  --accent-dark: #7a2c08;
+  --accent-tint: #fdece2;
+
+  /* Les voiles : une surface qui flotte au-dessus d'une autre laisse
+     transparaître ce qu'elle couvre. Le flou d'arrière-plan les accompagne
+     toujours — c'est lui qui rend la lecture possible, en effaçant le détail
+     de ce qui passe derrière pour n'en garder que les masses. Même sous le
+     voile le plus ouvert, l'encre la plus claire reste au-dessus de 4,5:1. */
+  --veil: #ffffffb8;
+  --veil-soft: #ffffff8c;
+  --veil-ink: #131313b3;
+
+  --background: var(--paper);
+  --foreground: var(--ink);
+
+  --radius-sheet: 20px;
+  --radius-panel: 12px;
+  --radius-control: 8px;
+
+  --shadow-panel: 0 1px 2px #1313130f, 0 8px 24px -16px #1313134d;
+  --shadow-lifted: 0 2px 6px #13131314, 0 24px 48px -24px #13131359;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-paper: var(--paper);
+  --color-paper-dim: var(--paper-dim);
+  --color-paper-sunk: var(--paper-sunk);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-dark: var(--accent-dark);
+  --color-accent-tint: var(--accent-tint);
+  --color-veil: var(--veil);
+  --color-veil-soft: var(--veil-soft);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* Ce qu'on n'a pas dessiné porte quand même la direction. */
+::selection {
+  background: var(--accent-tint);
+  color: var(--accent-dark);
+}
+
+:root {
+  accent-color: var(--accent);
+  caret-color: var(--accent);
+  scrollbar-color: var(--line-strong) transparent;
+  scrollbar-width: thin;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Toute mesure s'aligne en colonne et ne saute pas quand le chiffre change. */
+.font-mono {
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Le fond de carte du tracé importé : la mention légale reste obligatoire,
+ * mais n'a pas à peser sur une fiche de quelques centimètres de haut. La
+ * spécificité doit tenir devant `leaflet.css`, importé après ce fichier.
+ */
+.leaflet-container .leaflet-control-attribution {
+  background: transparent;
+  color: var(--ink-faint);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: 9px;
+}
+
+.leaflet-container .leaflet-control-attribution a {
+  color: var(--ink-soft);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/*
+ * La carte garde ses couleurs. Elle vient du dehors, elle n'a pas à parler la
+ * langue de l'interface : c'est le tracé, noir doublé d'une gaine blanche,
+ * qui reprend le contraste par-dessus, comme sur une carte papier.
+ */
+
+/*
+ * Le seul mouvement du carnet : une fiche qui monte. Sortie exponentielle,
+ * depuis un état déjà lisible, et rien du tout si le système le demande.
+ */
+@keyframes fiche-monte {
+  from {
+    opacity: 0;
+    transform: translateY(1.25rem) scale(0.985);
+  }
+}
+
+@keyframes voile-parait {
+  from {
+    opacity: 0;
+  }
+}
+
+dialog[open] {
+  animation: fiche-monte 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+dialog[open]::backdrop {
+  animation: voile-parait 200ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog[open],
+  dialog[open]::backdrop,
+  .animate-spin {
+    animation: none;
+  }
+}
+
+/*
+ * Le numéro d'un ravito, posé au centre de sa borne sur la carte. Leaflet
+ * habille ses infobulles d'un fond et d'une flèche : rien de tout ça ici, le
+ * chiffre est la borne.
+ */
+.leaflet-tooltip.borne-ravito {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  color: var(--paper);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.leaflet-tooltip.borne-ravito::before {
+  display: none;
 }

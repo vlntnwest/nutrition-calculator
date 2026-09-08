@@ -555,8 +555,7 @@ test("une boisson qui déborde des flasques autorisées le dit", () => {
   });
 });
 
-/** Le cas qui passait en silence : tout le liquide bascule en eau claire. */
-test("une boisson qui n'entre nulle part ne disparaît plus en silence", () => {
+test("une boisson qui n'entre nulle part laisse tout le liquide en eau claire", () => {
   // 15 min à 500 mL/h = 125 mL, moins que la demi-dose de 250.
   const plan = nutritionPlan(
     flatTrack(2, 0.25),
@@ -569,11 +568,6 @@ test("une boisson qui n'entre nulle part ne disparaît plus en silence", () => {
 
   expect(leg.supply.fluidMl).toBe(0);
   expect(leg.plainWaterMl).toBeCloseTo(125, 6);
-  expect(plan.warnings).toContainEqual({
-    code: "leg-drink-unused",
-    legIndex: 0,
-    plainWaterMl: 125,
-  });
 });
 
 test("l'énergie apportée est comptée, et n'est pas la dépense", () => {
@@ -652,6 +646,19 @@ test("alerte quand le sodium apporté est trop bas", () => {
   const plan = nutritionPlan(flatTrack(40, 5), [], RUNNER, TARGETS, [baouwGel]);
 
   expect(plan.warnings.some((w) => w.code === "sodium-below-target")).toBe(
+    true,
+  );
+});
+
+/**
+ * Le cas courant : une boisson à 800 mg/L (`naak-drink-ultra`) dosée pour
+ * tenir 60 g/h de glucides sert plus que les 600 mg/L visés, sans qu'on ait
+ * rien demandé de tel — rien n'ajuste le sodium à part.
+ */
+test("alerte quand le sodium apporté est trop haut", () => {
+  const plan = nutritionPlan(flatTrack(40, 5), [], RUNNER, TARGETS, [drink]);
+
+  expect(plan.warnings.some((w) => w.code === "sodium-above-target")).toBe(
     true,
   );
 });
@@ -936,6 +943,23 @@ test("une portée franchit le ravito sans eau", () => {
     requiredMl: 1500,
     carryMl: 1000,
   });
+});
+
+test("la boisson d'une portée tient dans ce qu'on prépare une fois", () => {
+  // La contenance ne se renouvelle qu'aux points d'eau. Sur une portée qui en
+  // franchit un sec, la préparer secteur par secteur la comptait deux fois :
+  // 500 mL de flasque à boisson devenaient 1 000 mL de poudre dosée.
+  const plan = nutritionPlan(
+    flatTrack(40, 4),
+    [WATER_STOP, DRY_STOP],
+    CARRIER,
+    TARGETS,
+    [gel, drink],
+  );
+
+  const porteeMl = [1, 2].reduce((t, l) => t + plan.legs[l].supply.fluidMl, 0);
+
+  expect(porteeMl).toBeLessThanOrEqual(500);
 });
 
 test("on ne remplit qu'à l'ouverture d'une portée", () => {

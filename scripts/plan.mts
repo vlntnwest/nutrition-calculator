@@ -388,6 +388,12 @@ function phrase(w: Warning): string {
         `Sodium à ${percent(w.share)} de la cible : ` +
         `prévoir des pastilles de sel ou une boisson plus salée.`
       );
+    case "sodium-above-target":
+      return (
+        `Sodium à ${percent(w.share)} de la cible : ` +
+        `la boisson qui dose les glucides fixe aussi le sodium, ` +
+        `une boisson moins salée ou une cible revue rapproche les deux.`
+      );
     case "leg-fluid-above-target":
       return (
         `${legName(plan.legs[w.legIndex])} : la boisson seule dépasse la cible d'hydratation ` +
@@ -405,12 +411,6 @@ function phrase(w: Warning): string {
         `${spanName(w.legIndex, w.throughLegIndex)} : ${Math.round(w.drinkMl)} mL de boisson préparée ` +
         `pour ${Math.round(w.capacityMl)} mL de flasques qui l'acceptent. ` +
         `Le reste des contenants est réservé à l'eau claire.`
-      );
-    case "leg-drink-unused":
-      return (
-        `${legName(plan.legs[w.legIndex])} : aucune dose de boisson n'entre dans ce secteur, ` +
-        `les ${Math.round(w.plainWaterMl)} mL partent en eau claire. ` +
-        `Secteur trop court pour la dose, ou contenance trop faible.`
       );
   }
 }

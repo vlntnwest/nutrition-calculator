@@ -3,7 +3,7 @@ import { planOf } from "../plan";
 import { TargetsForm } from "./TargetsForm";
 
 /**
- * Écran 3 — combien manger et boire par heure, et dans quoi.
+ * Écran 4 — combien manger et boire par heure, et dans quoi.
  *
  * Sans réponse encore donnée, on montre ce que le noyau suggère plutôt
  * qu'une constante : elle tient compte du coureur et de la durée.
@@ -27,6 +27,8 @@ export default async function Page(
       targets={targets}
       suggestion={suggestion}
       flasks={plan.flasks}
+      massKg={massKg}
+      targetTimeS={targetTimeS}
     />
   );
 }

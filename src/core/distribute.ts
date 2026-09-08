@@ -20,15 +20,29 @@ export function pacingError(issue: PacingIssue, message: string): Error {
   return new Error(message, { cause: issue });
 }
 
+/** Les codes que `pacingError` pose, et les seuls que `pacingIssue` relit. */
+const PACING_CODES = new Set<PacingIssue["code"]>([
+  "stops-above-target",
+  "fixed-above-target",
+  "fixed-miss-target",
+]);
+
 /**
  * L'empêchement porté par une erreur, `null` si elle vient d'ailleurs — une
  * exception du runtime n'est pas un plan infaisable, et l'appelant doit
  * pouvoir la laisser passer.
+ *
+ * Le code se vérifie contre la liste connue, pas seulement sa présence : une
+ * erreur du pilote Postgres porte, elle aussi, un `code` (`23514`…), et le
+ * confondre avec un plan infaisable ferait dire n'importe quoi à l'écran.
  */
 export function pacingIssue(error: unknown): PacingIssue | null {
   const cause = error instanceof Error ? error.cause : null;
 
-  return typeof cause === "object" && cause !== null && "code" in cause
+  return typeof cause === "object" &&
+    cause !== null &&
+    "code" in cause &&
+    PACING_CODES.has(cause.code as PacingIssue["code"])
     ? (cause as PacingIssue)
     : null;
 }
@@ -155,11 +169,21 @@ export function timeAt(points: TimedPoint[], distanceM: number): number {
   // elle, mais `timeAt` est exportée et `timeSegments` l'appelle directement.
   if (points.length < 2) return points[0]?.t ?? 0;
 
-  let i = 1;
-  while (i < points.length - 1 && points[i].d < distanceM) i++;
+  // Le premier point dont la distance atteint celle cherchée, par dichotomie :
+  // `d` est croissante. Un balayage linéaire donnait le même indice, mais il
+  // reprenait à zéro à chaque appel, et l'écran Course rappelle `timeSegments`
+  // sur toute la trace à chaque déplacement d'un curseur.
+  let lo = 1;
+  let hi = points.length - 1;
 
-  const a = points[i - 1];
-  const b = points[i];
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (points[mid].d < distanceM) lo = mid + 1;
+    else hi = mid;
+  }
+
+  const a = points[lo - 1];
+  const b = points[lo];
   if (b.d === a.d) return a.t;
 
   return a.t + ((distanceM - a.d) / (b.d - a.d)) * (b.t - a.t);

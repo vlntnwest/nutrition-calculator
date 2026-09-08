@@ -42,3 +42,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Captures et comps de la revue de design : des artefacts, pas des sources.
+.impeccable/review/
+.impeccable/mocks/
+
+# Profil Chrome du skill impeccable : cookies et identifiants réels, jamais un artefact à commiter.
+.impeccable/chrome-profile/

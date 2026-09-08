@@ -498,6 +498,12 @@ export type Warning =
     }
   | { code: "fluid-above-guide"; fluidMlH: number; guideMlH: number }
   | { code: "sodium-below-target"; share: number }
+  /**
+   * Le plan sert bien plus de sodium que visé. `share` = servi / visé.
+   * Fréquent : la boisson qui dose les glucides n'a pas de raison de tomber
+   * juste sur la concentration en sodium visée à côté.
+   */
+  | { code: "sodium-above-target"; share: number }
   /** Le plan sert bien plus de glucides que visé. `share` = servi / visé. */
   | { code: "carbs-above-target"; share: number }
   | {
@@ -522,16 +528,6 @@ export type Warning =
        * boisson préparée. */
       requiredMl: number;
       carryMl: number;
-    }
-  | {
-      /**
-       * Une boisson glucidique était sélectionnée, mais aucune dose n'entre
-       * dans ce secteur — tout le liquide part en eau claire. Le cas se
-       * produisait en silence avant l'ADR 007.
-       */
-      code: "leg-drink-unused";
-      legIndex: number;
-      plainWaterMl: number;
     }
   | {
       /**

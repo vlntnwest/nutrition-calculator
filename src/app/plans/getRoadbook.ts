@@ -21,6 +21,10 @@ export type RoadbookServing = {
   quantity: number;
   /** Le pas de retouche : 1 pour ce qui ne se coupe pas, 2 pour le reste. */
   divisibleBy: number;
+  formatLabel: string;
+  carbsG: number;
+  sodiumMg: number;
+  weightG: number;
 };
 
 export type RoadbookFill = {
@@ -43,9 +47,23 @@ export type RoadbookLeg = {
   rank: number;
   /** L'abscisse où le secteur s'achève. Nul pour l'arrivée. */
   endPositionM: number | null;
+  /** Le ravito qui clôt le secteur. Nul à l'arrivée, que rien ne clôt. */
+  endName: string | null;
+  /** La durée imposée à ce secteur, si le coureur en a posé une. */
+  imposedDurationS: number | null;
+  /** La cible de glucides imposée à ce secteur, le cas échéant. */
+  imposedCarbsGH: number | null;
   ascentM: number;
   descentM: number;
   durationS: number;
+  /** L'arrêt prévu à la borne qui clôt le secteur. Nul s'il n'y en a pas. */
+  stopS: number | null;
+  /**
+   * Le temps écoulé depuis le départ à l'arrivée sur la borne : les durées de
+   * mouvement des secteurs parcourus, plus les arrêts déjà faits. L'arrêt de
+   * cette borne-ci n'y est pas — on arrive avant de s'arrêter.
+   */
+  elapsedS: number;
   servings: RoadbookServing[];
   fills: RoadbookFill[];
   /**
@@ -54,6 +72,12 @@ export type RoadbookLeg = {
    * il n'y a rien à verser. Même règle que `carrySpans`, côté noyau.
    */
   opensLiquidSpan: boolean;
+  /**
+   * Le secteur ouvre-t-il une portée de solide ? Même règle, sur les ravitos
+   * qui donnent à manger. Un secteur qui n'en ouvre pas mange ce qu'il a
+   * emporté : sa nourriture se prend au dernier qui en ouvrait une.
+   */
+  opensSolidSpan: boolean;
   supply: Supply;
   /** Les glucides visés sur ce secteur : la cible horaire fois sa durée. */
   needG: number;
@@ -62,6 +86,8 @@ export type RoadbookLeg = {
    * volumes des flasques, qui partent pleines : on emporte souvent plus.
    */
   needFluidMl: number;
+  /** Le sodium visé sur le secteur : la concentration ciblée fois `needFluidMl`. */
+  needSodiumMg: number;
   /**
    * L'écart aux glucides visés, **signé** : un secteur peut passer sous son
    * besoin propre, la répartition se faisant sur toute la course.
@@ -72,21 +98,39 @@ export type RoadbookLeg = {
 
 export type Roadbook = {
   legs: RoadbookLeg[];
-  /** Les produits retenus pour ce plan — de quoi poser ce que le calcul n'a
-   * pas proposé. */
+  /** L'heure de départ, `HH:MM`, ou nulle tant qu'elle n'est pas renseignée. */
+  startTime: string | null;
+  /**
+   * Les produits retenus pour ce plan — de quoi poser ce que le calcul n'a
+   * pas proposé, et de quoi recalculer un apport à l'écran sans attendre
+   * l'enregistrement (voir `liveSupply`, côté Roadbook).
+   */
   catalogue: {
     id: string;
     name: string;
     brandName: string | null;
     divisibleBy: number;
+    /** Le libellé du noyau — `gel`, `bar`, `drink`. Traduit à l'affichage. */
+    formatLabel: string;
+    carbsG: number;
+    energyKcal: number;
+    sodiumMg: number;
+    fluidMl: number;
+    weightG: number;
   }[];
   /** Les contenants déclarés, pour retoucher les remplissages. */
   flasks: { rank: number; volumeMl: number; onlyWater: boolean }[];
   /** Le plan a été retouché à la main depuis son dernier calcul. */
   edited: boolean;
+  /** Quand le calcul a tourné. C'est lui qui fait foi sur sa fraîcheur. */
+  generatedAt: Date;
+  /** La distance totale, pour borner le dernier secteur. */
+  totalM: number;
   /** Le sac complet, et ce qu'il apporte. */
   total: Supply & {
     marginG: number;
+    /** Ce que le sac pèse au départ, tous produits confondus. */
+    weightG: number;
     units: { name: string; brandName: string | null; quantity: number }[];
   };
   /** Ceux qui ne visent aucun secteur — ils portent `leg_rank` à null. */
@@ -145,10 +189,12 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
         divisibleBy: productSnapshots.divisibleBy,
         name: productSnapshots.name,
         brandName: productSnapshots.brandName,
+        formatLabel: productSnapshots.formatLabel,
         carbsG: productSnapshots.carbsG,
         energyKcal: productSnapshots.energyKcal,
         sodiumMg: productSnapshots.sodiumMg,
         fluidMl: productSnapshots.fluidMl,
+        weightG: productSnapshots.weightG,
       })
       .from(servings)
       .innerJoin(
@@ -183,6 +229,12 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
         name: productSnapshots.name,
         brandName: productSnapshots.brandName,
         divisibleBy: productSnapshots.divisibleBy,
+        formatLabel: productSnapshots.formatLabel,
+        carbsG: productSnapshots.carbsG,
+        energyKcal: productSnapshots.energyKcal,
+        sodiumMg: productSnapshots.sodiumMg,
+        fluidMl: productSnapshots.fluidMl,
+        weightG: productSnapshots.weightG,
       })
       .from(productSnapshots)
       .where(eq(productSnapshots.planId, accessId))
@@ -205,6 +257,7 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
       {
         carbsGH: o.carbsOverrideG_H ?? targets.carbsGH,
         fluidMlH: o.fluidOverrideMl_L ?? targets.fluidMlH,
+        sodiumMgL: o.sodiumOverrideMg_L ?? targets.sodiumMgL,
       },
     ]),
   );
@@ -220,6 +273,18 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
   const liquidAt = new Map(
     stationRows.map((a) => [a.positionM, a.providesLiquid]),
   );
+  const solidAt = new Map(
+    stationRows.map((a) => [a.positionM, a.providesSolid]),
+  );
+  const nomAu = new Map(stationRows.map((a) => [a.positionM, a.name]));
+  const arretAu = new Map(
+    stationRows.map((a) => [a.positionM, a.stopDurationS]),
+  );
+  const consigneAu = new Map(overrideRows.map((o) => [o.endPositionM, o]));
+
+  // Le temps de course accumulé au fil des secteurs : le mouvement de chacun,
+  // puis l'arrêt de la borne qui le clôt, qui compte pour le suivant.
+  let ecoule = 0;
 
   const legsOut = legRows.map((leg, i) => {
     const rations = byLeg(servingRows, leg.rank);
@@ -236,21 +301,42 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
     const cible = imposed.get(boundOf(leg.endPositionM)) ?? targets;
     const needG = (cible.carbsGH * leg.durationS) / 3600;
     const needFluidMl = (cible.fluidMlH * leg.durationS) / 3600;
+    const needSodiumMg = (cible.sodiumMgL * needFluidMl) / 1000;
+    const stopS =
+      leg.endPositionM === null
+        ? null
+        : (arretAu.get(leg.endPositionM) ?? null);
+
+    ecoule += leg.durationS;
+    const elapsedS = ecoule;
+    ecoule += stopS ?? 0;
 
     return {
       rank: leg.rank,
       endPositionM: leg.endPositionM,
+      endName: nomAu.get(boundOf(leg.endPositionM)) ?? null,
+      imposedDurationS:
+        consigneAu.get(boundOf(leg.endPositionM))?.durationOverrideS ?? null,
+      imposedCarbsGH:
+        consigneAu.get(boundOf(leg.endPositionM))?.carbsOverrideG_H ?? null,
       ascentM: leg.ascentM,
       descentM: leg.descentM,
       durationS: leg.durationS,
+      stopS,
+      elapsedS,
       servings: rations.map((s) => ({
         productSnapshotId: s.productSnapshotId,
         name: s.name,
         brandName: s.brandName,
         quantity: s.quantity,
         divisibleBy: s.divisibleBy,
+        formatLabel: s.formatLabel,
+        carbsG: s.carbsG,
+        sodiumMg: s.sodiumMg,
+        weightG: s.weightG,
       })),
       opensLiquidSpan: depuis === null || (liquidAt.get(depuis) ?? true),
+      opensSolidSpan: depuis === null || (solidAt.get(depuis) ?? true),
       fills: byLeg(fillRows, leg.rank).map((f) => ({
         flaskRank: f.flaskRank,
         product: f.product,
@@ -260,6 +346,7 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
       supply,
       needG,
       needFluidMl,
+      needSodiumMg,
       marginG: supply.carbsG - needG,
       warnings: warningRows
         .filter((w) => w.legRank === leg.rank)
@@ -279,19 +366,25 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
 
   return {
     legs: legsOut,
-    catalogue,
+    // La colonne `time` de Postgres rend `HH:MM:SS` ; le roadbook n'affiche
+    // que les heures et les minutes.
+    startTime: settings.startTime?.slice(0, 5) ?? null,
+    catalogue: catalogue.map((p) => ({ ...p, fluidMl: p.fluidMl ?? 0 })),
     flasks: flaskRows.map((f) => ({
       rank: f.rank,
       volumeMl: f.volumeMl,
       onlyWater: f.onlyWater,
     })),
     edited: row.plans.editedAt !== null,
+    generatedAt: row.plans.generatedAt,
+    totalM: row.tracks.distanceM,
     total: {
       carbsG: legsOut.reduce((t, l) => t + l.supply.carbsG, 0),
       energyKcal: legsOut.reduce((t, l) => t + l.supply.energyKcal, 0),
       sodiumMg: legsOut.reduce((t, l) => t + l.supply.sodiumMg, 0),
       fluidMl: legsOut.reduce((t, l) => t + l.supply.fluidMl, 0),
       marginG: legsOut.reduce((t, l) => t + l.marginG, 0),
+      weightG: servingRows.reduce((t, r) => t + r.quantity * r.weightG, 0),
       units: [...sac].map(([name, v]) => ({ name, ...v })),
     },
     warnings: warningRows

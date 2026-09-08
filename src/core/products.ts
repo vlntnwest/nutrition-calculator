@@ -38,7 +38,7 @@ export const CATALOG: Product[] = [
   {
     id: "naak-puree-apple",
     brand: "Näak",
-    name: "Purée énergétique Näak - Pomme et sirop d'érable",
+    name: "Purée énergétique Näak, Pomme et sirop d'érable",
     type: "puree",
     weightG: 90,
     energyKcal: 200,
@@ -51,7 +51,7 @@ export const CATALOG: Product[] = [
   {
     id: "naak-waffle-citron",
     brand: "Näak",
-    name: "Gaufre ULTRA - Citron",
+    name: "Gaufre ULTRA, Citron",
     type: "waffle",
     weightG: 32,
     energyKcal: 140,
@@ -77,7 +77,7 @@ export const CATALOG: Product[] = [
   {
     id: "naak-drink-salted-soup",
     brand: "Näak",
-    name: "Ultra Energy Drink Mix — Salted Soup",
+    name: "Ultra Energy Drink Mix, Salted Soup",
     type: "drink",
     weightG: 72,
     energyKcal: 250,

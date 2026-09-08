@@ -1,0 +1,1 @@
+ALTER TABLE "plan_settings" ALTER COLUMN "climb_intensity" SET DEFAULT '0.5';

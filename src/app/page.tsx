@@ -2,74 +2,149 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Hero } from "./_home/Hero";
+import { ImportDropzone, type ImportStatus } from "./_home/ImportDropzone";
+import { ImportRaceModal, type ParsedTrack } from "./_home/ImportRaceModal";
+import { PlansActions } from "./_home/nav/PlansActions";
+import { PlanCards } from "./_home/PlanCards";
 import { analyzeGpx } from "./import/analyzeGpx";
-import { importTrack } from "./plans/actions";
+import { importTrack, savePlan } from "./plans/actions";
 import { rememberPlan } from "./plans/stored";
 
-type State =
-  | { kind: "vide" }
-  | { kind: "lecture" }
-  | { kind: "erreur"; message: string };
-
 /**
- * Écran d'import, réduit à son squelette : il n'y a pas encore de direction
- * artistique. Le GPX est lu dans un worker, puis le plan s'ouvre en base
- * aussitôt — l'identifiant rendu est tout ce qui rouvre le plan ensuite.
+ * Écran d'import. Voir le commentaire de contrat de direction dans
+ * layout.tsx pour la direction visuelle ; ce fichier orchestre seulement
+ * la lecture du GPX et la création du plan, les autres pièces vivent
+ * chacune dans leur fichier.
  */
 export default function Page() {
-  const [state, setState] = useState<State>({ kind: "vide" });
+  const [status, setStatus] = useState<ImportStatus>({ kind: "vide" });
+  const [parsed, setParsed] = useState<ParsedTrack | null>(null);
   const router = useRouter();
 
   async function read(file: File) {
-    setState({ kind: "lecture" });
+    setStatus({ kind: "lecture" });
+    // L'extension sans égard à la casse : les exports d'ordinateur écrivent
+    // parfois `.GPX`, et le sélecteur du téléphone rend le nom tel quel.
+    if (!file.name.toLowerCase().endsWith(".gpx")) {
+      setStatus({
+        kind: "erreur",
+        message: "Le fichier doit être un fichier GPX",
+      });
+      return;
+    }
+
+    // La lecture à part de l'analyse : sur un téléphone, le fichier choisi
+    // dans un stockage en ligne n'est parfois qu'une référence que le
+    // système n'arrive pas à livrer, et l'erreur du navigateur ne dit rien
+    // de ce qu'il faut faire.
+    let xml: string;
+
     try {
-      const analysis = await analyzeGpx(await file.text());
-      const created = await importTrack({
+      xml = await file.text();
+    } catch {
+      setStatus({
+        kind: "erreur",
+        message:
+          "Le fichier n'a pas pu être lu. S'il est rangé dans un stockage en ligne, téléchargez-le d'abord sur l'appareil.",
+      });
+
+      return;
+    }
+
+    if (xml.trim() === "") {
+      setStatus({
+        kind: "erreur",
+        message:
+          "Le fichier est arrivé vide. S'il est rangé dans un stockage en ligne, téléchargez-le d'abord sur l'appareil.",
+      });
+
+      return;
+    }
+
+    try {
+      const analysis = await analyzeGpx(xml);
+      setStatus({ kind: "vide" });
+      setParsed({
+        fileName: file.name,
         name: analysis.name,
         distanceM: analysis.distanceM,
-        ascentM: Math.round(analysis.ascentM),
+        ascentM: analysis.ascentM,
         points: analysis.points,
         profile: analysis.profile,
       });
-
-      if (!created.ok) {
-        setState({ kind: "erreur", message: created.error });
-
-        return;
-      }
-
-      rememberPlan(created.value);
-      // L'état reste sur « lecture » : la navigation remplace l'écran, et
-      // repasser par « vide » ferait clignoter le formulaire au départ.
-      router.push(`/plan/${created.value}`);
     } catch (error) {
-      setState({
+      setStatus({
         kind: "erreur",
         message: error instanceof Error ? error.message : String(error),
       });
     }
   }
 
+  /**
+   * La modale valide le nom et le chrono ; le plan n'existe qu'à partir
+   * d'ici. Un message renvoyé rouvre la modale dessus, `null` déclenche la
+   * navigation vers l'onglet Course pour y poser les ravitos.
+   */
+  async function confirm(
+    raceName: string,
+    targetTimeS: number | undefined,
+  ): Promise<string | null> {
+    if (!parsed) return "Le fichier importé a été perdu. Relancez l'import.";
+
+    const created = await importTrack({
+      name: raceName,
+      distanceM: parsed.distanceM,
+      ascentM: Math.round(parsed.ascentM),
+      points: parsed.points,
+      profile: parsed.profile,
+    });
+
+    if (!created.ok) return created.error;
+
+    if (targetTimeS !== undefined) {
+      const saved = await savePlan(created.value, {
+        settings: { targetTimeS },
+      });
+      if (!saved.ok) return saved.error;
+    }
+
+    rememberPlan(created.value);
+    router.push(`/plan/${created.value}`);
+
+    return null;
+  }
+
   return (
-    <main className="mx-auto flex max-w-2xl flex-col gap-6 p-8">
-      <h1 className="text-2xl font-semibold">Plan nutritionnel de course</h1>
+    <main className="flex min-h-screen flex-col bg-paper text-ink">
+      <Hero>
+        <div className="px-6 pt-4 text-center sm:pt-8 lg:pt-6">
+          <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
+            Importez la trace de votre course
+          </h1>
+          <p className="mx-auto mt-3 max-w-xl text-base text-ink-soft sm:text-lg">
+            Un fichier GPX suffit. Le plan s'ouvre aussitôt et se garde sur cet
+            appareil.
+          </p>
+        </div>
+        <ImportDropzone status={status} onFile={(file) => void read(file)} />
 
-      <label className="flex flex-col gap-2">
-        <span>Fichier GPX</span>
-        <input
-          type="file"
-          accept=".gpx,application/gpx+xml"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void read(file);
-          }}
+        <div className="flex flex-1 w-full px-4 pb-6 lg:pb-8">
+          <div className="flex w-full flex-col gap-4 pt-16 lg:flex-row">
+            <div className="flex flex-1 flex-wrap gap-4">
+              <PlanCards />
+            </div>
+            <PlansActions />
+          </div>
+        </div>
+      </Hero>
+
+      {parsed && (
+        <ImportRaceModal
+          track={parsed}
+          onCancel={() => setParsed(null)}
+          onConfirm={confirm}
         />
-      </label>
-
-      {state.kind === "lecture" && <p>Lecture…</p>}
-
-      {state.kind === "erreur" && (
-        <p role="alert">Import impossible — {state.message}</p>
       )}
     </main>
   );

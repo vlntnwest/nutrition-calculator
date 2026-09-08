@@ -1,10 +1,13 @@
 "use server";
 
+import { pacingIssue } from "@/core/distribute";
 import type { ProfilePoint, ResolvedPoint } from "@/core/type";
+import { db } from "@/db";
 import { createPlan } from "./createPlan";
 import { getPlan } from "./getPlan";
+import { pacingIssueText } from "./pacingErrorText";
 import { PlanError } from "./planError";
-import type { NewPlan } from "./planInput";
+import type { LegOverride, NewPlan } from "./planInput";
 import { regeneratePlan } from "./regeneratePlan";
 import type { RoadbookEdit } from "./saveRoadbook";
 import { saveRoadbook } from "./saveRoadbook";
@@ -93,7 +96,31 @@ export async function computePlan(accessId: string): Promise<Result<null>> {
 }
 
 /**
- * Écran 5 — enregistrer les retouches. Le calcul se rejoue avec elles pour
+ * Écran 7 — imposer une durée ou une cible à un secteur.
+ *
+ * Une consigne change le découpage même du calcul : la mise à jour jette les
+ * secteurs, le calcul doit repartir dans la foulée. Les deux dans une seule
+ * transaction, pas seulement un seul aller-retour : une consigne qui rend le
+ * plan infaisable ne doit pas s'enregistrer quand même, le roadbook effacé
+ * derrière elle sans recours. Le refus défait tout, l'écran garde le
+ * roadbook d'avant.
+ */
+export async function imposeOnLegs(
+  accessId: string,
+  legOverrides: LegOverride[],
+): Promise<Result<null>> {
+  return guard(async () => {
+    await db.transaction(async (tx) => {
+      await updatePlan(accessId, { legOverrides }, tx);
+      await regeneratePlan(accessId, tx);
+    });
+
+    return null;
+  }, accessId);
+}
+
+/**
+ * Écran 7 — enregistrer les retouches. Le calcul se rejoue avec elles pour
  * consigne, donc les remarques ressortent justes.
  */
 export async function saveEditedRoadbook(
@@ -126,6 +153,13 @@ async function guard<T>(
     return { ok: true, value: await run() };
   } catch (error) {
     if (error instanceof PlanError) return { ok: false, error: error.message };
+
+    // Un plan dont le chrono ne tient plus (arrêts ou consignes imposées
+    // au-delà de l'objectif) est un refus délibéré du noyau, pas un bug —
+    // même s'il ne voyage pas en `PlanError`, faute de pouvoir porter ses
+    // chiffres dans une classe qui vit côté serveur des plans.
+    const issue = pacingIssue(error);
+    if (issue) return { ok: false, error: pacingIssueText(issue) };
 
     console.error("action échouée", error);
 

@@ -74,6 +74,15 @@ export async function saveRoadbook(
       if (!(f.volumeMl > 0)) {
         throw new PlanError(`Fill volume must be positive: ${f.volumeMl}`);
       }
+      // La flasque ne tient pas plus que sa propre contenance : un secteur
+      // ne la fait pas grandir. Le client borne déjà la saisie, mais rien
+      // n'empêche un appel direct de l'API de la contourner.
+      const flask = runner.flasks[f.flaskRank - 1];
+      if (f.volumeMl > flask.volumeMl) {
+        throw new PlanError(
+          `Fill volume ${f.volumeMl} exceeds flask ${f.flaskRank} capacity ${flask.volumeMl}`,
+        );
+      }
     }
   }
 

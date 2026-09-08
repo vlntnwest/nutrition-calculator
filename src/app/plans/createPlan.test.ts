@@ -303,7 +303,7 @@ test("un plan réduit à sa trace s'écrit", async () => {
     targetTimeS: null,
     // Une course linéaire : `paceDrift` rend 1 partout.
     paceSplit: 0,
-    climbIntensity: 0.25,
+    climbIntensity: 0.5,
   });
 });
 

@@ -187,6 +187,34 @@ test("changer la sélection laisse les instantanés gardés intacts", async () =
   });
 });
 
+/**
+ * Une boisson glucidique n'a nulle part où aller si aucune flasque ne
+ * l'accepte : elle sort du sac avec les flasques, dans la même mise à jour.
+ */
+test("plus aucune flasque acceptant la boisson en retire la boisson glucidique des produits", async () => {
+  const accessId = await createPlan(input);
+  written.push(accessId);
+
+  await updatePlan(accessId, {
+    flasks: [{ volumeMl: 500, onlyWater: true }],
+  });
+
+  expect((await getPlan(accessId))?.productCodes.sort()).toEqual([
+    "naak-gel-ultra",
+  ]);
+});
+
+test("retirer toutes les flasques retire pareillement la boisson glucidique", async () => {
+  const accessId = await createPlan(input);
+  written.push(accessId);
+
+  await updatePlan(accessId, { flasks: [] });
+
+  expect((await getPlan(accessId))?.productCodes.sort()).toEqual([
+    "naak-gel-ultra",
+  ]);
+});
+
 test("un code produit inconnu refuse la mise à jour entière", async () => {
   const accessId = await createPlan(input);
   written.push(accessId);

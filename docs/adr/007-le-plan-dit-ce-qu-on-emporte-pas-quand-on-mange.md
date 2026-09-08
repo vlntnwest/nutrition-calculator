@@ -8,6 +8,14 @@ Revient sur deux règles du §6 Notion — *« alterner les formats »* et
 *« toujours arrondir à l'unité entière supérieure »*, cette dernière restant
 vraie mais changeant d'échelle.
 
+Amendé le 2026-09-08 : l'avertissement `leg-drink-unused`, posé ici pour que
+*« la boisson disparaît sans le dire »* cesse d'être silencieux, est retiré. Le
+cas qu'il décrivait — un secteur qui ne reçoit aucune dose de boisson — est
+l'ordinaire d'un plan à une seule boisson, et non un défaut : il se produisait
+sur la plupart des secteurs et noyait les remarques qui, elles, demandent une
+décision. Le silence est cette fois délibéré. La valeur reste dans l'enum
+Postgres `warning`, que l'on ne recrée pas pour la retirer.
+
 ## Contexte
 
 `nutritionPlan` traite chaque secteur inter-ravito comme une boîte close : on y

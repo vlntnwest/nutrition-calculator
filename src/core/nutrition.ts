@@ -475,15 +475,35 @@ function provision(
   // reste se boit en eau claire.
   const capacityMl = drinkCapacityMl(runner);
 
+  // La contenance ne se renouvelle qu'aux points d'eau, pas à chaque secteur :
+  // sur une portée qui franchit un ravito sec, elle se partage entre ses
+  // secteurs au prorata de leur soif. La donner entière à chacun préparait la
+  // même flasque deux fois — 500 mL de contenant pour 1 000 mL de poudre
+  // dosée, que `leg-drink-above-flasks` signalait sans que le plan y renonce.
+  //
+  // Une portée d'un seul secteur — le cas dès que le ravito suivant donne de
+  // l'eau — retrouve la contenance entière, comme avant.
+  const partMl = raws.map(() => Number.POSITIVE_INFINITY);
+  if (capacityMl !== null) {
+    for (const span of spans) {
+      const soifMl = span.reduce((t, l) => t + needs[l].fluidMl, 0);
+      for (const l of span) {
+        partMl[l] =
+          soifMl > 0
+            ? (capacityMl * needs[l].fluidMl) / soifMl
+            : capacityMl / span.length;
+      }
+    }
+  }
+
   // La part visée de chaque boisson, cumulée depuis le départ, et ce qu'elle a
   // reçu. C'est leur écart qui désigne la boisson du secteur suivant : sans ce
   // suivi, la même l'emporterait à chaque fois et l'autre ne servirait jamais.
   const idealMl = drinks.map(() => 0);
   const givenMl = drinks.map(() => 0);
 
-  const drinkSteps = needs.map((need) => {
-    const availableMl =
-      capacityMl === null ? need.fluidMl : Math.min(need.fluidMl, capacityMl);
+  const drinkSteps = needs.map((need, l) => {
+    const availableMl = Math.min(need.fluidMl, partMl[l]);
     for (const [i, ml] of share(drinks, availableMl).entries()) {
       idealMl[i] += ml;
     }
@@ -1121,8 +1141,17 @@ function warnings(
     });
   }
 
+  // Le sodium suit la boisson qui dose les glucides : rien ne l'ajuste à
+  // part, et sa concentration réelle n'a pas de raison de tomber juste sur
+  // la cible visée à côté. Même seuil de tolérance que `carbs-above-target`.
+  if (sodiumNeed > 0 && sodiumSupply > sodiumNeed * CARBS_OVERSHOOT_MAX) {
+    messages.push({
+      code: "sodium-above-target",
+      share: sodiumSupply / sodiumNeed,
+    });
+  }
+
   const carryMl = carryCapacityMl(runner);
-  const hasCarbDrink = products.some((p) => p.carbsG > 0 && p.fluidMl > 0);
 
   for (const [legIndex, s] of legs.entries()) {
     if (s.durationS > 0 && s.supply.fluidMl > s.need.fluidMl) {
@@ -1131,16 +1160,6 @@ function warnings(
         legIndex,
         supplyMl: s.supply.fluidMl,
         needMl: s.need.fluidMl,
-      });
-    }
-
-    // Le cas silencieux d'avant l'ADR 007 : une boisson glucidique était
-    // cochée, aucune dose n'entre dans ce secteur, tout part en eau claire.
-    if (hasCarbDrink && s.supply.fluidMl === 0 && s.plainWaterMl > 0) {
-      messages.push({
-        code: "leg-drink-unused",
-        legIndex,
-        plainWaterMl: s.plainWaterMl,
       });
     }
   }
