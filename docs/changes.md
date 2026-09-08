@@ -3,4 +3,3 @@ Globalement le site manque de contrast, trop d'elements gris, j'aime quand les t
 ## Course
 
 - Effort en montée doit etre repensé au niveau du calcul, si l'ffort est plus difficile les pace en montée devrait accelerer et certaines pace rapide devrait ralentir, en gros la corbe s'applati alors que quand c'est plus facile, les montée ralentissent mais il faut compenser les descentes. On fera ça à part
-- Le bouton "Enregistré" entourer de blanc c'est moche, il faut mettre ça à un autre endroit Peut etre tous les boutons enregistré en haut à gauche, à relfechir avec impecable

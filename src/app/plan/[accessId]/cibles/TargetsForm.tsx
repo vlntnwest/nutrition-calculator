@@ -358,7 +358,10 @@ export function TargetsForm({
         </div>
       </div>
 
-      <div className="shrink-0 border-line border-t bg-paper">
+      {/* `paper-dim` fait de ce pied un plateau creux, pas une bande
+          blanche posée sur le papier : le bouton s'y pose, il n'y flotte
+          plus seul. Même creux que `Panel ton="creux"`. */}
+      <div className="shrink-0 border-line border-t bg-paper-dim">
         <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
           {reproche && <ErrorNote>{reproche}</ErrorNote>}
           {erreur && <ErrorNote>{erreur}</ErrorNote>}

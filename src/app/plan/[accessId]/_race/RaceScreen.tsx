@@ -444,7 +444,12 @@ export function RaceScreen({
           </p> */}
         </div>
 
-        <div className="shrink-0 border-line border-t bg-paper px-4 sm:px-6">
+        {/* Au pouce, la feuille est du papier plein et ce pied l'est avec
+            elle. À partir de `lg`, la colonne redevient la plaque de verre
+            du wireframe (voir plus haut) : un pied plein y romprait le
+            calque, comme une carte oubliée sur un plateau transparent — le
+            même voile flouté que l'en-tête du roadbook l'y raccorde. */}
+        <div className="shrink-0 border-line border-t bg-paper px-4 sm:px-6 lg:bg-veil lg:backdrop-blur-xl">
           {reproche && <ErrorNote>{reproche}</ErrorNote>}
           {erreur && <ErrorNote>{erreur}</ErrorNote>}
           <SaveBar

@@ -14,6 +14,11 @@ import { CheckIcon, SpinnerIcon } from "./icons";
  * étiré sur un catalogue en quatre colonnes, « Enregistrer » cessait d'être
  * un bouton pour devenir une bande. L'état passe alors à sa gauche, sur la
  * même ligne.
+ *
+ * Sans fond ni filet à elle : ce pied n'est pas la même plaque d'un écran à
+ * l'autre — plateau creux sur un formulaire, verre flouté sur la colonne qui
+ * flotte au-dessus de la carte — c'est à l'appelant de poser le sien, comme
+ * il pose déjà le filet qui le sépare du reste.
  */
 export function SaveBar({
   pending,
@@ -35,7 +40,7 @@ export function SaveBar({
   children?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-2 bg-paper py-3 sm:flex-row sm:items-center sm:gap-3">
+    <div className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:gap-3">
       {children}
       <Button
         ton="encre"
