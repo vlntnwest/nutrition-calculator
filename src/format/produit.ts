@@ -48,3 +48,12 @@ export function coupeFr(divisibleBy: number): string {
 export function nomProduit(nom: string): string {
   return nom.replace(/\s+[—–-]\s+/g, ", ");
 }
+
+/**
+ * La photo vit dans Vercel Blob sous `products-images/{codeSeed}.webp` — une
+ * convention de nommage, jamais une colonne en base : elle se déduit,
+ * `codeSeed` étant déjà la clé stable du produit.
+ */
+export function productImageUrl(codeSeed: string): string {
+  return `${process.env.NEXT_PUBLIC_BLOB_BASE_URL}/products-images/${codeSeed}.webp`;
+}

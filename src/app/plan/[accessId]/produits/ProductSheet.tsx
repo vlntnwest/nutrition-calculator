@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useId } from "react";
 import type { CatalogueEntry } from "@/app/plans/catalogue";
 import type { Targets } from "@/core/type";
@@ -11,6 +10,7 @@ import { CheckIcon, CloseIcon, PlusIcon } from "@/ui/icons";
 import { Stat, Val } from "@/ui/Measure";
 import { Modal, ModalFoot } from "@/ui/Modal";
 import { Rule } from "@/ui/Panel";
+import { ProductImage } from "./ProductImage";
 
 /**
  * Le détail d'un produit, ouvert au clic sur une fiche. Fenêtre centrée sur
@@ -39,11 +39,9 @@ export function ProductSheet({
   return (
     <Modal labelledBy={titreId} onClose={onFermer} largeur="sm:max-w-lg">
       <div className="flex items-start gap-3 p-4 pb-3">
-        <span className="relative size-20 shrink-0 overflow-hidden rounded-[var(--radius-control)] bg-paper-dim">
-          <Image
-            src="/ref.webp"
-            alt=""
-            fill
+        <span className="relative size-20 shrink-0 overflow-hidden rounded-[var(--radius-control)] bg-paper">
+          <ProductImage
+            codeSeed={produit.codeSeed}
             sizes="80px"
             className="object-cover"
           />

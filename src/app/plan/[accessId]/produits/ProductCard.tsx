@@ -1,18 +1,15 @@
 "use client";
 
-import Image from "next/image";
 import type { CatalogueEntry } from "@/app/plans/catalogue";
 import { entier, quantite } from "@/format/number";
 import { formatFr, nomProduit } from "@/format/produit";
 import { CheckIcon, PlusIcon } from "@/ui/icons";
 import { Onglet } from "@/ui/Panel";
+import { ProductImage } from "./ProductImage";
 
 /**
  * Une fiche du catalogue. Le corps ouvre le détail, le pied pose ou retire
  * du sac : deux gestes distincts, jamais imbriqués l'un dans l'autre.
- *
- * L'image est un substitut commun à tout le catalogue tant qu'aucune photo
- * n'est en base. Le jour où elles arrivent, seule sa source change.
  */
 export function ProductCard({
   produit,
@@ -38,11 +35,9 @@ export function ProductCard({
         onClick={onOuvrir}
         className="flex flex-1 cursor-pointer flex-col text-left"
       >
-        <span className="relative block aspect-[3/2] w-full overflow-hidden bg-paper-dim">
-          <Image
-            src="/ref.webp"
-            alt=""
-            fill
+        <span className="relative block aspect-[3/2] w-full overflow-hidden bg-paper">
+          <ProductImage
+            codeSeed={produit.codeSeed}
             sizes="(min-width: 1280px) 22vw, (min-width: 640px) 30vw, 48vw"
             className="object-cover"
           />
