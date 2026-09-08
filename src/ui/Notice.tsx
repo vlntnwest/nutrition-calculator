@@ -8,12 +8,9 @@ import { WarnIcon } from "./icons";
  */
 export function Notice({
   ton = "alerte",
-  code,
   children,
 }: {
   ton?: "alerte" | "neutre";
-  /** Le code du noyau, gardé lisible : c'est lui qu'on cite dans un rapport. */
-  code?: string;
   children: ReactNode;
 }) {
   const alerte = ton === "alerte";
@@ -27,12 +24,7 @@ export function Notice({
       }`}
     >
       {alerte && <WarnIcon className="mt-px size-4 shrink-0" />}
-      <div className="min-w-0 flex-1">
-        <p className="text-[13px] leading-relaxed">{children}</p>
-        {code && (
-          <p className="mt-1 font-mono text-[10px] opacity-70">{code}</p>
-        )}
-      </div>
+      <p className="min-w-0 flex-1 text-[13px] leading-relaxed">{children}</p>
     </div>
   );
 }

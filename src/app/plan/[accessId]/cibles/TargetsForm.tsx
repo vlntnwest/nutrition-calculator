@@ -179,7 +179,7 @@ export function TargetsForm({
                     }
                   />
                   {cibles.carbsGH > CARBS_GUIDE_G_H && (
-                    <Notice code="carbs-above-guide">
+                    <Notice>
                       Au-delà de <Val unite="g/h">{CARBS_GUIDE_G_H}</Val>, on
                       sort des fourchettes publiées. Le calcul suivra quand
                       même, et le signalera sur le roadbook.
@@ -207,7 +207,7 @@ export function TargetsForm({
                     }
                   />
                   {cibles.fluidMlH > FLUID_GUIDE_ML_H && (
-                    <Notice code="fluid-above-guide">
+                    <Notice>
                       Au-delà de{" "}
                       <Val unite="mL/h">{entier(FLUID_GUIDE_ML_H)}</Val>, le
                       risque n'est plus la déshydratation mais l'excès d'eau.

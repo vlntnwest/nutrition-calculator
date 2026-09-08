@@ -283,9 +283,7 @@ export function RoadbookEditor({
             {roadbook.warnings.length > 0 && (
               <div className={`flex flex-col gap-2 ${vieux}`}>
                 {roadbook.warnings.map((w) => (
-                  <Notice key={w.code} code={w.code}>
-                    {warningText(w.code, w.payload)}
-                  </Notice>
+                  <Notice key={w.code}>{warningText(w.code, w.payload)}</Notice>
                 ))}
               </div>
             )}

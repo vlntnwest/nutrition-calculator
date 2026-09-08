@@ -577,9 +577,9 @@ abouti (coche et « Enregistré » en `go`), ou la conséquence annoncée avant 
 ### Notice / ErrorNote / EmptyNote
 
 - **Notice** : une remarque du calcul. Pictogramme d'alerte, texte 13px, fond
-  `warn-tint` cerné de `warn/25`. Le code du noyau reste lisible dessous en Geist
-  Mono 10px, c'est lui qu'on cite dans un rapport. Le ton `neutre` retombe sur
-  `paper-dim`.
+  `warn-tint` cerné de `warn/25`. La phrase se suffit : le code du noyau ne
+  s'affiche pas sous elle, il ne disait rien au coureur que la phrase ne dise
+  déjà. Le ton `neutre` retombe sur `paper-dim`.
 - **ErrorNote** : un refus, en `accent-tint` et `accent-dark`, avec `role="alert"`.
   Il nomme ce qui bloque puis l'action qui débloque, dans cet ordre, sans s'excuser.
 - **EmptyNote** : un filet **en tirets**, `px-5 py-8`, centré. Un titre en 15px,
