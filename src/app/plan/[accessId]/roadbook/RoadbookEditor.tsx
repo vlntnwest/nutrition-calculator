@@ -12,7 +12,7 @@ import { Button } from "@/ui/Button";
 import { Notice } from "@/ui/Notice";
 import { Toast } from "@/ui/Toast";
 import { withFill, withServing } from "./edit";
-import { liveTotal, spanFluidNeedMl, spanStart } from "./format";
+import { liveTotal, SOLIDE, spanFluidNeedMl, spanStart } from "./format";
 import { LegCard } from "./LegCard";
 import { LegProfile } from "./LegProfile";
 import { PackSummary } from "./PackSummary";
@@ -172,13 +172,6 @@ export function RoadbookEditor({
     });
   }
 
-  // Les avertissements viennent du serveur et ne rejouent pas ici — seule la
-  // règle qui les déclenche compte, pas leur texte — donc tant qu'on n'a pas
-  // enregistré, ils décrivent l'état d'avant. On les estompe plutôt que de
-  // les refaire, ce serait rouvrir la divergence que getRoadbook évite (ADR
-  // 011). L'apport en glucides, lui, se resomme en direct dans `LegCard` et
-  // `PackSummary` : c'est une simple somme des retouches, pas un calcul du
-  // noyau, et rien n'y diverge.
   /**
    * La portée où tombe un secteur, telle que sa carte la lit : le rang de
    * celui qui l'ouvre, ce qu'il y a à boire dessus, et les flasques qui la
@@ -188,7 +181,7 @@ export function RoadbookEditor({
     const ouverture = spanStart(roadbook.legs, l);
 
     return {
-      rank: roadbook.legs[ouverture].rank,
+      ...ouvertureDe(ouverture),
       // Depuis l'ouverture, pas depuis `l` : la portée est la même vue de
       // n'importe lequel de ses secteurs.
       besoinMl: spanFluidNeedMl(roadbook.legs, ouverture),
@@ -196,6 +189,34 @@ export function RoadbookEditor({
     };
   }
 
+  /**
+   * Où se prend la nourriture d'un secteur : au dernier ravito qui en donnait.
+   * Le solide n'a pas de contenant qui le borne — on dit d'où il sort, on ne
+   * déplace pas la ration.
+   */
+  function priseSolideDe(l: number) {
+    return ouvertureDe(spanStart(roadbook.legs, l, SOLIDE));
+  }
+
+  /**
+   * Le secteur qui ouvre une portée, et le ravito où l'on s'y charge : celui
+   * qui **clôt le secteur d'avant**, puisqu'on charge en repartant. Nul au
+   * premier secteur, où l'on part de chez soi.
+   */
+  function ouvertureDe(ouverture: number) {
+    return {
+      rank: roadbook.legs[ouverture].rank,
+      ravito: ouverture === 0 ? null : roadbook.legs[ouverture - 1].endName,
+    };
+  }
+
+  // Les avertissements viennent du serveur et ne rejouent pas ici — seule la
+  // règle qui les déclenche compte, pas leur texte — donc tant qu'on n'a pas
+  // enregistré, ils décrivent l'état d'avant. On les estompe plutôt que de
+  // les refaire, ce serait rouvrir la divergence que getRoadbook évite (ADR
+  // 011). L'apport en glucides, lui, se resomme en direct dans `LegCard` et
+  // `PackSummary` : c'est une simple somme des retouches, pas un calcul du
+  // noyau, et rien n'y diverge.
   const vieux = sale ? "opacity-50" : "";
   const total = liveTotal(
     edit.servings,
@@ -248,6 +269,7 @@ export function RoadbookEditor({
                 roadbook={roadbook}
                 cibleGH={leg.imposedCarbsGH ?? cibleGH}
                 portee={porteeDe(l)}
+                priseSolide={priseSolideDe(l)}
                 totalM={roadbook.totalM}
                 vieux={vieux}
                 imposing={imposing}

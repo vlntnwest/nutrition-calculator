@@ -72,6 +72,12 @@ export type RoadbookLeg = {
    * il n'y a rien à verser. Même règle que `carrySpans`, côté noyau.
    */
   opensLiquidSpan: boolean;
+  /**
+   * Le secteur ouvre-t-il une portée de solide ? Même règle, sur les ravitos
+   * qui donnent à manger. Un secteur qui n'en ouvre pas mange ce qu'il a
+   * emporté : sa nourriture se prend au dernier qui en ouvrait une.
+   */
+  opensSolidSpan: boolean;
   supply: Supply;
   /** Les glucides visés sur ce secteur : la cible horaire fois sa durée. */
   needG: number;
@@ -267,6 +273,9 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
   const liquidAt = new Map(
     stationRows.map((a) => [a.positionM, a.providesLiquid]),
   );
+  const solidAt = new Map(
+    stationRows.map((a) => [a.positionM, a.providesSolid]),
+  );
   const nomAu = new Map(stationRows.map((a) => [a.positionM, a.name]));
   const arretAu = new Map(
     stationRows.map((a) => [a.positionM, a.stopDurationS]),
@@ -327,6 +336,7 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
         weightG: s.weightG,
       })),
       opensLiquidSpan: depuis === null || (liquidAt.get(depuis) ?? true),
+      opensSolidSpan: depuis === null || (solidAt.get(depuis) ?? true),
       fills: byLeg(fillRows, leg.rank).map((f) => ({
         flaskRank: f.flaskRank,
         product: f.product,

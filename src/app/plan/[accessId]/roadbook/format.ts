@@ -68,14 +68,27 @@ export function spanFluidNeedMl(legs: Roadbook["legs"], index: number): number {
 }
 
 /**
- * Les secteurs que couvre la portée ouverte en `index` : lui-même, puis ceux
- * qui suivent tant qu'ils ne rouvrent pas. Une boisson versée à l'ouverture
- * se boit sur tous — c'est le périmètre où flasques et rations doivent
- * s'accorder.
+ * Ce qui rouvre une portée. Le liquide et le solide se ravitaillent aux mêmes
+ * bornes mais pas aux mêmes : un ravito peut donner de l'eau sans nourriture.
  */
-export function spanIndexes(legs: Roadbook["legs"], index: number): number[] {
+export const LIQUIDE = (leg: Roadbook["legs"][number]) => leg.opensLiquidSpan;
+export const SOLIDE = (leg: Roadbook["legs"][number]) => leg.opensSolidSpan;
+
+type Ouvre = (leg: Roadbook["legs"][number]) => boolean;
+
+/**
+ * Les secteurs que couvre la portée ouverte en `index` : lui-même, puis ceux
+ * qui suivent tant qu'ils ne rouvrent pas. Ce qu'on emporte à l'ouverture se
+ * consomme sur tous — c'est le périmètre où le chargement et les rations
+ * doivent s'accorder.
+ */
+export function spanIndexes(
+  legs: Roadbook["legs"],
+  index: number,
+  ouvre: Ouvre = LIQUIDE,
+): number[] {
   const portee = [index];
-  for (let i = index + 1; i < legs.length && !legs[i].opensLiquidSpan; i++) {
+  for (let i = index + 1; i < legs.length && !ouvre(legs[i]); i++) {
     portee.push(i);
   }
 
@@ -84,12 +97,16 @@ export function spanIndexes(legs: Roadbook["legs"], index: number): number[] {
 
 /**
  * Le secteur qui ouvre la portée où tombe `index` : lui-même s'il rouvre, le
- * dernier remplissage en amont sinon. C'est là que sont les flasques d'un
- * secteur qui n'en montre aucune.
+ * dernier ravitaillement en amont sinon. C'est là qu'un secteur qui ne charge
+ * rien a pourtant pris ce qu'il consomme.
  */
-export function spanStart(legs: Roadbook["legs"], index: number): number {
+export function spanStart(
+  legs: Roadbook["legs"],
+  index: number,
+  ouvre: Ouvre = LIQUIDE,
+): number {
   let i = index;
-  while (i > 0 && !legs[i].opensLiquidSpan) i--;
+  while (i > 0 && !ouvre(legs[i])) i--;
 
   return i;
 }

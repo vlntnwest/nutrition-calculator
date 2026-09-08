@@ -40,6 +40,7 @@ export function LegCard({
   roadbook,
   cibleGH,
   portee,
+  priseSolide,
   totalM,
   vieux,
   onServing,
@@ -58,6 +59,8 @@ export function LegCard({
   portee: {
     /** Le rang du secteur qui l'ouvre — lui-même, ou un secteur en amont. */
     rank: number;
+    /** Le ravito où l'on charge en l'ouvrant. Nul au départ de la course. */
+    ravito: string | null;
     /**
      * Ce qu'il y a à boire sur toute la portée — voir `spanFluidNeedMl`. Égal
      * à `leg.needFluidMl` dès que le ravito suivant donne de l'eau.
@@ -66,6 +69,11 @@ export function LegCard({
     /** Les remplissages du secteur qui l'ouvre, seul à en porter. */
     remplissages: RoadbookEdit["fills"][number];
   };
+  /**
+   * Où se prend la nourriture d'ici : le dernier ravito qui en donnait, et le
+   * secteur qu'il ouvre. Ce secteur est celui-ci quand il en ouvre une portée.
+   */
+  priseSolide: { rank: number; ravito: string | null };
   totalM: number;
   /** Les avertissements datent du dernier enregistrement. */
   vieux: string;
@@ -106,6 +114,12 @@ export function LegCard({
   const versables = roadbook.catalogue.filter((p) =>
     estVersable(p.formatLabel),
   );
+  const solide = (id: string) => produitDe(id)?.fluidMl === 0;
+  // Nommer le ravito plutôt que le secteur qu'il ouvre : les deux numérotations
+  // se croisent — un secteur finit au ravito de son rang et commence à celui
+  // d'avant — et « au secteur 5 » se lit « au Ravito 5 » alors que c'est le 4.
+  const lieu = (o: { rank: number; ravito: string | null }) =>
+    o.ravito === null ? "au départ" : `à ${o.ravito}`;
   // Recalculé sur les retouches en cours : `leg.supply` date du dernier
   // enregistrement, et doubler une gaufre doit se voir tout de suite plutôt
   // que d'attendre la sauvegarde pour savoir où l'on en est.
@@ -434,6 +448,18 @@ export function LegCard({
         })}
       </ul>
 
+      {/* Un ravito qui ne donne pas à manger ne suspend pas les prises : il
+          déplace seulement le moment où on les charge. La ration reste donc
+          modifiable ici — un solide n'a pas de contenant qui le borne — et la
+          carte dit d'où elle sort. */}
+      {!leg.opensSolidSpan &&
+        rations.some((r) => solide(r.productSnapshotId)) && (
+          <p className="border-line border-t px-4 py-2.5 text-[12px] text-ink-faint leading-relaxed">
+            À prendre {lieu(priseSolide)} : ici le ravito ne donne pas à manger,
+            ce qui se mange sort de la poche.
+          </p>
+        )}
+
       {absents.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 border-line border-t px-4 py-2.5">
           <span className="flex items-center gap-2 text-[12px] text-ink-soft">
@@ -508,9 +534,10 @@ export function LegCard({
           </ul>
         ) : (
           <p className="text-[12px] text-ink-faint leading-relaxed">
-            Pas de remplissage ici : les flasques sont préparées au secteur{" "}
-            {portee.rank}, au dernier ravito qui donnait de l'eau. La boisson de
-            ce secteur-ci s'y prépare avec, et s'y retouche.
+            Pas de remplissage ici : les flasques se préparent {lieu(portee)},
+            dernier ravito qui donnait de l'eau. La boisson de ce secteur-ci s'y
+            prépare avec, et s'y retouche — sur la carte du secteur{" "}
+            {portee.rank}.
           </p>
         )}
         {leg.opensLiquidSpan &&

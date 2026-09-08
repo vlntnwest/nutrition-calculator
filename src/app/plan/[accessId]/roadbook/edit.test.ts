@@ -59,6 +59,7 @@ function leg(patch: Partial<Leg>): Leg {
     servings: [],
     fills: [],
     opensLiquidSpan: true,
+    opensSolidSpan: true,
     supply: { carbsG: 0, energyKcal: 0, sodiumMg: 0, fluidMl: 0 },
     needG: 75,
     needFluidMl: 620,

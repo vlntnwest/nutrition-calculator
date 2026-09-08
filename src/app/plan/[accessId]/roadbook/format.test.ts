@@ -4,12 +4,14 @@ import {
   bound,
   estVersable,
   excessive,
+  LIQUIDE,
   legPaceBand,
   legPaceSPerKm,
   liveCarriedMl,
   liveSupply,
   liveTotal,
   pouredUnits,
+  SOLIDE,
   spanFluidNeedMl,
   spanIndexes,
   spanStart,
@@ -73,6 +75,7 @@ function leg(patch: Partial<Leg>): Leg {
     servings: [],
     fills: [],
     opensLiquidSpan: true,
+    opensSolidSpan: true,
     supply: { carbsG: 0, energyKcal: 0, sodiumMg: 0, fluidMl: 0 },
     needG: 75,
     needFluidMl: 620,
@@ -238,6 +241,24 @@ test("un secteur sans flasque renvoie à l'ouverture de sa portée", () => {
   expect(spanStart(legs, 0)).toBe(0);
   expect(spanStart(legs, 1)).toBe(1);
   expect(spanStart(legs, 3)).toBe(1);
+});
+
+test("le solide a ses propres portées, sur ses propres ravitos", () => {
+  // Un ravito peut donner de l'eau sans donner à manger : les deux portées ne
+  // se recouvrent pas. Ici le secteur 3 rouvre en liquide mais pas en solide.
+  const legs = [
+    leg({ rank: 1, opensLiquidSpan: true, opensSolidSpan: true }),
+    leg({ rank: 2, opensLiquidSpan: true, opensSolidSpan: true }),
+    leg({ rank: 3, opensLiquidSpan: true, opensSolidSpan: false }),
+    leg({ rank: 4, opensLiquidSpan: true, opensSolidSpan: true }),
+  ];
+
+  expect(spanIndexes(legs, 1, LIQUIDE)).toEqual([1]);
+  expect(spanIndexes(legs, 1, SOLIDE)).toEqual([1, 2]);
+
+  // Le secteur 3 porte ses flasques mais pas sa nourriture.
+  expect(spanStart(legs, 2, LIQUIDE)).toBe(2);
+  expect(spanStart(legs, 2, SOLIDE)).toBe(1);
 });
 
 test("la dose versée suit le volume des flasques qui la portent", () => {
