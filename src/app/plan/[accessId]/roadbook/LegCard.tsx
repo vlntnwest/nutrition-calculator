@@ -280,9 +280,6 @@ export function LegCard({
           className="mt-0.5"
           items={[
             <>
-              <Val>{entier(supply.energyKcal)}</Val> kcal
-            </>,
-            <>
               <Val>{entier(supply.sodiumMg)}</Val> mg de sodium
               {ecart(supply.sodiumMg - leg.needSodiumMg, "mg", 5) && (
                 <span className="text-ink-faint">
@@ -293,24 +290,10 @@ export function LegCard({
             </>,
             <>
               à boire <Val>{entier(leg.needFluidMl)}</Val> mL
-              {/* Sous le besoin, le reste part en eau claire — un geste
-                  normal, jamais un manque : l'écrire en écart signé
-                  laisserait croire à un problème là où il n'y en a pas
-                  (voir `leg-drink-unused`, tenu côté noyau). Seul un
-                  dépassement du besoin est un écart à lire comme tel : la
-                  boisson préparée seule couvrirait déjà plus que visé, et
-                  `leg-fluid-above-target` le développe juste en dessous. */}
-              {supply.fluidMl > leg.needFluidMl &&
-                ecart(supply.fluidMl - leg.needFluidMl, "mL", 5) && (
-                  <span className="text-ink-faint">
-                    {" "}
-                    ({ecart(supply.fluidMl - leg.needFluidMl, "mL", 5)})
-                  </span>
-                )}
-              {supply.fluidMl > 0 && supply.fluidMl <= leg.needFluidMl && (
+              {ecart(supply.fluidMl - leg.needFluidMl, "mL", 5) && (
                 <span className="text-ink-faint">
                   {" "}
-                  (dont <Val>{entier(supply.fluidMl)}</Val> mL de boisson)
+                  ({ecart(supply.fluidMl - leg.needFluidMl, "mL", 5)})
                 </span>
               )}
             </>,
@@ -425,9 +408,11 @@ export function LegCard({
                       const v = event.target.value;
                       if (v === "vide") return onFill(flask.rank, null);
 
+                      // Une flasque se remplit à ras bord : le roadbook ne
+                      // retouche plus que son contenu, jamais son volume.
                       onFill(flask.rank, {
                         productSnapshotId: v === "eau" ? null : v,
-                        volumeMl: verse?.volumeMl ?? flask.volumeMl,
+                        volumeMl: flask.volumeMl,
                       });
                     }}
                   >
@@ -440,32 +425,6 @@ export function LegCard({
                         </option>
                       ))}
                   </Select>
-                  {verse !== undefined && (
-                    <span className="flex shrink-0 items-center rounded-[var(--radius-control)] border border-line bg-paper focus-within:border-accent">
-                      <input
-                        type="number"
-                        min={1}
-                        max={flask.volumeMl}
-                        step={10}
-                        value={verse.volumeMl}
-                        aria-label={`Volume de la flasque ${flask.rank} au secteur ${leg.rank}`}
-                        onChange={(event) =>
-                          onFill(flask.rank, {
-                            productSnapshotId: verse.productSnapshotId,
-                            // La flasque ne tient pas plus que sa propre
-                            // contenance : un secteur ne la fait pas
-                            // grandir.
-                            volumeMl: Math.min(
-                              Number(event.target.value),
-                              flask.volumeMl,
-                            ),
-                          })
-                        }
-                        className="w-16 bg-transparent py-1.5 pl-2 font-mono text-[13px] outline-none"
-                      />
-                      <span className="pr-2 text-[11px] text-ink-soft">mL</span>
-                    </span>
-                  )}
                 </li>
               );
             })}

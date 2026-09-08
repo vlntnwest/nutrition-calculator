@@ -38,7 +38,8 @@
     "react-chartjs-2": "^5.3.1",
     "react-dom": "19.2.8",
     "react-leaflet": "^5.0.0",
-    "simplify-js": "^1.2.4"
+    "simplify-js": "^1.2.4",
+    "vercel": "^59.11.7"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.2",
