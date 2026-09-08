@@ -7,13 +7,14 @@ import { paceLabel } from "@/format/clock";
 import { km } from "@/format/number";
 import { ElevationChart, type Gouttieres } from "@/ui/track/ElevationChart";
 import { paceRampColor } from "@/ui/track/paceColor";
-import { legPaceBand, legPaceSPerKm, startOf } from "./format";
+import { legBounds, legPaceBand, legPaceSPerKm, startOf } from "./format";
 
 /**
  * Le relief et l'allure, tenus en tête pendant que les secteurs défilent
  * derrière — la même lecture que sur l'écran Course : l'allure se superpose
- * au relief en dégradé, et les pastilles numérotées du profil restent
- * cliquables pour amener la carte du secteur sous les yeux.
+ * au relief en dégradé, et les pastilles du profil restent cliquables pour
+ * amener la carte du secteur sous les yeux — elles portent le nom du ravito
+ * qu'elles marquent, que le survol et le lecteur d'écran rendent.
  *
  * À partir de `lg`, une bande reprend le relevé secteur par secteur sous le
  * graphique, chaque bouton large à proportion de sa distance et cliquable
@@ -57,10 +58,19 @@ export function LegProfile({
           points={points}
           paceBand={bande}
           onCadre={setGouttieres}
-          marks={legs.flatMap((leg) =>
+          // Le nom du ravito, pas le repli « Ravito {rank} » du composant :
+          // il ne tombait juste que tant que les ravitos s'appelaient comme
+          // leur rang, et le rang lu ici est celui du secteur qu'ils closent.
+          marks={legs.flatMap((leg, i) =>
             leg.endPositionM === null
               ? []
-              : [{ rank: leg.rank, positionM: leg.endPositionM }],
+              : [
+                  {
+                    rank: leg.rank,
+                    positionM: leg.endPositionM,
+                    libelle: legBounds(legs, i).arrivee,
+                  },
+                ],
           )}
           onChoisirMark={onChoisir}
         />
@@ -94,7 +104,8 @@ export function LegProfile({
                 style={{ backgroundColor: teinte }}
               />
               <span className="w-full truncate px-0.5 font-mono text-[10px] text-ink-soft">
-                {paceLabel(leg.durationS, fin - debut) ?? `s${leg.rank}`}
+                {paceLabel(leg.durationS, fin - debut) ??
+                  legBounds(legs, i).arrivee}
               </span>
             </button>
           );

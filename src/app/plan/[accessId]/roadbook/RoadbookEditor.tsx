@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { type ReactNode, useState, useTransition } from "react";
+import { type ReactNode, useRef, useState, useTransition } from "react";
 import { imposeOnLegs, saveEditedRoadbook } from "@/app/plans/actions";
 import type { Roadbook } from "@/app/plans/getRoadbook";
 import type { LegOverride } from "@/app/plans/planInput";
@@ -17,6 +17,9 @@ import { LegCard } from "./LegCard";
 import { LegProfile } from "./LegProfile";
 import { PackSummary } from "./PackSummary";
 import { warningText } from "./warnings";
+
+/** Ce qui reste de trace au-dessus d'une carte amenée sous le profil. */
+const MARGE_SAUT = 12;
 
 /** Le plan affiché, ramené à ce qui se retouche. */
 function editOf(roadbook: Roadbook): RoadbookEdit {
@@ -84,6 +87,8 @@ export function RoadbookEditor({
   const [erreur, setErreur] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [imposing, startImpose] = useTransition();
+  const defilement = useRef<HTMLDivElement>(null);
+  const collant = useRef<HTMLDivElement>(null);
 
   // `router.refresh()` ne remonte pas le composant. Sans ce retour à la
   // source, un recalcul rafraîchirait les agrégats en laissant les contrôles
@@ -217,6 +222,29 @@ export function RoadbookEditor({
   // 011). L'apport en glucides, lui, se resomme en direct dans `LegCard` et
   // `PackSummary` : c'est une simple somme des retouches, pas un calcul du
   // noyau, et rien n'y diverge.
+  /**
+   * Amène la carte d'un secteur sous le profil, et non dessous.
+   *
+   * `scrollIntoView` cale le haut de la carte sur celui de la zone défilante,
+   * c'est-à-dire derrière le profil qui y est collé — la carte arrivait
+   * masquée. La hauteur du collant change avec la largeur de l'écran et le
+   * relevé qu'il porte : on la mesure au saut plutôt que de la figer en
+   * `scroll-margin`.
+   */
+  function versSecteur(rank: number) {
+    const boite = defilement.current;
+    const cible = document.getElementById(`secteur-${rank}`);
+    if (!boite || !cible) return;
+
+    const haut =
+      cible.getBoundingClientRect().top -
+      boite.getBoundingClientRect().top +
+      boite.scrollTop -
+      (collant.current?.offsetHeight ?? 0);
+
+    boite.scrollTo({ top: haut - MARGE_SAUT, behavior: "smooth" });
+  }
+
   const vieux = sale ? "opacity-50" : "";
   const total = liveTotal(
     edit.servings,
@@ -230,20 +258,22 @@ export function RoadbookEditor({
           petit écran, ils ne doivent pas retenir en permanence la place que
           les secteurs réclament. Le profil, lui, garde son collant une fois
           qu'on a défilé jusqu'à lui. */}
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <div
+        ref={defilement}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+      >
         {entete}
 
-        <div className="sticky top-0 z-10 border-line border-b bg-veil backdrop-blur-xl">
+        <div
+          ref={collant}
+          className="sticky top-0 z-10 border-line border-b bg-veil backdrop-blur-xl"
+        >
           <div className="mx-auto w-full max-w-4xl px-4 sm:px-6">
             <LegProfile
               points={points}
               legs={roadbook.legs}
               totalM={roadbook.totalM}
-              onChoisir={(rank) =>
-                document
-                  .getElementById(`secteur-${rank}`)
-                  ?.scrollIntoView({ behavior: "smooth", block: "start" })
-              }
+              onChoisir={versSecteur}
             />
           </div>
         </div>
