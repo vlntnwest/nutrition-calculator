@@ -293,10 +293,24 @@ export function LegCard({
             </>,
             <>
               à boire <Val>{entier(leg.needFluidMl)}</Val> mL
-              {ecart(supply.fluidMl - leg.needFluidMl, "mL", 5) && (
+              {/* Sous le besoin, le reste part en eau claire — un geste
+                  normal, jamais un manque : l'écrire en écart signé
+                  laisserait croire à un problème là où il n'y en a pas
+                  (voir `leg-drink-unused`, tenu côté noyau). Seul un
+                  dépassement du besoin est un écart à lire comme tel : la
+                  boisson préparée seule couvrirait déjà plus que visé, et
+                  `leg-fluid-above-target` le développe juste en dessous. */}
+              {supply.fluidMl > leg.needFluidMl &&
+                ecart(supply.fluidMl - leg.needFluidMl, "mL", 5) && (
+                  <span className="text-ink-faint">
+                    {" "}
+                    ({ecart(supply.fluidMl - leg.needFluidMl, "mL", 5)})
+                  </span>
+                )}
+              {supply.fluidMl > 0 && supply.fluidMl <= leg.needFluidMl && (
                 <span className="text-ink-faint">
                   {" "}
-                  ({ecart(supply.fluidMl - leg.needFluidMl, "mL", 5)})
+                  (dont <Val>{entier(supply.fluidMl)}</Val> mL de boisson)
                 </span>
               )}
             </>,
@@ -431,13 +445,20 @@ export function LegCard({
                       <input
                         type="number"
                         min={1}
+                        max={flask.volumeMl}
                         step={10}
                         value={verse.volumeMl}
                         aria-label={`Volume de la flasque ${flask.rank} au secteur ${leg.rank}`}
                         onChange={(event) =>
                           onFill(flask.rank, {
                             productSnapshotId: verse.productSnapshotId,
-                            volumeMl: Number(event.target.value),
+                            // La flasque ne tient pas plus que sa propre
+                            // contenance : un secteur ne la fait pas
+                            // grandir.
+                            volumeMl: Math.min(
+                              Number(event.target.value),
+                              flask.volumeMl,
+                            ),
                           })
                         }
                         className="w-16 bg-transparent py-1.5 pl-2 font-mono text-[13px] outline-none"
