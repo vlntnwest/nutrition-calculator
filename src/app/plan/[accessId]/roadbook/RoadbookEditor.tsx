@@ -179,6 +179,23 @@ export function RoadbookEditor({
   // 011). L'apport en glucides, lui, se resomme en direct dans `LegCard` et
   // `PackSummary` : c'est une simple somme des retouches, pas un calcul du
   // noyau, et rien n'y diverge.
+  /**
+   * La portée où tombe un secteur, telle que sa carte la lit : le rang de
+   * celui qui l'ouvre, ce qu'il y a à boire dessus, et les flasques qui la
+   * portent — toutes au secteur d'ouverture, seul à en déclarer.
+   */
+  function porteeDe(l: number) {
+    const ouverture = spanStart(roadbook.legs, l);
+
+    return {
+      rank: roadbook.legs[ouverture].rank,
+      // Depuis l'ouverture, pas depuis `l` : la portée est la même vue de
+      // n'importe lequel de ses secteurs.
+      besoinMl: spanFluidNeedMl(roadbook.legs, ouverture),
+      remplissages: edit.fills[ouverture],
+    };
+  }
+
   const vieux = sale ? "opacity-50" : "";
   const total = liveTotal(
     edit.servings,
@@ -230,8 +247,7 @@ export function RoadbookEditor({
                 remplissages={edit.fills[l]}
                 roadbook={roadbook}
                 cibleGH={leg.imposedCarbsGH ?? cibleGH}
-                besoinPorteeMl={spanFluidNeedMl(roadbook.legs, l)}
-                remplissagesPortee={edit.fills[spanStart(roadbook.legs, l)]}
+                portee={porteeDe(l)}
                 totalM={roadbook.totalM}
                 vieux={vieux}
                 imposing={imposing}

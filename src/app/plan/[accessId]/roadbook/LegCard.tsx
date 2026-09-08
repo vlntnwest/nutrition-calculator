@@ -39,8 +39,7 @@ export function LegCard({
   remplissages,
   roadbook,
   cibleGH,
-  besoinPorteeMl,
-  remplissagesPortee,
+  portee,
   totalM,
   vieux,
   onServing,
@@ -55,18 +54,18 @@ export function LegCard({
   roadbook: Roadbook;
   /** La cible horaire qui s'applique ici, imposée ou héritée du plan. */
   cibleGH: number;
-  /**
-   * Ce qu'il y a à boire sur toute la portée qu'ouvre ce secteur — voir
-   * `spanFluidNeedMl`. Égal à `leg.needFluidMl` quand la portée s'arrête au
-   * secteur, ce qui est le cas dès que le ravito suivant donne de l'eau.
-   */
-  besoinPorteeMl: number;
-  /**
-   * Les remplissages de la portée, c'est-à-dire ceux du secteur qui l'ouvre.
-   * Égaux à `remplissages` sur ce secteur-là ; ailleurs, ce sont les flasques
-   * préparées en amont, celles qui bornent quand même les boissons d'ici.
-   */
-  remplissagesPortee: RoadbookEdit["fills"][number];
+  /** La portée où tombe ce secteur : là où ses flasques se préparent. */
+  portee: {
+    /** Le rang du secteur qui l'ouvre — lui-même, ou un secteur en amont. */
+    rank: number;
+    /**
+     * Ce qu'il y a à boire sur toute la portée — voir `spanFluidNeedMl`. Égal
+     * à `leg.needFluidMl` dès que le ravito suivant donne de l'eau.
+     */
+    besoinMl: number;
+    /** Les remplissages du secteur qui l'ouvre, seul à en porter. */
+    remplissages: RoadbookEdit["fills"][number];
+  };
   totalM: number;
   /** Les avertissements datent du dernier enregistrement. */
   vieux: string;
@@ -92,8 +91,13 @@ export function LegCard({
 
     return p ? `${p.brandName ?? ""} ${nomProduit(p.name)}`.trim() : id;
   };
+  // Une boisson ne se pose que là où une flasque la verse : sur un secteur au
+  // milieu d'une portée, le menu ne la propose pas — elle se choisirait ici
+  // pour apparaître sur la carte d'à côté.
   const absents = roadbook.catalogue.filter(
-    (p) => !rations.some((r) => r.productSnapshotId === p.id),
+    (p) =>
+      !rations.some((r) => r.productSnapshotId === p.id) &&
+      (leg.opensLiquidSpan || p.fluidMl === 0),
   );
   // Ce qui se verse dans une flasque se dilue : une poudre, une pastille,
   // un liquide à couper. Une barre ne se verse pas, et le noyau qui reçoit
@@ -114,7 +118,7 @@ export function LegCard({
   // l'écart ne se lit plus contre le besoin de cette carte-ci : il le dit.
   // L'égalité est exacte, `spanFluidNeedMl` rendant la valeur elle-même
   // quand la portée tient en un secteur.
-  const surLaPortee = besoinPorteeMl !== leg.needFluidMl;
+  const surLaPortee = portee.besoinMl !== leg.needFluidMl;
 
   return (
     <article
@@ -319,10 +323,10 @@ export function LegCard({
             leg.opensLiquidSpan ? (
               <>
                 liquide <Val>{entier(porte)}</Val> mL
-                {ecart(porte - besoinPorteeMl, "mL", 5) && (
+                {ecart(porte - portee.besoinMl, "mL", 5) && (
                   <span className="text-ink-faint">
                     {" "}
-                    ({ecart(porte - besoinPorteeMl, "mL", 5)}
+                    ({ecart(porte - portee.besoinMl, "mL", 5)}
                     {surLaPortee ? " sur la portée" : ""})
                   </span>
                 )}
@@ -352,24 +356,45 @@ export function LegCard({
             ? (flaskCapacityUnits(
                 produit,
                 roadbook.flasks,
-                remplissagesPortee,
+                portee.remplissages,
               ) ?? undefined)
             : undefined;
+          // Une boisson n'existe que dans une flasque, et les flasques d'une
+          // portée sont à son ouverture. Sur un secteur qui n'en montre
+          // aucune, la dose se lit mais ne se retouche pas : elle se change
+          // là où on la prépare, et la retoucher d'ici la ferait sauter sur
+          // l'autre carte sous les yeux du coureur.
+          const preparee =
+            !leg.opensLiquidSpan &&
+            produit !== undefined &&
+            produit.fluidMl > 0;
 
           return (
             <li
               key={r.productSnapshotId}
               className="flex items-center gap-3 border-line border-b px-4 py-2.5 last:border-b-0"
             >
-              <Stepper
-                value={r.quantity}
-                pas={pas}
-                max={plafond}
-                libelle={nomDe(r.productSnapshotId)}
-                onChange={(quantity) =>
-                  onServing(r.productSnapshotId, quantity)
-                }
-              />
+              {preparee ? (
+                <span className="flex w-[108px] shrink-0 flex-col items-center gap-0.5">
+                  <span className="font-mono text-[15px] text-ink tabular-nums">
+                    {quantite(r.quantity)}
+                  </span>
+                  <span className="flex items-center gap-1 text-[11px] text-ink-faint">
+                    <FlaskIcon className="size-3 shrink-0" />
+                    secteur {portee.rank}
+                  </span>
+                </span>
+              ) : (
+                <Stepper
+                  value={r.quantity}
+                  pas={pas}
+                  max={plafond}
+                  libelle={nomDe(r.productSnapshotId)}
+                  onChange={(quantity) =>
+                    onServing(r.productSnapshotId, quantity)
+                  }
+                />
+              )}
 
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[14px] text-ink">
@@ -396,12 +421,14 @@ export function LegCard({
                 </p>
               </div>
 
-              <IconButton
-                libelle={`Retirer ${nomDe(r.productSnapshotId)} du secteur ${leg.rank}`}
-                onClick={() => onServing(r.productSnapshotId, 0)}
-              >
-                <CloseIcon className="size-4" />
-              </IconButton>
+              {!preparee && (
+                <IconButton
+                  libelle={`Retirer ${nomDe(r.productSnapshotId)} du secteur ${leg.rank}`}
+                  onClick={() => onServing(r.productSnapshotId, 0)}
+                >
+                  <CloseIcon className="size-4" />
+                </IconButton>
+              )}
             </li>
           );
         })}
@@ -481,8 +508,9 @@ export function LegCard({
           </ul>
         ) : (
           <p className="text-[12px] text-ink-faint leading-relaxed">
-            Pas de remplissage ici : les flasques sont préparées en amont, au
-            dernier ravito qui donnait de l'eau.
+            Pas de remplissage ici : les flasques sont préparées au secteur{" "}
+            {portee.rank}, au dernier ravito qui donnait de l'eau. La boisson de
+            ce secteur-ci s'y prépare avec, et s'y retouche.
           </p>
         )}
         {leg.opensLiquidSpan &&
