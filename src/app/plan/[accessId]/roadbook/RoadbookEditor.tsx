@@ -11,7 +11,8 @@ import { duree } from "@/format/number";
 import { Button } from "@/ui/Button";
 import { Notice } from "@/ui/Notice";
 import { Toast } from "@/ui/Toast";
-import { liveTotal } from "./format";
+import { withFill, withServing } from "./edit";
+import { liveTotal, spanFluidNeedMl, spanStart } from "./format";
 import { LegCard } from "./LegCard";
 import { LegProfile } from "./LegProfile";
 import { PackSummary } from "./PackSummary";
@@ -95,67 +96,32 @@ export function RoadbookEditor({
     setErreur(null);
   }
 
-  /**
-   * Pose une quantité sur un secteur. À zéro, la ration disparaît.
-   *
-   * Une ration déjà présente se retouche sur place : la renvoyer en queue
-   * faisait sauter le produit en bas de la carte à chaque frappe du stepper.
-   *
-   * Un remplissage qui versait ce produit repasse à l'eau claire : la flasque
-   * reste emportée et préparée, elle ne peut pas se vider seule parce que sa
-   * boisson a quitté le secteur.
-   */
+  /** Pose une quantité sur un secteur — voir `withServing`. */
   function setServing(leg: number, snapshotId: string, quantity: number) {
     setSale(true);
-    setEdit((e) => ({
-      ...e,
-      servings: e.servings.map((rations, l) => {
-        if (l !== leg) return rations;
-        if (quantity <= 0) {
-          return rations.filter((r) => r.productSnapshotId !== snapshotId);
-        }
-
-        const presente = rations.some(
-          (r) => r.productSnapshotId === snapshotId,
-        );
-
-        return presente
-          ? rations.map((r) =>
-              r.productSnapshotId === snapshotId ? { ...r, quantity } : r,
-            )
-          : [...rations, { productSnapshotId: snapshotId, quantity }];
-      }),
-      fills:
-        quantity > 0
-          ? e.fills
-          : e.fills.map((remplissages, l) =>
-              l === leg
-                ? remplissages.map((f) =>
-                    f.productSnapshotId === snapshotId
-                      ? { ...f, productSnapshotId: null }
-                      : f,
-                  )
-                : remplissages,
-            ),
-    }));
+    setEdit((e) =>
+      withServing(
+        e,
+        roadbook.legs,
+        roadbook.catalogue,
+        roadbook.flasks,
+        leg,
+        snapshotId,
+        quantity,
+      ),
+    );
   }
 
-  /** Verse, ou vide, une flasque sur un secteur. */
+  /** Verse, ou vide, une flasque — voir `withFill`. */
   function setFill(
     leg: number,
     flaskRank: number,
     contenu: { productSnapshotId: string | null; volumeMl: number } | null,
   ) {
     setSale(true);
-    setEdit((e) => ({
-      ...e,
-      fills: e.fills.map((remplissages, l) => {
-        if (l !== leg) return remplissages;
-        const reste = remplissages.filter((f) => f.flaskRank !== flaskRank);
-
-        return contenu === null ? reste : [...reste, { flaskRank, ...contenu }];
-      }),
-    }));
+    setEdit((e) =>
+      withFill(e, roadbook.legs, roadbook.catalogue, leg, flaskRank, contenu),
+    );
   }
 
   function save() {
@@ -264,6 +230,8 @@ export function RoadbookEditor({
                 remplissages={edit.fills[l]}
                 roadbook={roadbook}
                 cibleGH={leg.imposedCarbsGH ?? cibleGH}
+                besoinPorteeMl={spanFluidNeedMl(roadbook.legs, l)}
+                remplissagesPortee={edit.fills[spanStart(roadbook.legs, l)]}
                 totalM={roadbook.totalM}
                 vieux={vieux}
                 imposing={imposing}

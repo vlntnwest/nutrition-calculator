@@ -11,11 +11,15 @@ import { MinusIcon, PlusIcon } from "./icons";
 export function Stepper({
   value,
   pas,
+  max,
   libelle,
   onChange,
 }: {
   value: number;
   pas: number;
+  /** Ce que la ration ne peut pas dépasser — une boisson tient dans ses
+   * flasques. Absent, rien ne la borne. */
+  max?: number;
   /** Ce qu'on ajoute ou retire, pour nommer les deux boutons. */
   libelle: string;
   onChange: (value: number) => void;
@@ -35,6 +39,7 @@ export function Stepper({
       <Cran
         libelle={`Ajouter ${quantite(pas)} de ${libelle}`}
         onClick={() => onChange(value + pas)}
+        disabled={max !== undefined && value + pas > max}
       >
         <PlusIcon className="size-4" />
       </Cran>

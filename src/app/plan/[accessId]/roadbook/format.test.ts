@@ -6,9 +6,13 @@ import {
   excessive,
   legPaceBand,
   legPaceSPerKm,
-  liveFluidCoverage,
+  liveCarriedMl,
   liveSupply,
   liveTotal,
+  pouredUnits,
+  spanFluidNeedMl,
+  spanIndexes,
+  spanStart,
   startOf,
 } from "./format";
 
@@ -33,6 +37,18 @@ const CATALOGUE: Catalogue = [
     name: "Boisson orange",
     brandName: "Marque",
     divisibleBy: 1,
+    formatLabel: "drink",
+    carbsG: 45,
+    energyKcal: 180,
+    sodiumMg: 400,
+    fluidMl: 500,
+    weightG: 60,
+  },
+  {
+    id: "drink-2",
+    name: "Boisson menthe",
+    brandName: "Marque",
+    divisibleBy: 2,
     formatLabel: "drink",
     carbsG: 45,
     energyKcal: 180,
@@ -147,45 +163,129 @@ test("un produit disparu du catalogue ne compte pour rien", () => {
   ).toEqual({ carbsG: 0, energyKcal: 0, sodiumMg: 0, fluidMl: 0 });
 });
 
-test("l'eau claire versée dans les flasques s'ajoute à la boisson dosée", () => {
-  // Reproduit un secteur réel : 954 mL de besoin, une dose de boisson
-  // (500 mL) posée en ration, et deux flasques d'eau claire (500 mL
-  // chacune) — 1 000 mL réellement portés, pas 500.
-  const eau = liveFluidCoverage(
-    [{ productSnapshotId: "drink-1", quantity: 1 }],
-    [
+test("une boisson dosée ne s'ajoute pas à l'eau claire des flasques", () => {
+  // Le secteur 1 d'un plan réel : deux flasques d'eau claire et une ration
+  // de boisson restée là. On porte 1 000 mL, pas 1 500 — un millilitre
+  // d'eau reste un millilitre, mélangé ou non.
+  expect(
+    liveCarriedMl([
       { flaskRank: 1, productSnapshotId: null, volumeMl: 500 },
       { flaskRank: 2, productSnapshotId: null, volumeMl: 500 },
-    ],
-    CATALOGUE,
-  );
-
-  expect(eau).toBe(1500);
+    ]),
+  ).toBe(1000);
 });
 
-test("sans remplissage déclaré, seule la boisson dosée compte", () => {
-  // Le cas d'un secteur qui ne rouvre pas de portée : `remplissages` est
-  // vide (voir `editOf`), et la couverture retombe sur `liveSupply` seul.
-  const eau = liveFluidCoverage(
-    [{ productSnapshotId: "drink-1", quantity: 1 }],
-    [],
-    CATALOGUE,
-  );
-
-  expect(eau).toBe(500);
+test("une flasque versée de boisson porte son volume, comme une autre", () => {
+  expect(
+    liveCarriedMl([
+      { flaskRank: 1, productSnapshotId: "drink-1", volumeMl: 500 },
+    ]),
+  ).toBe(500);
 });
 
-test("une flasque remplie de la boisson elle-même ne se recompte pas deux fois", () => {
-  // La ration dit déjà combien de boisson est bue ; le remplissage ne fait
-  // que déclarer où elle va physiquement. Seule l'eau claire (produit nul)
-  // ajoute une couverture que les rations ne portaient pas encore.
-  const eau = liveFluidCoverage(
-    [{ productSnapshotId: "drink-1", quantity: 1 }],
-    [{ flaskRank: 1, productSnapshotId: "drink-1", volumeMl: 500 }],
-    CATALOGUE,
-  );
+test("un secteur au milieu d'une portée ne porte rien", () => {
+  // `remplissages` n'existe qu'à l'ouverture d'une portée (voir `editOf`) :
+  // ailleurs, les flasques ont été préparées en amont.
+  expect(liveCarriedMl([])).toBe(0);
+});
 
-  expect(eau).toBe(500);
+test("le besoin d'une portée cumule les secteurs jusqu'au prochain remplissage", () => {
+  // Un ravito qui ne donne pas d'eau au bout du secteur 2 : les flasques
+  // remplies en l'ouvrant doivent tenir jusqu'à la fin du secteur 3.
+  const legs = [
+    leg({ rank: 1, needFluidMl: 706, opensLiquidSpan: true }),
+    leg({ rank: 2, needFluidMl: 1239, opensLiquidSpan: true }),
+    leg({ rank: 3, needFluidMl: 1103, opensLiquidSpan: false }),
+    leg({ rank: 4, needFluidMl: 800, opensLiquidSpan: true }),
+  ];
+
+  expect(spanFluidNeedMl(legs, 0)).toBe(706);
+  expect(spanFluidNeedMl(legs, 1)).toBe(1239 + 1103);
+  expect(spanFluidNeedMl(legs, 3)).toBe(800);
+});
+
+test("la portée du dernier secteur s'arrête à l'arrivée", () => {
+  const legs = [
+    leg({ rank: 1, needFluidMl: 706, opensLiquidSpan: true }),
+    leg({ rank: 2, needFluidMl: 1239, opensLiquidSpan: false }),
+  ];
+
+  expect(spanFluidNeedMl(legs, 0)).toBe(706 + 1239);
+});
+
+test("une portée couvre les secteurs qui ne rouvrent pas", () => {
+  const legs = [
+    leg({ rank: 1, opensLiquidSpan: true }),
+    leg({ rank: 2, opensLiquidSpan: true }),
+    leg({ rank: 3, opensLiquidSpan: false }),
+    leg({ rank: 4, opensLiquidSpan: false }),
+    leg({ rank: 5, opensLiquidSpan: true }),
+  ];
+
+  expect(spanIndexes(legs, 0)).toEqual([0]);
+  expect(spanIndexes(legs, 1)).toEqual([1, 2, 3]);
+  expect(spanIndexes(legs, 4)).toEqual([4]);
+});
+
+test("un secteur sans flasque renvoie à l'ouverture de sa portée", () => {
+  const legs = [
+    leg({ rank: 1, opensLiquidSpan: true }),
+    leg({ rank: 2, opensLiquidSpan: true }),
+    leg({ rank: 3, opensLiquidSpan: false }),
+    leg({ rank: 4, opensLiquidSpan: false }),
+  ];
+
+  expect(spanStart(legs, 0)).toBe(0);
+  expect(spanStart(legs, 1)).toBe(1);
+  expect(spanStart(legs, 3)).toBe(1);
+});
+
+test("la dose versée suit le volume des flasques qui la portent", () => {
+  // Une dose de boisson fait 500 mL : une flasque de 500 en vaut une, deux
+  // en valent deux. L'eau claire posée à côté ne compte pas.
+  expect(
+    pouredUnits(
+      "drink-1",
+      [
+        { flaskRank: 1, productSnapshotId: "drink-1", volumeMl: 500 },
+        { flaskRank: 2, productSnapshotId: "drink-1", volumeMl: 500 },
+        { flaskRank: 3, productSnapshotId: null, volumeMl: 500 },
+      ],
+      CATALOGUE,
+    ),
+  ).toBe(2);
+
+  expect(
+    pouredUnits(
+      "drink-1",
+      [{ flaskRank: 1, productSnapshotId: "drink-1", volumeMl: 500 }],
+      CATALOGUE,
+    ),
+  ).toBe(1);
+});
+
+test("une dose sécable s'arrondit au demi", () => {
+  // Une flasque de 750 mL pour une dose de 500 : une dose et demie, que le
+  // stepper sait poser puisque le produit se coupe en deux.
+  expect(
+    pouredUnits(
+      "drink-2",
+      [{ flaskRank: 1, productSnapshotId: "drink-2", volumeMl: 750 }],
+      CATALOGUE,
+    ),
+  ).toBe(1.5);
+});
+
+test("une flasque plus petite qu'une dose vaut au moins un pas", () => {
+  // 150 mL pour une dose de 500 : le rapport arrondirait à zéro, et la base
+  // refuse une ration nulle.
+  expect(
+    pouredUnits(
+      "drink-1",
+      [{ flaskRank: 1, productSnapshotId: "drink-1", volumeMl: 150 }],
+      CATALOGUE,
+    ),
+  ).toBe(1);
 });
 
 test("le sac complet somme les retouches de tous les secteurs", () => {

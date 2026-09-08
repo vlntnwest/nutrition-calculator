@@ -36,32 +36,88 @@ export function liveSupply(
 }
 
 /**
- * Ce qu'il y a réellement à boire sur un secteur : la boisson dosée par les
- * rations, plus l'eau claire réellement versée dans les flasques à
- * l'ouverture de la portée.
+ * Le liquide réellement porté à l'ouverture d'une portée : le volume des
+ * flasques, versées d'eau claire ou de boisson. Un millilitre d'eau reste un
+ * millilitre, mélangé ou non — l'addition ne regarde pas le contenu.
  *
- * `supply.fluidMl` (ci-dessus) ne compte que la boisson glucidique — c'est
- * voulu, `PackSummary` l'affiche sous « boisson » et mélanger l'eau claire
- * dedans fausserait ce chiffre-là. Mais comparé au besoin d'un secteur, ne
- * compter que la boisson fait passer pour un manque de l'eau claire pourtant
- * déjà déclarée dans les flasques : deux flasques d'eau couvrent le besoin
- * aussi bien qu'une flasque de boisson.
+ * `supply.fluidMl` ne dit pas ce qu'on porte mais ce que les rations dosent,
+ * et c'est ce que `PackSummary` affiche sous « boisson ». L'ajouter ici
+ * recompterait la boisson déjà versée dans une flasque.
  *
  * `remplissages` n'existe qu'à l'ouverture d'une portée (voir `editOf` dans
- * `RoadbookEditor`) : ailleurs, il est vide et cette fonction ne rend que la
- * boisson, comme avant — un secteur au milieu d'une portée n'a pas encore de
- * remplissage à lui montrer, pas plus qu'il n'en avait.
+ * `RoadbookEditor`) : ailleurs il est vide, et un secteur au milieu d'une
+ * portée ne porte rien — ses flasques ont été préparées en amont.
  */
-export function liveFluidCoverage(
-  rations: RoadbookEdit["servings"][number],
+export function liveCarriedMl(
+  remplissages: RoadbookEdit["fills"][number],
+): number {
+  return remplissages.reduce((t, f) => t + f.volumeMl, 0);
+}
+
+/**
+ * Ce qu'il y a à boire sur toute la portée qu'ouvre un secteur : son besoin,
+ * plus celui des secteurs suivants jusqu'au prochain remplissage.
+ *
+ * Les flasques se remplissent à l'ouverture et doivent tenir jusqu'au ravito
+ * suivant qui donne de l'eau. Comparer ce qu'elles portent au besoin du seul
+ * secteur d'ouverture rassurerait à tort : un litre paraît suffire quand la
+ * portée en réclame deux.
+ */
+export function spanFluidNeedMl(legs: Roadbook["legs"], index: number): number {
+  return spanIndexes(legs, index).reduce((t, i) => t + legs[i].needFluidMl, 0);
+}
+
+/**
+ * Les secteurs que couvre la portée ouverte en `index` : lui-même, puis ceux
+ * qui suivent tant qu'ils ne rouvrent pas. Une boisson versée à l'ouverture
+ * se boit sur tous — c'est le périmètre où flasques et rations doivent
+ * s'accorder.
+ */
+export function spanIndexes(legs: Roadbook["legs"], index: number): number[] {
+  const portee = [index];
+  for (let i = index + 1; i < legs.length && !legs[i].opensLiquidSpan; i++) {
+    portee.push(i);
+  }
+
+  return portee;
+}
+
+/**
+ * Le secteur qui ouvre la portée où tombe `index` : lui-même s'il rouvre, le
+ * dernier remplissage en amont sinon. C'est là que sont les flasques d'un
+ * secteur qui n'en montre aucune.
+ */
+export function spanStart(legs: Roadbook["legs"], index: number): number {
+  let i = index;
+  while (i > 0 && !legs[i].opensLiquidSpan) i--;
+
+  return i;
+}
+
+/**
+ * La dose que représentent les flasques versées d'un produit : leur volume
+ * rapporté à celui d'une dose, arrondi au pas de retouche.
+ *
+ * Une flasque se remplit à ras bord et le noyau y verse des doses entières,
+ * sans jamais couper une flasque en deux — le rapport retombe donc juste dès
+ * que la dose et la flasque font le même volume, le cas courant. Le plancher
+ * d'un pas évite la ration nulle qu'une flasque minuscule produirait, et que
+ * la base refuserait.
+ */
+export function pouredUnits(
+  snapshotId: string,
   remplissages: RoadbookEdit["fills"][number],
   catalogue: Roadbook["catalogue"],
 ): number {
-  const eauClaire = remplissages
-    .filter((f) => f.productSnapshotId === null)
-    .reduce((t, f) => t + f.volumeMl, 0);
+  const produit = catalogue.find((p) => p.id === snapshotId);
+  if (!produit || produit.fluidMl <= 0) return 1;
 
-  return liveSupply(rations, catalogue).fluidMl + eauClaire;
+  const volumeMl = remplissages
+    .filter((f) => f.productSnapshotId === snapshotId)
+    .reduce((t, f) => t + f.volumeMl, 0);
+  const pas = 1 / produit.divisibleBy;
+
+  return Math.max(pas, Math.round(volumeMl / produit.fluidMl / pas) * pas);
 }
 
 /**

@@ -16,11 +16,12 @@ import { Notice } from "@/ui/Notice";
 import { Rule } from "@/ui/Panel";
 import { Select } from "@/ui/Select";
 import { Stepper } from "@/ui/Stepper";
+import { flaskCapacityUnits, servingStep } from "./edit";
 import {
   bound,
   estVersable,
   excessive,
-  liveFluidCoverage,
+  liveCarriedMl,
   liveSupply,
 } from "./format";
 import { warningText, warningTon } from "./warnings";
@@ -38,6 +39,8 @@ export function LegCard({
   remplissages,
   roadbook,
   cibleGH,
+  besoinPorteeMl,
+  remplissagesPortee,
   totalM,
   vieux,
   onServing,
@@ -52,6 +55,18 @@ export function LegCard({
   roadbook: Roadbook;
   /** La cible horaire qui s'applique ici, imposée ou héritée du plan. */
   cibleGH: number;
+  /**
+   * Ce qu'il y a à boire sur toute la portée qu'ouvre ce secteur — voir
+   * `spanFluidNeedMl`. Égal à `leg.needFluidMl` quand la portée s'arrête au
+   * secteur, ce qui est le cas dès que le ravito suivant donne de l'eau.
+   */
+  besoinPorteeMl: number;
+  /**
+   * Les remplissages de la portée, c'est-à-dire ceux du secteur qui l'ouvre.
+   * Égaux à `remplissages` sur ce secteur-là ; ailleurs, ce sont les flasques
+   * préparées en amont, celles qui bornent quand même les boissons d'ici.
+   */
+  remplissagesPortee: RoadbookEdit["fills"][number];
   totalM: number;
   /** Les avertissements datent du dernier enregistrement. */
   vieux: string;
@@ -92,16 +107,18 @@ export function LegCard({
   // que d'attendre la sauvegarde pour savoir où l'on en est.
   const supply = liveSupply(rations, roadbook.catalogue);
   const trop = excessive(supply.carbsG, leg.needG);
-  // La boisson dosée par les rations, plus l'eau claire déjà versée dans
-  // les flasques : voir `liveFluidCoverage`.
-  const eauCouverte = liveFluidCoverage(
-    rations,
-    remplissages,
-    roadbook.catalogue,
-  );
+  // Le liquide emporté à l'ouverture de la portée : le volume des flasques,
+  // eau claire ou boisson confondues. Voir `liveCarriedMl`.
+  const porte = liveCarriedMl(remplissages);
+  // Quand un ravito ne donne pas d'eau, la portée déborde du secteur et
+  // l'écart ne se lit plus contre le besoin de cette carte-ci : il le dit.
+  // L'égalité est exacte, `spanFluidNeedMl` rendant la valeur elle-même
+  // quand la portée tient en un secteur.
+  const surLaPortee = besoinPorteeMl !== leg.needFluidMl;
   // `leg-drink-unused` reste dans `leg.warnings` (ADR 007 : le noyau ne le
-  // tait pas), mais l'afficher ici n'apprend rien que le delta sur « à
-  // boire », juste au-dessus, ne dise déjà.
+  // tait pas), mais il dit d'un secteur qu'il part en eau claire — ce qui est
+  // le cas de la plupart d'entre eux sur un plan à une seule boisson. Affiché
+  // partout, il noierait les remarques qui, elles, demandent une décision.
   const visibles = leg.warnings.filter((w) => w.code !== "leg-drink-unused");
 
   return (
@@ -301,15 +318,25 @@ export function LegCard({
                 </span>
               )}
             </>,
-            <>
-              à boire <Val>{entier(leg.needFluidMl)}</Val> mL
-              {ecart(eauCouverte - leg.needFluidMl, "mL", 5) && (
-                <span className="text-ink-faint">
-                  {" "}
-                  ({ecart(eauCouverte - leg.needFluidMl, "mL", 5)})
-                </span>
-              )}
-            </>,
+            // Un secteur qui ouvre une portée annonce ce qu'il emporte, comme
+            // les glucides et le sodium juste au-dessus annoncent leur apport.
+            // Ailleurs, il n'y a rien à emporter : le besoin seul, sans écart.
+            leg.opensLiquidSpan ? (
+              <>
+                liquide <Val>{entier(porte)}</Val> mL
+                {ecart(porte - besoinPorteeMl, "mL", 5) && (
+                  <span className="text-ink-faint">
+                    {" "}
+                    ({ecart(porte - besoinPorteeMl, "mL", 5)}
+                    {surLaPortee ? " sur la portée" : ""})
+                  </span>
+                )}
+              </>
+            ) : (
+              <>
+                à boire <Val>{entier(leg.needFluidMl)}</Val> mL
+              </>
+            ),
           ]}
         />
       </div>
@@ -323,7 +350,16 @@ export function LegCard({
 
         {rations.map((r) => {
           const produit = produitDe(r.productSnapshotId);
-          const pas = 1 / (produit?.divisibleBy ?? 1);
+          // Une boisson se retouche par flasque entière, et s'arrête là où
+          // les flasques s'arrêtent : ce sont elles qui la portent.
+          const pas = produit ? servingStep(produit, roadbook.flasks) : 1;
+          const plafond = produit
+            ? (flaskCapacityUnits(
+                produit,
+                roadbook.flasks,
+                remplissagesPortee,
+              ) ?? undefined)
+            : undefined;
 
           return (
             <li
@@ -333,6 +369,7 @@ export function LegCard({
               <Stepper
                 value={r.quantity}
                 pas={pas}
+                max={plafond}
                 libelle={nomDe(r.productSnapshotId)}
                 onChange={(quantity) =>
                   onServing(r.productSnapshotId, quantity)
@@ -354,6 +391,11 @@ export function LegCard({
                         Math.round(produit.carbsG * r.quantity * 10) / 10,
                       )}{" "}
                       g glucides
+                      <span className="px-1.5 text-ink-faint">·</span>
+                      {quantite(
+                        Math.round(produit.sodiumMg * r.quantity * 10) / 10,
+                      )}{" "}
+                      mg sodium
                     </>
                   )}
                 </p>
