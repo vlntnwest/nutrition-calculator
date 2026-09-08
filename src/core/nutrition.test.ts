@@ -945,6 +945,23 @@ test("une portée franchit le ravito sans eau", () => {
   });
 });
 
+test("la boisson d'une portée tient dans ce qu'on prépare une fois", () => {
+  // La contenance ne se renouvelle qu'aux points d'eau. Sur une portée qui en
+  // franchit un sec, la préparer secteur par secteur la comptait deux fois :
+  // 500 mL de flasque à boisson devenaient 1 000 mL de poudre dosée.
+  const plan = nutritionPlan(
+    flatTrack(40, 4),
+    [WATER_STOP, DRY_STOP],
+    CARRIER,
+    TARGETS,
+    [gel, drink],
+  );
+
+  const porteeMl = [1, 2].reduce((t, l) => t + plan.legs[l].supply.fluidMl, 0);
+
+  expect(porteeMl).toBeLessThanOrEqual(500);
+});
+
 test("on ne remplit qu'à l'ouverture d'une portée", () => {
   const plan = nutritionPlan(
     flatTrack(40, 4),

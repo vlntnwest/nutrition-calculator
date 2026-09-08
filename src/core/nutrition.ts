@@ -475,15 +475,35 @@ function provision(
   // reste se boit en eau claire.
   const capacityMl = drinkCapacityMl(runner);
 
+  // La contenance ne se renouvelle qu'aux points d'eau, pas à chaque secteur :
+  // sur une portée qui franchit un ravito sec, elle se partage entre ses
+  // secteurs au prorata de leur soif. La donner entière à chacun préparait la
+  // même flasque deux fois — 500 mL de contenant pour 1 000 mL de poudre
+  // dosée, que `leg-drink-above-flasks` signalait sans que le plan y renonce.
+  //
+  // Une portée d'un seul secteur — le cas dès que le ravito suivant donne de
+  // l'eau — retrouve la contenance entière, comme avant.
+  const partMl = raws.map(() => Number.POSITIVE_INFINITY);
+  if (capacityMl !== null) {
+    for (const span of spans) {
+      const soifMl = span.reduce((t, l) => t + needs[l].fluidMl, 0);
+      for (const l of span) {
+        partMl[l] =
+          soifMl > 0
+            ? (capacityMl * needs[l].fluidMl) / soifMl
+            : capacityMl / span.length;
+      }
+    }
+  }
+
   // La part visée de chaque boisson, cumulée depuis le départ, et ce qu'elle a
   // reçu. C'est leur écart qui désigne la boisson du secteur suivant : sans ce
   // suivi, la même l'emporterait à chaque fois et l'autre ne servirait jamais.
   const idealMl = drinks.map(() => 0);
   const givenMl = drinks.map(() => 0);
 
-  const drinkSteps = needs.map((need) => {
-    const availableMl =
-      capacityMl === null ? need.fluidMl : Math.min(need.fluidMl, capacityMl);
+  const drinkSteps = needs.map((need, l) => {
+    const availableMl = Math.min(need.fluidMl, partMl[l]);
     for (const [i, ml] of share(drinks, availableMl).entries()) {
       idealMl[i] += ml;
     }

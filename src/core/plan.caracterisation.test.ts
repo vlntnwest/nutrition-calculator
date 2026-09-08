@@ -104,10 +104,10 @@ const EXPECTED: Array<
     55800,
     [10293, 8141, 18000, 18166],
     [[0], [1, 2], [3]],
-    922,
-    2000,
-    5,
-    "naak-drink-ultra:4 naak-gel-ultra:26",
+    921,
+    1500,
+    4,
+    "naak-drink-ultra:3 naak-gel-ultra:28",
   ],
 ];
 
