@@ -412,12 +412,6 @@ function phrase(w: Warning): string {
         `pour ${Math.round(w.capacityMl)} mL de flasques qui l'acceptent. ` +
         `Le reste des contenants est réservé à l'eau claire.`
       );
-    case "leg-drink-unused":
-      return (
-        `${legName(plan.legs[w.legIndex])} : aucune dose de boisson n'entre dans ce secteur, ` +
-        `les ${Math.round(w.plainWaterMl)} mL partent en eau claire. ` +
-        `Secteur trop court pour la dose, ou contenance trop faible.`
-      );
   }
 }
 

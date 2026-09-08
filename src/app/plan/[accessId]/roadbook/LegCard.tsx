@@ -24,7 +24,7 @@ import {
   liveCarriedMl,
   liveSupply,
 } from "./format";
-import { warningText, warningTon } from "./warnings";
+import { warningText } from "./warnings";
 
 type Edit = RoadbookEdit["servings"][number];
 
@@ -115,11 +115,6 @@ export function LegCard({
   // L'égalité est exacte, `spanFluidNeedMl` rendant la valeur elle-même
   // quand la portée tient en un secteur.
   const surLaPortee = besoinPorteeMl !== leg.needFluidMl;
-  // `leg-drink-unused` reste dans `leg.warnings` (ADR 007 : le noyau ne le
-  // tait pas), mais il dit d'un secteur qu'il part en eau claire — ce qui est
-  // le cas de la plupart d'entre eux sur un plan à une seule boisson. Affiché
-  // partout, il noierait les remarques qui, elles, demandent une décision.
-  const visibles = leg.warnings.filter((w) => w.code !== "leg-drink-unused");
 
   return (
     <article
@@ -500,10 +495,10 @@ export function LegCard({
           )}
       </div>
 
-      {visibles.length > 0 && (
+      {leg.warnings.length > 0 && (
         <div className={`flex flex-col gap-2 px-4 pb-3 ${vieux}`}>
-          {visibles.map((w) => (
-            <Notice key={w.code} code={w.code} ton={warningTon(w.code)}>
+          {leg.warnings.map((w) => (
+            <Notice key={w.code} code={w.code}>
               {warningText(w.code, w.payload)}
             </Notice>
           ))}

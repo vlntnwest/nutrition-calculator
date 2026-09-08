@@ -1132,7 +1132,6 @@ function warnings(
   }
 
   const carryMl = carryCapacityMl(runner);
-  const hasCarbDrink = products.some((p) => p.carbsG > 0 && p.fluidMl > 0);
 
   for (const [legIndex, s] of legs.entries()) {
     if (s.durationS > 0 && s.supply.fluidMl > s.need.fluidMl) {
@@ -1141,16 +1140,6 @@ function warnings(
         legIndex,
         supplyMl: s.supply.fluidMl,
         needMl: s.need.fluidMl,
-      });
-    }
-
-    // Le cas silencieux d'avant l'ADR 007 : une boisson glucidique était
-    // cochée, aucune dose n'entre dans ce secteur, tout part en eau claire.
-    if (hasCarbDrink && s.supply.fluidMl === 0 && s.plainWaterMl > 0) {
-      messages.push({
-        code: "leg-drink-unused",
-        legIndex,
-        plainWaterMl: s.plainWaterMl,
       });
     }
   }

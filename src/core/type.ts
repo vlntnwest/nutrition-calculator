@@ -531,16 +531,6 @@ export type Warning =
     }
   | {
       /**
-       * Une boisson glucidique était sélectionnée, mais aucune dose n'entre
-       * dans ce secteur — tout le liquide part en eau claire. Le cas se
-       * produisait en silence avant l'ADR 007.
-       */
-      code: "leg-drink-unused";
-      legIndex: number;
-      plainWaterMl: number;
-    }
-  | {
-      /**
        * La boisson préparée ne tient pas dans les flasques qui l'acceptent,
        * les autres étant réservées à l'eau claire. Sans cette remarque, la
        * ventilation laisserait le surplus disparaître de la liste.

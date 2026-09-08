@@ -21,7 +21,6 @@ export const warningEnum = pgEnum("warning", [
   "sodium-above-target",
   "leg-fluid-above-target",
   "leg-fluid-above-carry",
-  "leg-drink-unused",
   "leg-drink-above-flasks",
 ]);
 

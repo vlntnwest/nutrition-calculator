@@ -555,8 +555,7 @@ test("une boisson qui déborde des flasques autorisées le dit", () => {
   });
 });
 
-/** Le cas qui passait en silence : tout le liquide bascule en eau claire. */
-test("une boisson qui n'entre nulle part ne disparaît plus en silence", () => {
+test("une boisson qui n'entre nulle part laisse tout le liquide en eau claire", () => {
   // 15 min à 500 mL/h = 125 mL, moins que la demi-dose de 250.
   const plan = nutritionPlan(
     flatTrack(2, 0.25),
@@ -569,11 +568,6 @@ test("une boisson qui n'entre nulle part ne disparaît plus en silence", () => {
 
   expect(leg.supply.fluidMl).toBe(0);
   expect(leg.plainWaterMl).toBeCloseTo(125, 6);
-  expect(plan.warnings).toContainEqual({
-    code: "leg-drink-unused",
-    legIndex: 0,
-    plainWaterMl: 125,
-  });
 });
 
 test("l'énergie apportée est comptée, et n'est pas la dépense", () => {
