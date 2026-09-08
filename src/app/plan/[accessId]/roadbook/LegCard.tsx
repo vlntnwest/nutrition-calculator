@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { Roadbook } from "@/app/plans/getRoadbook";
 import type { RoadbookEdit } from "@/app/plans/saveRoadbook";
 import { clockLabel, type HMS, toHMS, toSecondsHMS } from "@/format/clock";
-import { duree, ecart, entier, quantite, toNumber } from "@/format/number";
+import { duree, ecart, entier, km, quantite, toNumber } from "@/format/number";
 import { formatFr, nomProduit } from "@/format/produit";
 import { Button, IconButton } from "@/ui/Button";
 import { Tag } from "@/ui/Chip";
@@ -18,11 +18,12 @@ import { Select } from "@/ui/Select";
 import { Stepper } from "@/ui/Stepper";
 import { flaskCapacityUnits, servingStep } from "./edit";
 import {
-  bound,
   estVersable,
   excessive,
+  legBounds,
   liveCarriedMl,
   liveSupply,
+  startOf,
 } from "./format";
 import { warningText } from "./warnings";
 
@@ -35,6 +36,7 @@ type Edit = RoadbookEdit["servings"][number];
  */
 export function LegCard({
   leg,
+  index,
   rations,
   remplissages,
   roadbook,
@@ -50,6 +52,8 @@ export function LegCard({
   imposing,
 }: {
   leg: Roadbook["legs"][number];
+  /** Son rang dans `roadbook.legs`, pour en lire les bornes et l'amont. */
+  index: number;
   rations: Edit;
   remplissages: RoadbookEdit["fills"][number];
   roadbook: Roadbook;
@@ -115,6 +119,9 @@ export function LegCard({
     estVersable(p.formatLabel),
   );
   const solide = (id: string) => produitDe(id)?.fluidMl === 0;
+  // Un secteur se nomme par ses bornes, pas par un numéro — voir `legBounds`.
+  const bornes = legBounds(roadbook.legs, index);
+  const nom = `${bornes.depart} → ${bornes.arrivee}`;
   // Nommer le ravito plutôt que le secteur qu'il ouvre : les deux numérotations
   // se croisent — un secteur finit au ravito de son rang et commence à celui
   // d'avant — et « au secteur 5 » se lit « au Ravito 5 » alors que c'est le 4.
@@ -141,8 +148,10 @@ export function LegCard({
     >
       <header className="px-4 pt-3.5 pb-3">
         <div className="flex items-start justify-between gap-3">
-          <h3 className="font-semibold text-[15px] text-ink">
-            Secteur {leg.rank}
+          <h3 className="min-w-0 font-semibold text-[15px] text-ink">
+            {bornes.depart}
+            <span className="px-1.5 font-normal text-ink-faint">→</span>
+            {bornes.arrivee}
           </h3>
           {/* Un chrono nu en haut d'une carte se lit comme une heure de la
               journée. Il porte donc ce qu'il est : la durée de mouvement de
@@ -158,13 +167,10 @@ export function LegCard({
           </p>
         </div>
         <p className="mt-0.5 text-[12px] text-ink-soft">
-          jusqu'à {bound(leg, totalM)}
-          {leg.endName && (
-            <>
-              <span className="px-1.5 text-ink-faint">·</span>
-              {leg.endName}
-            </>
-          )}
+          <span className="font-mono">
+            {km(startOf(roadbook.legs, index))} →{" "}
+            {km(leg.endPositionM ?? totalM)} km
+          </span>
           <span className="px-1.5 text-ink-faint">·</span>
           <span className="font-mono">
             +{entier(leg.ascentM)} m / −{entier(leg.descentM)} m
@@ -393,9 +399,13 @@ export function LegCard({
                   <span className="font-mono text-[15px] text-ink tabular-nums">
                     {quantite(r.quantity)}
                   </span>
-                  <span className="flex items-center gap-1 text-[11px] text-ink-faint">
+                  <span className="flex w-full items-center justify-center gap-1 text-[11px] text-ink-faint">
                     <FlaskIcon className="size-3 shrink-0" />
-                    secteur {portee.rank}
+                    {/* Un ravito peut porter un nom long : il se coupe plutôt
+                        que de pousser la ligne du produit. */}
+                    <span className="truncate">
+                      {portee.ravito ?? "départ"}
+                    </span>
                   </span>
                 </span>
               ) : (
@@ -437,7 +447,7 @@ export function LegCard({
 
               {!preparee && (
                 <IconButton
-                  libelle={`Retirer ${nomDe(r.productSnapshotId)} du secteur ${leg.rank}`}
+                  libelle={`Retirer ${nomDe(r.productSnapshotId)} du secteur ${nom}`}
                   onClick={() => onServing(r.productSnapshotId, 0)}
                 >
                   <CloseIcon className="size-4" />
@@ -469,7 +479,7 @@ export function LegCard({
             </span>
             <Select
               value=""
-              aria-label={`Ajouter un produit au secteur ${leg.rank}`}
+              aria-label={`Ajouter un produit au secteur ${nom}`}
               onChange={(event) => {
                 if (event.target.value) onServing(event.target.value, 1);
               }}
@@ -501,7 +511,7 @@ export function LegCard({
                   </span>
                   <Select
                     className="min-w-0 flex-1"
-                    aria-label={`Contenu de la flasque ${flask.rank} au secteur ${leg.rank}`}
+                    aria-label={`Contenu de la flasque ${flask.rank} au secteur ${nom}`}
                     value={
                       verse === undefined
                         ? "vide"
@@ -536,8 +546,7 @@ export function LegCard({
           <p className="text-[12px] text-ink-faint leading-relaxed">
             Pas de remplissage ici : les flasques se préparent {lieu(portee)},
             dernier ravito qui donnait de l'eau. La boisson de ce secteur-ci s'y
-            prépare avec, et s'y retouche — sur la carte du secteur{" "}
-            {portee.rank}.
+            prépare avec, et s'y retouche.
           </p>
         )}
         {leg.opensLiquidSpan &&

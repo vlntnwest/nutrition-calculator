@@ -264,6 +264,7 @@ export function RoadbookEditor({
               <LegCard
                 key={leg.rank}
                 leg={leg}
+                index={l}
                 rations={edit.servings[l]}
                 remplissages={edit.fills[l]}
                 roadbook={roadbook}

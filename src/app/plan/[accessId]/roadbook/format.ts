@@ -181,11 +181,33 @@ export function liveTotal(
   };
 }
 
-/** Là où le secteur s'achève, nommé quand un ravito le clôt. */
-export function bound(leg: Roadbook["legs"][number], totalM: number): string {
-  return leg.endPositionM === null
-    ? `arrivée, ${km(totalM)} km`
-    : `${km(leg.endPositionM)} km`;
+/**
+ * Les deux bornes d'un secteur, nommées : d'où il part, où il s'achève.
+ *
+ * Un secteur ne porte pas de numéro à lui : il en portait un, et il se lisait
+ * contre celui des ravitos, qui ne tombe pas au même endroit — le secteur 6
+ * finit au Ravito 6 mais commence au Ravito 5. Nommer les bornes supprime la
+ * question au lieu de l'expliquer.
+ *
+ * Le départ de la course et l'arrivée n'ont aucun ravito pour les nommer ; un
+ * ravito sans nom retombe sur son kilomètre, qui le désigne aussi bien.
+ */
+export function legBounds(
+  legs: Roadbook["legs"],
+  index: number,
+): { depart: string; arrivee: string } {
+  const leg = legs[index];
+
+  return {
+    depart:
+      index === 0
+        ? "Départ"
+        : legs[index - 1].endName?.trim() || `${km(startOf(legs, index))} km`,
+    arrivee:
+      leg.endPositionM === null
+        ? "Arrivée"
+        : leg.endName?.trim() || `${km(leg.endPositionM)} km`,
+  };
 }
 
 /**

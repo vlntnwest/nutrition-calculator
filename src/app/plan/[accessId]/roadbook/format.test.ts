@@ -1,10 +1,10 @@
 import { expect, test } from "vitest";
 import type { Roadbook } from "@/app/plans/getRoadbook";
 import {
-  bound,
   estVersable,
   excessive,
   LIQUIDE,
+  legBounds,
   legPaceBand,
   legPaceSPerKm,
   liveCarriedMl,
@@ -86,9 +86,38 @@ function leg(patch: Partial<Leg>): Leg {
   };
 }
 
-test("le dernier secteur se nomme par l'arrivée, pas par une borne", () => {
-  expect(bound(leg({ endPositionM: null }), 28400)).toBe("arrivée, 28,4 km");
-  expect(bound(leg({}), 28400)).toBe("9,8 km");
+test("un secteur se nomme par ses deux bornes", () => {
+  const legs = [
+    leg({ rank: 1, endPositionM: 9800, endName: "Ravito 1" }),
+    leg({ rank: 2, endPositionM: 19200, endName: "Ravito 2" }),
+    leg({ rank: 3, endPositionM: null, endName: null }),
+  ];
+
+  expect(legBounds(legs, 0)).toEqual({
+    depart: "Départ",
+    arrivee: "Ravito 1",
+  });
+  expect(legBounds(legs, 1)).toEqual({
+    depart: "Ravito 1",
+    arrivee: "Ravito 2",
+  });
+  expect(legBounds(legs, 2)).toEqual({
+    depart: "Ravito 2",
+    arrivee: "Arrivée",
+  });
+});
+
+test("un ravito sans nom se désigne par son kilomètre", () => {
+  const legs = [
+    leg({ rank: 1, endPositionM: 9800, endName: "  " }),
+    leg({ rank: 2, endPositionM: 19200, endName: null }),
+  ];
+
+  expect(legBounds(legs, 0).arrivee).toBe("9,8 km");
+  expect(legBounds(legs, 1)).toEqual({
+    depart: "9,8 km",
+    arrivee: "19,2 km",
+  });
 });
 
 test("un secteur commence là où le précédent s'achève", () => {
