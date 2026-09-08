@@ -544,9 +544,17 @@ export function LegCard({
           </ul>
         ) : (
           <p className="text-[12px] text-ink-faint leading-relaxed">
-            Pas de remplissage ici : les flasques se préparent {lieu(portee)},
-            dernier ravito qui donnait de l'eau. La boisson de ce secteur-ci s'y
-            prépare avec, et s'y retouche.
+            {/* Une portée peut s'ouvrir au départ de la course, qui n'est pas
+                un ravito : l'apposition ne suit que lorsqu'il y en a un. */}
+            Pas de remplissage ici : les flasques se préparent {lieu(portee)}
+            {portee.ravito !== null && ", dernier ravito qui donnait de l'eau"}.
+            {rations.some((r) => !solide(r.productSnapshotId)) && (
+              <>
+                {" "}
+                La boisson bue ici s'y verse avec, et c'est là qu'elle se
+                change.
+              </>
+            )}
           </p>
         )}
         {leg.opensLiquidSpan &&
