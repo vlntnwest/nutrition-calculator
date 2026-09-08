@@ -498,6 +498,12 @@ export type Warning =
     }
   | { code: "fluid-above-guide"; fluidMlH: number; guideMlH: number }
   | { code: "sodium-below-target"; share: number }
+  /**
+   * Le plan sert bien plus de sodium que visé. `share` = servi / visé.
+   * Fréquent : la boisson qui dose les glucides n'a pas de raison de tomber
+   * juste sur la concentration en sodium visée à côté.
+   */
+  | { code: "sodium-above-target"; share: number }
   /** Le plan sert bien plus de glucides que visé. `share` = servi / visé. */
   | { code: "carbs-above-target"; share: number }
   | {

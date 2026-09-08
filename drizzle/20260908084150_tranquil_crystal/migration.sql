@@ -1,0 +1,1 @@
+ALTER TYPE "warning" ADD VALUE 'sodium-above-target' BEFORE 'leg-fluid-above-target';

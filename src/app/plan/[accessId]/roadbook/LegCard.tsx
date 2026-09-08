@@ -86,6 +86,10 @@ export function LegCard({
   // que d'attendre la sauvegarde pour savoir où l'on en est.
   const supply = liveSupply(rations, roadbook.catalogue);
   const trop = excessive(supply.carbsG, leg.needG);
+  // `leg-drink-unused` reste dans `leg.warnings` (ADR 007 : le noyau ne le
+  // tait pas), mais l'afficher ici n'apprend rien que le delta sur « à
+  // boire », juste au-dessus, ne dise déjà.
+  const visibles = leg.warnings.filter((w) => w.code !== "leg-drink-unused");
 
   return (
     <article
@@ -287,22 +291,14 @@ export function LegCard({
                 </span>
               )}
             </>,
-            // Presque tous les secteurs solides n'apportent aucune boisson :
-            // l'écrire à zéro sur chacun n'apprend rien, seul « à boire »
-            // reste utile dans ce cas.
-            supply.fluidMl > 0 && (
-              <>
-                <Val>{entier(supply.fluidMl)}</Val> mL apportés
-                {ecart(supply.fluidMl - leg.needFluidMl, "mL", 5) && (
-                  <span className="text-ink-faint">
-                    {" "}
-                    ({ecart(supply.fluidMl - leg.needFluidMl, "mL", 5)})
-                  </span>
-                )}
-              </>
-            ),
             <>
               à boire <Val>{entier(leg.needFluidMl)}</Val> mL
+              {ecart(supply.fluidMl - leg.needFluidMl, "mL", 5) && (
+                <span className="text-ink-faint">
+                  {" "}
+                  ({ecart(supply.fluidMl - leg.needFluidMl, "mL", 5)})
+                </span>
+              )}
             </>,
           ]}
         />
@@ -469,9 +465,9 @@ export function LegCard({
           )}
       </div>
 
-      {leg.warnings.length > 0 && (
+      {visibles.length > 0 && (
         <div className={`flex flex-col gap-2 px-4 pb-3 ${vieux}`}>
-          {leg.warnings.map((w) => (
+          {visibles.map((w) => (
             <Notice key={w.code} code={w.code} ton={warningTon(w.code)}>
               {warningText(w.code, w.payload)}
             </Notice>

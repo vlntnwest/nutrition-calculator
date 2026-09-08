@@ -1121,6 +1121,16 @@ function warnings(
     });
   }
 
+  // Le sodium suit la boisson qui dose les glucides : rien ne l'ajuste à
+  // part, et sa concentration réelle n'a pas de raison de tomber juste sur
+  // la cible visée à côté. Même seuil de tolérance que `carbs-above-target`.
+  if (sodiumNeed > 0 && sodiumSupply > sodiumNeed * CARBS_OVERSHOOT_MAX) {
+    messages.push({
+      code: "sodium-above-target",
+      share: sodiumSupply / sodiumNeed,
+    });
+  }
+
   const carryMl = carryCapacityMl(runner);
   const hasCarbDrink = products.some((p) => p.carbsG > 0 && p.fluidMl > 0);
 

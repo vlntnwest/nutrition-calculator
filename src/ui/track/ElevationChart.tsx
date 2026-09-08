@@ -100,6 +100,16 @@ export type PaceBand = {
 };
 
 /**
+ * Les bornes de l'axe d'allure, indépendantes de la `PaceBand` du moment —
+ * voir `paceAxisRange` sur l'écran Course, où les curseurs font varier la
+ * seconde sans que le cadre qui la mesure doive suivre.
+ */
+export type PaceAxisRange = {
+  slowestSPerKm: number;
+  fastestSPerKm: number;
+};
+
+/**
  * Le dégradé du trait d'allure : bleu plein sur le tronçon le plus lent de la
  * trace, vert sur l'allure moyenne, rouge plein sur le plus rapide. Chaque
  * pixel du trait prend la couleur de l'endroit où il passe, contremarches
@@ -199,6 +209,7 @@ export function ElevationChart({
   onDeplacerMark,
   onCadre,
   paceBand,
+  paceAxisRange,
   legende = true,
 }: {
   points: ProfilePoint[];
@@ -221,6 +232,12 @@ export function ElevationChart({
    */
   onCadre?: (gouttieres: Gouttieres) => void;
   paceBand?: PaceBand | null;
+  /**
+   * Fixe l'axe d'allure sur ces bornes plutôt que sur celles, mouvantes, de
+   * `paceBand`. Absent, l'axe continue de s'ajuster à `paceBand` — le cas du
+   * roadbook, où rien ne la fait varier sous les yeux.
+   */
+  paceAxisRange?: PaceAxisRange | null;
   legende?: boolean;
 }) {
   const chartRef = useRef<ChartJS<"line"> | null>(null);
@@ -491,7 +508,22 @@ export function ElevationChart({
           // Des secondes par kilomètre : le rapide est le petit nombre, et
           // c'est lui qu'on veut en haut du cadre.
           reverse: true,
-          grace: "8%",
+          // `paceAxisRange` fixe des bornes explicites, la marge se pose
+          // donc à la main — `grace` ne joue que sur un axe qui s'ajuste
+          // encore à ses données. Sans borne fournie, l'axe continue de
+          // s'ajuster à `paceBand` comme avant.
+          ...(paceAxisRange
+            ? {
+                min:
+                  paceAxisRange.fastestSPerKm -
+                  (paceAxisRange.slowestSPerKm - paceAxisRange.fastestSPerKm) *
+                    0.08,
+                max:
+                  paceAxisRange.slowestSPerKm +
+                  (paceAxisRange.slowestSPerKm - paceAxisRange.fastestSPerKm) *
+                    0.08,
+              }
+            : { grace: "8%" }),
           grid: { display: false },
           ...(empile && paceBand
             ? {
@@ -546,7 +578,7 @@ export function ElevationChart({
         },
       },
     };
-  }, [traces, origine, onHoverIndex, paceBand, allures, etroit]);
+  }, [traces, origine, onHoverIndex, paceBand, paceAxisRange, allures, etroit]);
 
   if (!data || !options) return null;
 

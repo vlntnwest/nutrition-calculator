@@ -17,7 +17,7 @@ import { ElevationChart } from "@/ui/track/ElevationChart";
 import type { Reserves } from "@/ui/track/RouteMap";
 import { usePlanSave } from "../save";
 import { AidStationCard } from "./AidStationCard";
-import { paceBand, paceSegments } from "./pacing";
+import { paceAxisRange, paceBand, paceSegments } from "./pacing";
 import {
   insererTriee,
   kmTexte,
@@ -227,6 +227,12 @@ export function RaceScreen({
       }),
     [profile, segments, mouvementS, climb, split],
   );
+  // Bornée sur ce que les curseurs peuvent produire, jamais sur leur
+  // position du moment : voir `paceAxisRange`.
+  const axeAllure = useMemo(
+    () => paceAxisRange(profile, segments, mouvementS),
+    [profile, segments, mouvementS],
+  );
 
   function submit() {
     const stations = toStations(lignes, totalM);
@@ -348,20 +354,7 @@ export function RaceScreen({
               sur l'écran, il échappe au défilement de la feuille et devient
               le socle pleine largeur que la réserve `lg:pb-72` lui garde. */}
           <Panel className="lg:absolute lg:inset-x-0 lg:bottom-0 lg:flex lg:h-72 lg:flex-col lg:rounded-none lg:border-x-0 lg:border-b-0">
-            <PanelHead
-              titre="Profil et allure"
-              aide={
-                <>
-                  <span className="lg:hidden">
-                    Touchez la trace, sur la carte, pour poser un ravito.
-                  </span>
-                  <span className="hidden lg:inline">
-                    Cliquez sur le relief, ou sur la trace, pour poser un
-                    ravito.
-                  </span>
-                </>
-              }
-            >
+            <PanelHead titre="Profil et allure">
               {allure && (
                 <span className="shrink-0 whitespace-nowrap text-[11px] text-ink-soft">
                   moyenne <Val unite="/km">{allure}</Val>
@@ -379,6 +372,7 @@ export function RaceScreen({
                 onChoisirMark={ouvrir}
                 onDeplacerMark={deplacer}
                 paceBand={bande}
+                paceAxisRange={axeAllure}
               />
             </div>
           </Panel>
@@ -397,8 +391,7 @@ export function RaceScreen({
 
             {lignes.length === 0 ? (
               <EmptyNote titre="Aucune borne sur la trace">
-                La course se découpe aux ravitos. Cliquez sur le profil pour en
-                poser un, ou ajoutez-le à la main.
+                La course se découpe aux ravitos.
               </EmptyNote>
             ) : (
               lignes.map((ligne, i) => (

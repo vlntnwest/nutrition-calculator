@@ -656,6 +656,19 @@ test("alerte quand le sodium apporté est trop bas", () => {
   );
 });
 
+/**
+ * Le cas courant : une boisson à 800 mg/L (`naak-drink-ultra`) dosée pour
+ * tenir 60 g/h de glucides sert plus que les 600 mg/L visés, sans qu'on ait
+ * rien demandé de tel — rien n'ajuste le sodium à part.
+ */
+test("alerte quand le sodium apporté est trop haut", () => {
+  const plan = nutritionPlan(flatTrack(40, 5), [], RUNNER, TARGETS, [drink]);
+
+  expect(plan.warnings.some((w) => w.code === "sodium-above-target")).toBe(
+    true,
+  );
+});
+
 test("l'eau claire complète la boisson", () => {
   const points = flatTrack(40, 5);
 

@@ -69,6 +69,12 @@ export function warningText(code: string, payload: unknown): string {
       return `Le sodium reste sous la cible${part ? ` : ${part} de ce qui était visé` : ""}. Une pastille de sel ou une boisson plus salée comble l'écart.`;
     }
 
+    case "sodium-above-target": {
+      const part = pourcent(payload, "share");
+
+      return `Le sac apporte plus de sodium que visé${part ? ` : ${part} de la cible` : ""}. La boisson qui dose les glucides fixe aussi le sodium : une boisson moins salée, ou une concentration cible revue, rapproche les deux.`;
+    }
+
     case "carbs-above-target": {
       const part = pourcent(payload, "share");
 

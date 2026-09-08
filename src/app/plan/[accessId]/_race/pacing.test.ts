@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import type { PacingProfile, ProfilePoint, Segment } from "@/core/type";
-import { paceBand, paceSegments } from "./pacing";
+import { paceAxisRange, paceBand, paceSegments } from "./pacing";
 
 const EVEN: PacingProfile = { climbIntensity: 0, split: 0 };
 
@@ -120,4 +120,29 @@ test("la bande porte les deux allures extrêmes, la moyenne entre les deux", () 
   // toujours entre les deux, et le vert de la rampe ne sort jamais du cadre.
   expect(bande?.meanSPerKm).toBeGreaterThanOrEqual(bande?.fastestSPerKm ?? 0);
   expect(bande?.meanSPerKm).toBeLessThanOrEqual(bande?.slowestSPerKm ?? 0);
+});
+
+test("l'axe borne toute position des curseurs, pas seulement celle du moment", () => {
+  const points = bump();
+  const segments = paceSegments(points);
+  const axe = paceAxisRange(points, segments, 2700);
+
+  // Un échantillon de positions de curseurs, pas seulement les coins : l'axe
+  // doit border chacune d'elles, milieu de plage compris.
+  const positions: PacingProfile[] = [
+    { climbIntensity: 0, split: 0 },
+    { climbIntensity: 1, split: 0 },
+    { climbIntensity: 0.5, split: -0.2 },
+    { climbIntensity: 0.5, split: 0.2 },
+    { climbIntensity: 0.3, split: 0.1 },
+  ];
+
+  for (const pacing of positions) {
+    const bande = paceBand(points, segments, 2700, pacing);
+
+    expect(bande?.fastestSPerKm).toBeGreaterThanOrEqual(
+      axe?.fastestSPerKm ?? 0,
+    );
+    expect(bande?.slowestSPerKm).toBeLessThanOrEqual(axe?.slowestSPerKm ?? 0);
+  }
 });

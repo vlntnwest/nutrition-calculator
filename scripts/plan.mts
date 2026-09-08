@@ -388,6 +388,12 @@ function phrase(w: Warning): string {
         `Sodium à ${percent(w.share)} de la cible : ` +
         `prévoir des pastilles de sel ou une boisson plus salée.`
       );
+    case "sodium-above-target":
+      return (
+        `Sodium à ${percent(w.share)} de la cible : ` +
+        `la boisson qui dose les glucides fixe aussi le sodium, ` +
+        `une boisson moins salée ou une cible revue rapproche les deux.`
+      );
     case "leg-fluid-above-target":
       return (
         `${legName(plan.legs[w.legIndex])} : la boisson seule dépasse la cible d'hydratation ` +

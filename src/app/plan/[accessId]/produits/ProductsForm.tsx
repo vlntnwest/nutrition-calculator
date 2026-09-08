@@ -269,14 +269,6 @@ export function ProductsForm({
             </div>
           </>
         )}
-
-        {aucunFiltre(filtres) && (
-          <p className="mt-5 text-[12px] text-ink-faint leading-relaxed">
-            Le catalogue est indépendant des marques et le restera. Les valeurs
-            sont relevées par dose consommée, l'unité pour un gel, la mesurette
-            pour une poudre.
-          </p>
-        )}
       </div>
 
       <div className="shrink-0 border-line border-t bg-paper px-4 sm:px-6">
