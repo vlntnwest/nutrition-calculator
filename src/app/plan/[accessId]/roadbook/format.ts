@@ -36,6 +36,35 @@ export function liveSupply(
 }
 
 /**
+ * Ce qu'il y a réellement à boire sur un secteur : la boisson dosée par les
+ * rations, plus l'eau claire réellement versée dans les flasques à
+ * l'ouverture de la portée.
+ *
+ * `supply.fluidMl` (ci-dessus) ne compte que la boisson glucidique — c'est
+ * voulu, `PackSummary` l'affiche sous « boisson » et mélanger l'eau claire
+ * dedans fausserait ce chiffre-là. Mais comparé au besoin d'un secteur, ne
+ * compter que la boisson fait passer pour un manque de l'eau claire pourtant
+ * déjà déclarée dans les flasques : deux flasques d'eau couvrent le besoin
+ * aussi bien qu'une flasque de boisson.
+ *
+ * `remplissages` n'existe qu'à l'ouverture d'une portée (voir `editOf` dans
+ * `RoadbookEditor`) : ailleurs, il est vide et cette fonction ne rend que la
+ * boisson, comme avant — un secteur au milieu d'une portée n'a pas encore de
+ * remplissage à lui montrer, pas plus qu'il n'en avait.
+ */
+export function liveFluidCoverage(
+  rations: RoadbookEdit["servings"][number],
+  remplissages: RoadbookEdit["fills"][number],
+  catalogue: Roadbook["catalogue"],
+): number {
+  const eauClaire = remplissages
+    .filter((f) => f.productSnapshotId === null)
+    .reduce((t, f) => t + f.volumeMl, 0);
+
+  return liveSupply(rations, catalogue).fluidMl + eauClaire;
+}
+
+/**
  * Le sac complet recalculé depuis les retouches de tous les secteurs, dans la
  * même forme que `Roadbook["total"]` : c'est ce qui permet à `PackSummary` de
  * ne pas savoir si ce qu'on lui donne vient du serveur ou de la saisie en

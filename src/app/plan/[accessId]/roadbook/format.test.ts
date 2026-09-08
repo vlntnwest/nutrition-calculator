@@ -6,6 +6,7 @@ import {
   excessive,
   legPaceBand,
   legPaceSPerKm,
+  liveFluidCoverage,
   liveSupply,
   liveTotal,
   startOf,
@@ -144,6 +145,47 @@ test("un produit disparu du catalogue ne compte pour rien", () => {
   expect(
     liveSupply([{ productSnapshotId: "inconnu", quantity: 3 }], CATALOGUE),
   ).toEqual({ carbsG: 0, energyKcal: 0, sodiumMg: 0, fluidMl: 0 });
+});
+
+test("l'eau claire versée dans les flasques s'ajoute à la boisson dosée", () => {
+  // Reproduit un secteur réel : 954 mL de besoin, une dose de boisson
+  // (500 mL) posée en ration, et deux flasques d'eau claire (500 mL
+  // chacune) — 1 000 mL réellement portés, pas 500.
+  const eau = liveFluidCoverage(
+    [{ productSnapshotId: "drink-1", quantity: 1 }],
+    [
+      { flaskRank: 1, productSnapshotId: null, volumeMl: 500 },
+      { flaskRank: 2, productSnapshotId: null, volumeMl: 500 },
+    ],
+    CATALOGUE,
+  );
+
+  expect(eau).toBe(1500);
+});
+
+test("sans remplissage déclaré, seule la boisson dosée compte", () => {
+  // Le cas d'un secteur qui ne rouvre pas de portée : `remplissages` est
+  // vide (voir `editOf`), et la couverture retombe sur `liveSupply` seul.
+  const eau = liveFluidCoverage(
+    [{ productSnapshotId: "drink-1", quantity: 1 }],
+    [],
+    CATALOGUE,
+  );
+
+  expect(eau).toBe(500);
+});
+
+test("une flasque remplie de la boisson elle-même ne se recompte pas deux fois", () => {
+  // La ration dit déjà combien de boisson est bue ; le remplissage ne fait
+  // que déclarer où elle va physiquement. Seule l'eau claire (produit nul)
+  // ajoute une couverture que les rations ne portaient pas encore.
+  const eau = liveFluidCoverage(
+    [{ productSnapshotId: "drink-1", quantity: 1 }],
+    [{ flaskRank: 1, productSnapshotId: "drink-1", volumeMl: 500 }],
+    CATALOGUE,
+  );
+
+  expect(eau).toBe(500);
 });
 
 test("le sac complet somme les retouches de tous les secteurs", () => {

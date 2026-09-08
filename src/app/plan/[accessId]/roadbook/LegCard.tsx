@@ -16,7 +16,13 @@ import { Notice } from "@/ui/Notice";
 import { Rule } from "@/ui/Panel";
 import { Select } from "@/ui/Select";
 import { Stepper } from "@/ui/Stepper";
-import { bound, estVersable, excessive, liveSupply } from "./format";
+import {
+  bound,
+  estVersable,
+  excessive,
+  liveFluidCoverage,
+  liveSupply,
+} from "./format";
 import { warningText, warningTon } from "./warnings";
 
 type Edit = RoadbookEdit["servings"][number];
@@ -86,6 +92,13 @@ export function LegCard({
   // que d'attendre la sauvegarde pour savoir où l'on en est.
   const supply = liveSupply(rations, roadbook.catalogue);
   const trop = excessive(supply.carbsG, leg.needG);
+  // La boisson dosée par les rations, plus l'eau claire déjà versée dans
+  // les flasques : voir `liveFluidCoverage`.
+  const eauCouverte = liveFluidCoverage(
+    rations,
+    remplissages,
+    roadbook.catalogue,
+  );
   // `leg-drink-unused` reste dans `leg.warnings` (ADR 007 : le noyau ne le
   // tait pas), mais l'afficher ici n'apprend rien que le delta sur « à
   // boire », juste au-dessus, ne dise déjà.
@@ -290,10 +303,10 @@ export function LegCard({
             </>,
             <>
               à boire <Val>{entier(leg.needFluidMl)}</Val> mL
-              {ecart(supply.fluidMl - leg.needFluidMl, "mL", 5) && (
+              {ecart(eauCouverte - leg.needFluidMl, "mL", 5) && (
                 <span className="text-ink-faint">
                   {" "}
-                  ({ecart(supply.fluidMl - leg.needFluidMl, "mL", 5)})
+                  ({ecart(eauCouverte - leg.needFluidMl, "mL", 5)})
                 </span>
               )}
             </>,
