@@ -326,7 +326,7 @@ export function RaceScreen({
                   min={0}
                   max={1}
                   step={0.05}
-                  bornes={["plus difficile", "plus facile"]}
+                  bornes={["plus facile", "plus difficile"]}
                   onChange={(value) => change(() => setClimb(value))}
                 />
                 <Slider
