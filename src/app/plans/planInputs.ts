@@ -144,7 +144,7 @@ export async function planInputs(
   const timed = distributeTime(
     profile,
     movingTimeS(settings.targetTimeS, stations, totalM),
-    { climbIntensity: settings.climbIntensity, split: settings.paceSplit },
+    { climbEffort: settings.climbEffort, split: settings.paceSplit },
     fixedSpans(stations, totalM, imposed.get(totalM)),
   );
   const targets = resolveTargets(settings, runner, settings.targetTimeS);

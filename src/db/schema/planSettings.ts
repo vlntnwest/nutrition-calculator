@@ -18,9 +18,9 @@ export const planSettings = snakeCase.table(
     planId: uuid().notNull(),
     massKg: numeric({ precision: 4, scale: 1, mode: "number" }),
     targetTimeS: integer(),
-    climbIntensity: numeric({ precision: 3, scale: 2, mode: "number" })
+    climbEffort: numeric({ precision: 3, scale: 2, mode: "number" })
       .notNull()
-      .default(0.5),
+      .default(0),
     paceSplit: numeric({ precision: 3, scale: 2, mode: "number" })
       .notNull()
       .default(0),
@@ -43,8 +43,8 @@ export const planSettings = snakeCase.table(
     check("plan_settings_mass_kg_positive", sql`${table.massKg} > 0`),
     check("plan_settings_target_time_positive", sql`${table.targetTimeS} > 0`),
     check(
-      "plan_settings_climb_intensity_between_0_and_1",
-      sql`${table.climbIntensity} >= 0 AND ${table.climbIntensity} <= 1`,
+      "plan_settings_climb_effort_between_minus_1_and_1",
+      sql`${table.climbEffort} >= -1 AND ${table.climbEffort} <= 1`,
     ),
     check(
       "plan_settings_pace_split_between_minus_1_and_1",

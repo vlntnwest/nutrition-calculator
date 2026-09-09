@@ -104,7 +104,7 @@ export function distributeTime(
 
     weights[i] =
       length *
-      paceModel(slope, profile.climbIntensity) *
+      paceModel(slope, profile.climbEffort) *
       paceDrift(progress, profile.split);
 
     // L'appartenance se décide sur le **milieu** de l'intervalle : sur ses

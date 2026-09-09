@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-font-size",
+        "value": "9px",
+        "createdAt": "2026-09-06T19:52:48.207Z",
+        "reason": "DESIGN.md, section ElevationChart : « les graduations sont en Geist Mono 9px ink-soft » et « cinq pastilles de 6px suivies de leur seuil en 9px ink-soft ». Taille documentée du composant signature, antérieure à ce chantier."
+      }
+    ]
+  }
+}

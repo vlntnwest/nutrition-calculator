@@ -345,8 +345,8 @@ test("un calcul jeté emporte la marque de retouche", async () => {
   await regeneratePlan(accessId);
   await retoucher(accessId);
 
-  // L'intensité en montée entre dans le calcul : il ne survit pas.
-  await updatePlan(accessId, { settings: { climbIntensity: 0.5 } });
+  // L'effort en montée entre dans le calcul : il ne survit pas.
+  await updatePlan(accessId, { settings: { climbEffort: -0.2 } });
 
   const [plan] = await db
     .select()

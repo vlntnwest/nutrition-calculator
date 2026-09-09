@@ -1,5 +1,7 @@
 const MAX_SLOPE = 0.45;
 const CLIMB_COST = 2.5;
+/** L'écart maximal au calage, de part et d'autre. Voir le curseur de l'écran Course. */
+const MAX_CLIMB_EFFORT = 0.4;
 const DESCENT_OPTIMUM = 0.072;
 const DESCENT_GAIN = 0.074;
 const DESCENT_PENALTY_MAX = 2;
@@ -8,13 +10,17 @@ const DESCENT_PENALTY_MAX = 2;
  * Le coût relatif d'un tronçon, 1 valant le plat.
  *
  * @param slope Fraction, écrêtée à ±45 %. Un `NaN` se propage.
- * @param climbIntensity De 0 à 1 : plus elle monte, moins les côtes
- *   ralentissent. Sans effet sur la descente.
+ * @param climbEffort De −0,4 à +0,4, écrêté. 0 est la courbe mesurée ;
+ *   positif, on pousse et les côtes coûtent moins. Sans effet sur la descente.
  */
-export function paceModel(slope: number, climbIntensity = 0): number {
+export function paceModel(slope: number, climbEffort = 0): number {
   const p = Math.min(Math.max(slope, -MAX_SLOPE), MAX_SLOPE);
+  const k = Math.min(
+    Math.max(climbEffort, -MAX_CLIMB_EFFORT),
+    MAX_CLIMB_EFFORT,
+  );
 
-  if (p > 0) return 1 + (1 - climbIntensity) * CLIMB_COST * p;
+  if (p > 0) return 1 + (1 - k) * CLIMB_COST * p;
 
   // Parabole en U : creux à `t = 1`, retour sur le plat à `t = 2`.
   const t = -p / DESCENT_OPTIMUM;

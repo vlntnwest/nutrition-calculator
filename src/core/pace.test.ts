@@ -23,10 +23,25 @@ test("la montée est monotone", () => {
   expect(paceModel(0.3)).toBeGreaterThan(paceModel(0.15));
 });
 
-test("l'intensité maximale aplatit la montée, et elle seule", () => {
-  expect(paceModel(0.1, 1)).toBe(1);
-  expect(paceModel(0.3, 1)).toBe(1);
-  expect(paceModel(-0.1, 1)).toBe(paceModel(-0.1, 0));
+test("l'effort allège la montée sans jamais l'aplatir", () => {
+  expect(paceModel(0.1, 0.4)).toBeLessThan(paceModel(0.1));
+  expect(paceModel(0.1, -0.4)).toBeGreaterThan(paceModel(0.1));
+  expect(paceModel(-0.1, 0.4)).toBe(paceModel(-0.1, -0.4));
+});
+
+test("l'effort est écrêté à ±40 %", () => {
+  expect(paceModel(0.3, 5)).toBe(paceModel(0.3, 0.4));
+  expect(paceModel(0.3, -5)).toBe(paceModel(0.3, -0.4));
+});
+
+// Le tronçon le plus raide doit rester le plus lent où qu'aille le curseur.
+// Quand la pente ne coûtait plus rien, les montées tombaient toutes sur la
+// même allure et se réordonnaient sur leurs micro-descentes.
+test("la montée reste ordonnée par la pente aux deux bouts du curseur", () => {
+  for (const effort of [-0.4, 0, 0.4]) {
+    expect(paceModel(0.3, effort)).toBeGreaterThan(paceModel(0.15, effort));
+    expect(paceModel(0.15, effort)).toBeGreaterThan(paceModel(0.05, effort));
+  }
 });
 
 test("la pente est écrêtée à ±45 %", () => {

@@ -46,8 +46,8 @@ export type NewPlan = {
   settings: {
     massKg?: number;
     targetTimeS?: number;
-    /** Absent : le défaut de la base, 0,25. */
-    climbIntensity?: number;
+    /** Absent : le défaut de la base, 0 — la courbe mesurée. */
+    climbEffort?: number;
     /** La dérive d'allure. Absent : 0, l'allure plate. */
     paceSplit?: number;
     /** `AAAA-MM-JJ` */
@@ -259,7 +259,7 @@ export function settingsColumns(
   return {
     massKg: settings.massKg ?? null,
     targetTimeS: settings.targetTimeS ?? null,
-    climbIntensity: settings.climbIntensity,
+    climbEffort: settings.climbEffort,
     paceSplit: settings.paceSplit,
     raceDate: settings.raceDate ?? null,
     startTime: settings.startTime ?? null,

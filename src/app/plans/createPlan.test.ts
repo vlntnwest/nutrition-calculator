@@ -61,7 +61,7 @@ test("les réglages sont écrits, les trois cibles à plat", async () => {
   expect(settings).toMatchObject({
     massKg: 70,
     targetTimeS: 13500,
-    climbIntensity: 0.25,
+    climbEffort: 0.25,
     paceSplit: 0.05,
     raceDate: "2026-10-11",
     startTime: "08:00:00",
@@ -303,7 +303,7 @@ test("un plan réduit à sa trace s'écrit", async () => {
     targetTimeS: null,
     // Une course linéaire : `paceDrift` rend 1 partout.
     paceSplit: 0,
-    climbIntensity: 0.5,
+    climbEffort: 0,
   });
 });
 

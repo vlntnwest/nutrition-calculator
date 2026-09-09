@@ -128,7 +128,7 @@ test.each(
     distributeTime(
       points,
       movingTimeS(targetTimeS, stations, endM),
-      { climbIntensity: 0.25, split: 0 },
+      { climbEffort: 0.25, split: 0 },
       fixedSpans(stations, endM),
     ),
     stations,

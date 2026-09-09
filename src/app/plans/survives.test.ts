@@ -127,8 +127,8 @@ test("changer le chrono visé condamne le calcul", () => {
   expect(survives(newPlan, reglages({ targetTimeS: 15000 }))).toBe(false);
 });
 
-test("changer l'intensité en montée condamne le calcul", () => {
-  expect(survives(newPlan, reglages({ climbIntensity: 0.4 }))).toBe(false);
+test("changer l'effort en montée condamne le calcul", () => {
+  expect(survives(newPlan, reglages({ climbEffort: 0.4 }))).toBe(false);
 });
 
 test("changer la dérive d'allure condamne le calcul", () => {
