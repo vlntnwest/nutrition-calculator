@@ -181,10 +181,16 @@ la branche `staging`** : plus spécifiques que celles de l'environnement Preview
 elles l'emportent sur la `DATABASE_URL` que l'intégration Neon pose à l'échelle du
 projet. Les autres branches, elles, gardent la branche Neon éphémère de leur preview.
 
-`staging` est la branche par défaut du dépôt : une PR la cible sans qu'on y pense, et
-`main` ne reçoit que les PR de promotion. Un hotfix part directement sur `main`, et
-**`main` se re-merge alors dans `staging`** — sinon les promotions suivantes accumulent
-des conflits.
+**`main` reste la branche par défaut du dépôt**, parce que Vercel y adosse sa branche de
+production. Une PR s'ouvre donc contre `main` si on ne dit rien, ce qui n'est jamais ce
+qu'on veut : le réflexe est `gh pr create --base staging`.
+
+Ce que `main` accepte est tenu par un check obligatoire, `Promouvoir depuis staging`,
+dans [`ci.yml`](.github/workflows/ci.yml) — GitHub ne sait pas restreindre la branche
+*source* d'une PR, ni par ruleset ni autrement. Seules `staging` et les branches
+`hotfix/*` peuvent viser `main` ; une PR ouverte par mégarde échoue au lieu de partir en
+production. Après un hotfix, **`main` se re-merge dans `staging`** — sinon les
+promotions suivantes accumulent des conflits.
 
 Les migrations sont dans la commande de build de Vercel
 ([`vercel.json`](vercel.json)) : `drizzle-kit migrate` tourne avec la `DATABASE_URL` de
