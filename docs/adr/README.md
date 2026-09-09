@@ -16,6 +16,7 @@ déjà le *quoi*, et l'historique Git dit le *quand*.
 | [009](009-combiner-les-traces-et-mesurer-la-jointure.md) | Combiner les traces, et mesurer la jointure | Accepté |
 | [010](010-retrancher-les-arrets-du-temps-vise.md) | Retrancher les arrêts du temps visé, ne pas les diluer | Accepté |
 | [011](011-une-retouche-est-une-consigne-pas-une-sortie-modifiee.md) | Une retouche est une consigne au calcul, pas une sortie modifiée | Accepté |
+| [012](012-un-etage-une-base-et-la-migration-dans-le-build.md) | Un étage, une base, et la migration dans le build | Accepté |
 
 ## Convention
 

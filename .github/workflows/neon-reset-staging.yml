@@ -1,0 +1,20 @@
+name: Réinitialiser staging
+
+# Manuel : la branche Neon `staging` dérive à mesure qu'on l'écrit, et ce qu'on
+# veut valider avant une promotion, c'est le code d'aujourd'hui sur les données
+# de production. Se déclenche depuis l'onglet Actions, sans rien installer.
+on: workflow_dispatch
+
+permissions:
+  contents: read
+
+jobs:
+  reset:
+    name: Repartir de production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remettre la branche au niveau de son parent
+        run: npx --yes neonctl branches reset staging --parent --project-id "$NEON_PROJECT_ID"
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
