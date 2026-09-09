@@ -158,19 +158,28 @@ La conversion se fait à la saisie.
 Quatre étages, une base par étage, et une migration qui accompagne toujours le
 déploiement — jamais un geste à retenir.
 
-| Étage   | Git                | Hébergement          | Base                            |
-| ------- | ------------------ | -------------------- | ------------------------------- |
-| local   | branche de travail | `npm run dev`        | Postgres Docker, sur `localhost` |
-| preview | PR vers `staging`  | preview Vercel       | branche Neon créée par l'intégration |
-| staging | `staging`          | environnement `staging` | branche Neon `staging`       |
-| prod    | `main`             | production Vercel    | branche Neon `production`       |
+| Étage   | Git                | Hébergement            | Base                                 |
+| ------- | ------------------ | ---------------------- | ------------------------------------ |
+| local   | branche de travail | `npm run dev`          | Postgres Docker, sur `localhost`      |
+| preview | PR vers `staging`  | preview Vercel         | branche Neon créée par l'intégration  |
+| staging | `staging`          | déploiement de branche | branche Neon `staging`, persistante   |
+| prod    | `main`             | production Vercel      | branche Neon `production`             |
 
 ```
 feature/x ──PR──▶ staging ──PR──▶ main
                      │              │
-              Vercel staging    Vercel production
+              déploiement de     production
+              branche Vercel      Vercel
               Neon staging      Neon production
 ```
+
+**Staging n'est pas un environnement Vercel**, qui demanderait un plan payant : c'est un
+déploiement de branche ordinaire, servi par l'alias stable
+`nutrition-calculator-git-staging-…vercel.app`. Ce qui lui donne sa propre base, ce sont
+`DATABASE_URL` et `DATABASE_URL_UNPOOLED` déclarées en variables **Preview restreintes à
+la branche `staging`** : plus spécifiques que celles de l'environnement Preview entier,
+elles l'emportent sur la `DATABASE_URL` que l'intégration Neon pose à l'échelle du
+projet. Les autres branches, elles, gardent la branche Neon éphémère de leur preview.
 
 `staging` est la branche par défaut du dépôt : une PR la cible sans qu'on y pense, et
 `main` ne reçoit que les PR de promotion. Un hotfix part directement sur `main`, et
