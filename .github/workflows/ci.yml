@@ -9,6 +9,43 @@ permissions:
   contents: read
 
 jobs:
+  # GitHub ne sait pas restreindre la branche *source* d'une PR : ni les
+  # rulesets ni les protections classiques ne raisonnent sur autre chose que la
+  # cible. Ce job est donc la seule façon de tenir la règle « on ne promeut
+  # qu'en passant par staging », et il ne vaut que déclaré obligatoire.
+  #
+  # Il tourne sur toutes les PR, pas seulement celles qui visent `main` : un
+  # check obligatoire qui ne s'exécute pas reste « en attente » pour toujours,
+  # et bloquerait les PR vers `staging`. Il sort donc sans rien dire quand la
+  # cible n'est pas `main`.
+  #
+  # Les deux références passent par l'environnement plutôt que par une
+  # interpolation dans le script : un nom de branche est du texte fourni par
+  # celui qui ouvre la PR, jamais du shell.
+  promotion:
+    name: Promouvoir depuis staging
+    runs-on: ubuntu-latest
+    steps:
+      - name: Vérifier la branche source
+        env:
+          BASE: ${{ github.base_ref }}
+          HEAD: ${{ github.head_ref }}
+        run: |
+          if [ "$BASE" != "main" ]; then
+            echo "Cible « ${BASE:-aucune} » : rien à vérifier."
+            exit 0
+          fi
+
+          case "$HEAD" in
+            staging | hotfix/*)
+              echo "« $HEAD » vers main : promotion légitime."
+              ;;
+            *)
+              echo "::error::« $HEAD » ne peut pas viser main : la production se promeut depuis staging, un correctif urgent depuis une branche hotfix/*."
+              exit 1
+              ;;
+          esac
+
   typecheck:
     runs-on: ubuntu-latest
     steps:
