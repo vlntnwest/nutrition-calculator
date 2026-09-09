@@ -335,15 +335,7 @@ export function RaceScreen({
                   min={-0.2}
                   max={0.2}
                   step={0.01}
-                  bornes={[
-                    "négatif, fin plus rapide",
-                    "positif, fin plus lente",
-                  ]}
-                  aide={
-                    split === 0
-                      ? "Allure plate : le même effort du départ à l'arrivée."
-                      : `Environ ${Math.round(Math.abs(split) * 100)} % ${split > 0 ? "plus lent" : "plus rapide"} au dernier kilomètre qu'au premier.`
-                  }
+                  bornes={["négatif", "positif"]}
                   onChange={(value) => change(() => setSplit(value))}
                 />
               </div>
