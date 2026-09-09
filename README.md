@@ -43,19 +43,20 @@ Deux conséquences assumées dans tout le produit :
 
 ```bash
 npm install
-cp .env.example .env.local   # puis renseigner PSQL_PASSWORD et DATABASE_URL
-npm run db:up                # Postgres 18 dans Docker
-npm run db:migrate           # applique les migrations de drizzle/
-npm run db:seed              # écrit le catalogue produits
+npm run env:pull     # variables partagées, depuis Vercel — voir « Environnements »
+npm run db:up        # Postgres 18 dans Docker
+npm run db:migrate   # applique les migrations de drizzle/
+npm run db:seed      # écrit le catalogue produits
 npm run dev
 ```
 
 L'application tourne sur http://localhost:3000.
 
-Les variables sont décrites dans [`.env.example`](.env.example), seul fichier
-d'environnement commité. Deux consommateurs distincts s'y servent sans se parler :
-Docker Compose lit les `PSQL_*` pour créer le conteneur, Drizzle lit `DATABASE_URL`
-pour s'y connecter.
+Rien d'autre n'est à configurer : la base locale vient de [`.env`](.env), commité
+parce qu'il ne porte que `localhost`, et le reste de `npm run env:pull`. **Aucune URL
+Neon n'a sa place sur un poste de travail** — `src/db/env.ts` refuse de démarrer sur
+une base distante hors production, et il faut un `ALLOW_REMOTE_DB=1` explicite pour
+inspecter une base déployée.
 
 Si `db:migrate` échoue sur un rôle inexistant, c'est qu'un autre Postgres occupe le
 port 5432 — celui d'un `brew services` oublié, typiquement. Il écoute sur
@@ -125,6 +126,12 @@ npm run db:studio    # inspecte les données
 npm run db:down      # arrête le conteneur — ajouter -v pour effacer le volume
 ```
 
+Le conteneur porte **deux** bases : `nutrition-calculator`, celle de `npm run dev`, et
+`nutrition-calculator-test`, où `npm test` travaille. La seconde est créée au premier
+démarrage du volume par [`docker/init-test-database.sql`](docker/init-test-database.sql),
+et le `globalSetup` de Vitest la migre lui-même : une passe de tests ne touche jamais
+les données de développement.
+
 Trois conventions structurent le schéma, et elles ne se devinent pas à la lecture
 d'une table isolée :
 
@@ -145,6 +152,70 @@ d'une table isolée :
 Les valeurs nutritionnelles sont exprimées **par dose consommée** — l'unité pour un
 gel, la mesurette pour une poudre — jamais pour 100 g ni pour le contenant vendu.
 La conversion se fait à la saisie.
+
+## Environnements
+
+Quatre étages, une base par étage, et une migration qui accompagne toujours le
+déploiement — jamais un geste à retenir.
+
+| Étage   | Git                | Hébergement          | Base                            |
+| ------- | ------------------ | -------------------- | ------------------------------- |
+| local   | branche de travail | `npm run dev`        | Postgres Docker, sur `localhost` |
+| preview | PR vers `staging`  | preview Vercel       | branche Neon créée par l'intégration |
+| staging | `staging`          | environnement `staging` | branche Neon `staging`       |
+| prod    | `main`             | production Vercel    | branche Neon `production`       |
+
+```
+feature/x ──PR──▶ staging ──PR──▶ main
+                     │              │
+              Vercel staging    Vercel production
+              Neon staging      Neon production
+```
+
+`staging` est la branche par défaut du dépôt : une PR la cible sans qu'on y pense, et
+`main` ne reçoit que les PR de promotion. Un hotfix part directement sur `main`, et
+**`main` se re-merge alors dans `staging`** — sinon les promotions suivantes accumulent
+des conflits.
+
+Les migrations sont dans la commande de build de Vercel
+([`vercel.json`](vercel.json)) : `drizzle-kit migrate` tourne avec la `DATABASE_URL` de
+l'environnement déployé, donc chaque étage migre sa propre base et un preview migre
+forcément la branche Neon qu'il utilise. Un build qui échoue après la migration laisse
+la base en avance sur le code — c'est le sens normal d'une migration rétro-compatible ;
+une migration destructive se joue toujours à la main, après.
+
+La branche Neon `staging` dérive à mesure qu'on l'écrit. Le workflow
+**Réinitialiser staging** (onglet Actions, déclenchement manuel) la remet au niveau de
+`production`, pour valider une promotion contre des données réalistes.
+
+### Les variables
+
+L'ordre de résolution de Next est `process.env`, puis `.env.$NODE_ENV.local`,
+`.env.local`, `.env.$NODE_ENV`, `.env`. Le dépôt s'en sert comme d'un empilement, du
+plus fort au plus faible :
+
+| Source        | Commité | Contenu                                              |
+| ------------- | ------- | ---------------------------------------------------- |
+| `process.env` | —       | Vercel et la CI, qui l'emportent sur tout fichier     |
+| `.env.local`  | non     | écrit par `npm run env:pull`, base de données retirée |
+| `.env.test`   | oui     | la base Docker de `npm test`                          |
+| `.env`        | oui     | le socle : la base Docker de `npm run dev`            |
+
+Le socle est dans `.env` et non dans un `.env.development` parce que `.env` est le seul
+fichier que Next ouvre dans les **trois** modes : `next build` impose
+`NODE_ENV=production` même en local, et un build de vérification doit trouver une base.
+
+Deux propriétés en découlent : les déploiements ne dépendent d'aucun fichier, puisque
+`process.env` prime ; et `.env.local` n'étant pas lu en mode test, une variable tirée de
+Vercel ne peut pas atteindre les tests.
+
+Restait une fuite : l'intégration Neon–Vercel renseigne `DATABASE_URL` dans *tous* les
+environnements du projet, Development compris, et `.env.local` prime sur `.env`.
+`npm run env:pull` retire donc les variables de base de données à l'arrivée — les
+supprimer côté Vercel ne tiendrait pas, l'intégration les réécrit.
+
+Un ordinateur de plus se met en route avec la section « Démarrage », plus
+`npx vercel login && npx vercel link` avant le premier `npm run env:pull`.
 
 ## Sources scientifiques
 

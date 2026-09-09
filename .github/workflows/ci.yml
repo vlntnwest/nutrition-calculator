@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, staging]
 
 permissions:
   contents: read
@@ -61,35 +61,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      # `.env.local` n'existe pas ici ; dotenv ne trouve rien et laisse
-      # DATABASE_URL de l'environnement faire foi.
+      # `DATABASE_URL` de l'environnement l'emporte sur `.env.test`, qui vise le
+      # Postgres local : c'est bien la base jetable ci-dessus qui est migrée.
       - run: npm run db:migrate
       - run: npm test
-
-  # Rien n'appliquait les migrations en production : `ci.yml` visait un
-  # Postgres jetable et le workflow Neon une branche par PR, qui n'est qu'un
-  # essai. Elles se jouaient donc à la main, et un oubli ne se voyait qu'au
-  # premier plan calculé.
-  #
-  # `DATABASE_URL` doit être la connexion **directe**, pas le pooler : celui
-  # de Neon est en mode transaction et le DDL s'en passe mal, comme pour les
-  # branches de preview.
-  #
-  # Ce job ne précède pas le déploiement Vercel, qui part du même push en
-  # parallèle. Une migration compatible avec le code d'avant s'en accommode ;
-  # une migration destructive se joue toujours à la main, après.
-  migrate:
-    name: Migrer la production
-    if: github.event_name == 'push'
-    needs: [typecheck, lint, test]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      - run: npm run db:migrate
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}

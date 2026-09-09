@@ -3,13 +3,17 @@ services:
     image: postgres:18-alpine
     container_name: nutrition-calculator-postgres-dev
     restart: unless-stopped
+    # Le mot de passe est figé et commité : ce conteneur n'écoute que la boucle
+    # locale, il n'y a rien à protéger, et les deux postes de travail sont ainsi
+    # identiques sans configuration.
     environment:
-      POSTGRES_PASSWORD: ${PSQL_PASSWORD}
-      POSTGRES_DB: ${PSQL_DATABASE}
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: nutrition-calculator
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql
+      - ./docker/init-test-database.sql:/docker-entrypoint-initdb.d/init-test-database.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d $$POSTGRES_DB"]
       interval: 10s
