@@ -1,0 +1,2 @@
+ALTER TABLE "aid_stations" DROP CONSTRAINT "aid_stations_stop_duration_positive";--> statement-breakpoint
+ALTER TABLE "aid_stations" ADD CONSTRAINT "aid_stations_stop_duration_positive_or_zero" CHECK ("stop_duration_s" >= 0);
