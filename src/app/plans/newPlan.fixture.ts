@@ -26,7 +26,7 @@ export const newPlan = {
   settings: {
     massKg: 70,
     targetTimeS: 13500,
-    climbIntensity: 0.25,
+    climbEffort: 0.25,
     paceSplit: 0.05,
     raceDate: "2026-10-11",
     startTime: "08:00",

@@ -51,7 +51,7 @@ export function RaceScreen({
   plan: NewPlan;
 }) {
   const [chrono, setChrono] = useState<HMS>(toHMS(plan.settings.targetTimeS));
-  const [climb, setClimb] = useState(plan.settings.climbIntensity ?? 0.5);
+  const [climb, setClimb] = useState(plan.settings.climbEffort ?? 0);
   const [split, setSplit] = useState(plan.settings.paceSplit ?? 0);
   const [lignes, setLignes] = useState<Row[]>(plan.aidStations.map(toRow));
   const [ouverte, setOuverte] = useState<number | null>(null);
@@ -222,7 +222,7 @@ export function RaceScreen({
   const bande = useMemo(
     () =>
       paceBand(profile, segments, mouvementS, {
-        climbIntensity: climb,
+        climbEffort: climb,
         split,
       }),
     [profile, segments, mouvementS, climb, split],
@@ -247,7 +247,7 @@ export function RaceScreen({
       {
         settings: {
           targetTimeS,
-          climbIntensity: climb,
+          climbEffort: climb,
           paceSplit: split,
         },
         aidStations: stations,
@@ -323,10 +323,10 @@ export function RaceScreen({
                 <Slider
                   label="Effort en montée"
                   value={climb}
-                  min={0}
-                  max={1}
+                  min={-0.4}
+                  max={0.4}
                   step={0.05}
-                  bornes={["plus facile", "plus difficile"]}
+                  bornes={["moins d'effort", "plus d'effort"]}
                   onChange={(value) => change(() => setClimb(value))}
                 />
                 <Slider

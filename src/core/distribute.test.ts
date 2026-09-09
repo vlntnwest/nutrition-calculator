@@ -14,7 +14,7 @@ import type {
   TimedPoint,
 } from "./type";
 
-const EVEN: PacingProfile = { climbIntensity: 0, split: 0 };
+const EVEN: PacingProfile = { climbEffort: 0, split: 0 };
 
 /** Une trace à pas de 10 m, à partir d'une liste d'altitudes. */
 function trace(altitudes: number[]): ResolvedPoint[] {
@@ -43,23 +43,28 @@ test("une montée reçoit plus de temps qu'une descente de même longueur", () =
   expect(climb).toBeGreaterThan(descent);
 });
 
-test("l'intensité maximale égalise la montée et le plat", () => {
-  const points = distributeTime(trace([0, 5, 5]), 100, {
-    climbIntensity: 1,
+test("l'effort maximal rapproche la montée du plat sans l'y ramener", () => {
+  const pousse = distributeTime(trace([0, 5, 5]), 100, {
+    climbEffort: 0.4,
+    split: 0,
+  });
+  const neutre = distributeTime(trace([0, 5, 5]), 100, {
+    climbEffort: 0,
     split: 0,
   });
 
-  expect(points[1].t).toBeCloseTo(50, 9);
+  expect(pousse[1].t).toBeLessThan(neutre[1].t);
+  expect(pousse[1].t).toBeGreaterThan(50);
 });
 
 test("le positive split ralentit la seconde moitié", () => {
   const flatTrack = trace([0, 0, 0, 0, 0]);
   const positive = distributeTime(flatTrack, 400, {
-    climbIntensity: 0,
+    climbEffort: 0,
     split: 0.2,
   });
   const negative = distributeTime(flatTrack, 400, {
-    climbIntensity: 0,
+    climbEffort: 0,
     split: -0.2,
   });
 
@@ -70,7 +75,7 @@ test("le positive split ralentit la seconde moitié", () => {
 
 test("l'arrivée vaut exactement le temps visé, au dernier bit", () => {
   const points = distributeTime(trace([0, 12, 7, 40, 3, 3, 91]), 55800, {
-    climbIntensity: 0.25,
+    climbEffort: 0.25,
     split: 0.1,
   });
 
@@ -101,11 +106,11 @@ test("invariant de somme et monotonie", () => {
         maxLength: 300,
       }),
       fc.double({ min: 1, max: 200_000, noNaN: true }),
-      fc.double({ min: 0, max: 1, noNaN: true }),
+      fc.double({ min: -1, max: 1, noNaN: true }),
       fc.double({ min: -0.5, max: 0.5, noNaN: true }),
-      (altitudes, targetTime, climbIntensity, split) => {
+      (altitudes, targetTime, climbEffort, split) => {
         const points = distributeTime(trace(altitudes), targetTime, {
-          climbIntensity,
+          climbEffort,
           split,
         });
 
@@ -127,7 +132,7 @@ test("invariant de somme et monotonie", () => {
  * répartir comme s'il commençait à zéro.
  */
 test("une trace qui ne part pas de zéro dérive comme les autres", () => {
-  const profile: PacingProfile = { climbIntensity: 0.25, split: 0.3 };
+  const profile: PacingProfile = { climbEffort: 0.25, split: 0.3 };
   const base = trace([0, 10, 20, 5, 0, 15, 30]);
   const shifted = base.map((p) => ({ ...p, d: p.d + 50_000 }));
 
@@ -307,7 +312,7 @@ test("deux portions imposées non contiguës cohabitent", () => {
 
 test("sans portion imposée, rien ne change", () => {
   const points = trace([0, 40, 30, 90, 10, 10, 60]);
-  const profile: PacingProfile = { climbIntensity: 0.3, split: 0.15 };
+  const profile: PacingProfile = { climbEffort: 0.3, split: 0.15 };
 
   expect(distributeTime(points, 3600, profile, [])).toEqual(
     distributeTime(points, 3600, profile),
@@ -323,7 +328,7 @@ test("sans portion imposée, rien ne change", () => {
  */
 test("une portion imposée ne réinitialise pas la dérive d'allure", () => {
   const points = flat(40);
-  const profile: PacingProfile = { climbIntensity: 0, split: 0.4 };
+  const profile: PacingProfile = { climbEffort: 0, split: 0.4 };
   const share = (timed: TimedPoint[]) =>
     (timed[3000].t - timed[1000].t) / (timed[4000].t - timed[1000].t);
 

@@ -269,7 +269,7 @@ const timed = (() => {
     return distributeTime(
       smoothed,
       movingTimeS(targetTimeS, aidStations, endM),
-      { climbIntensity: 0.25, split: 0.05 },
+      { climbEffort: 0.25, split: 0.05 },
       fixedSpans(
         aidStations,
         endM,

@@ -159,7 +159,7 @@ export type TimedSegment = Segment & {
 
 export type PacingProfile = {
   /** De 0 à 1 : plus elle monte, moins les côtes ralentissent. */
-  climbIntensity: number;
+  climbEffort: number;
   /** Positif pour un positive split. */
   split: number;
 };

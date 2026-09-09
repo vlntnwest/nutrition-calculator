@@ -67,7 +67,7 @@ export function paceBand(
 }
 
 /** Les coins du rectangle que les curseurs balaient. Voir `Slider` sur l'écran Course. */
-const CLIMB_BOUNDS = [0, 1] as const;
+const CLIMB_BOUNDS = [-0.4, 0.4] as const;
 const SPLIT_BOUNDS = [-0.2, 0.2] as const;
 
 /**
@@ -80,7 +80,7 @@ const SPLIT_BOUNDS = [-0.2, 0.2] as const;
  *
  * Le cadre se fixe donc sur ce que les curseurs peuvent produire au pire,
  * pas sur ce qu'ils donnent maintenant : `paceModel` répond à
- * `climbIntensity` en montée seule et `paceDrift` répond à `split`
+ * `climbEffort` en montée seule et `paceDrift` répond à `split`
  * linéairement, l'un et l'autre sans inversion sur leur plage — les quatre
  * coins du rectangle qu'ils balaient bornent donc tout point milieu.
  */
@@ -89,9 +89,9 @@ export function paceAxisRange(
   segments: Segment[],
   movingS: number | undefined,
 ): PaceAxisRange | null {
-  const coins = CLIMB_BOUNDS.flatMap((climbIntensity) =>
+  const coins = CLIMB_BOUNDS.flatMap((climbEffort) =>
     SPLIT_BOUNDS.map((split) =>
-      paceBand(profile, segments, movingS, { climbIntensity, split }),
+      paceBand(profile, segments, movingS, { climbEffort, split }),
     ),
   ).filter((b): b is PaceBand => b !== null);
 

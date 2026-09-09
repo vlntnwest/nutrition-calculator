@@ -34,7 +34,7 @@ test("importer une trace ouvre un plan et rend son identifiant", async () => {
       settings: {
         massKg: undefined,
         targetTimeS: undefined,
-        climbIntensity: 0.5,
+        climbEffort: 0,
         paceSplit: 0,
         raceDate: undefined,
         startTime: undefined,

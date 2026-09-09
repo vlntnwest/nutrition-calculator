@@ -2,7 +2,7 @@ import { expect, test } from "vitest";
 import type { PacingProfile, ProfilePoint, Segment } from "@/core/type";
 import { paceAxisRange, paceBand, paceSegments } from "./pacing";
 
-const EVEN: PacingProfile = { climbIntensity: 0, split: 0 };
+const EVEN: PacingProfile = { climbEffort: 0, split: 0 };
 
 /** Un profil au pas de 10 m, à partir d'une liste d'altitudes. */
 function profile(altitudes: number[]): ProfilePoint[] {
@@ -52,14 +52,14 @@ test("la moyenne est le chrono de mouvement sur la distance", () => {
 
 /**
  * Le point du graphique : la montée doit sortir plus lente que le plat, et
- * l'écart doit se resserrer quand on monte l'effort en côte.
+ * l'écart se resserrer quand on pousse en côte, s'ouvrir quand on la subit.
  */
-test("la montée est plus lente que le plat, et le curseur la rapproche", () => {
+test("le curseur resserre l'écart de la montée au plat, sans le fermer", () => {
   const points = bump();
   const segments = paceSegments(points);
-  const paceOf = (climbIntensity: number) => {
+  const paceOf = (climbEffort: number) => {
     const bande = paceBand(points, segments, 2700, {
-      climbIntensity,
+      climbEffort,
       split: 0,
     });
     const montee = bande?.segments.find(
@@ -72,21 +72,25 @@ test("la montée est plus lente que le plat, et le curseur la rapproche", () => 
     };
   };
 
-  const cher = paceOf(0);
-  const facile = paceOf(1);
+  const subit = paceOf(-0.4);
+  const neutre = paceOf(0);
+  const pousse = paceOf(0.4);
 
-  expect(cher.montee).toBeGreaterThan(cher.plat);
-  // À `climbIntensity` de 1, la pente ne coûte plus rien : tout est à la même
-  // allure, et le plat n'a plus à compenser la montée.
-  expect(facile.montee).toBeCloseTo(facile.plat, 6);
-  expect(facile.montee / facile.plat).toBeLessThan(cher.montee / cher.plat);
+  expect(neutre.montee).toBeGreaterThan(neutre.plat);
+  // La montée reste plus lente que le plat aux deux bouts du curseur : c'est
+  // ce qui garde les tronçons ordonnés par leur pente.
+  expect(pousse.montee).toBeGreaterThan(pousse.plat);
+  expect(pousse.montee / pousse.plat).toBeLessThan(neutre.montee / neutre.plat);
+  expect(subit.montee / subit.plat).toBeGreaterThan(
+    neutre.montee / neutre.plat,
+  );
 });
 
 test("une dérive positive finit plus lentement qu'elle ne commence", () => {
   const plat = profile(new Array(1001).fill(0));
   const segments = [segment(0, 5000), segment(5000, 10_000)];
   const bande = paceBand(plat, segments, 3600, {
-    climbIntensity: 0,
+    climbEffort: 0,
     split: 0.2,
   });
   const [debut, fin] = bande?.segments ?? [];
@@ -130,11 +134,11 @@ test("l'axe borne toute position des curseurs, pas seulement celle du moment", (
   // Un échantillon de positions de curseurs, pas seulement les coins : l'axe
   // doit border chacune d'elles, milieu de plage compris.
   const positions: PacingProfile[] = [
-    { climbIntensity: 0, split: 0 },
-    { climbIntensity: 1, split: 0 },
-    { climbIntensity: 0.5, split: -0.2 },
-    { climbIntensity: 0.5, split: 0.2 },
-    { climbIntensity: 0.3, split: 0.1 },
+    { climbEffort: -0.4, split: 0 },
+    { climbEffort: 0.4, split: 0 },
+    { climbEffort: 0, split: -0.2 },
+    { climbEffort: 0, split: 0.2 },
+    { climbEffort: 0.15, split: 0.1 },
   ];
 
   for (const pacing of positions) {
