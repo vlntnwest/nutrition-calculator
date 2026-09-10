@@ -2,7 +2,8 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
-import type { NewPlan } from "@/app/plans/planInput";
+import type { StoredPlan } from "@/app/plans/planInput";
+import type { ProfilePoint, ResolvedPoint } from "@/core/type";
 import { type HMS, paceLabel, toHMS, toSecondsHMS } from "@/format/clock";
 import { duree, toNumber } from "@/format/number";
 import { Button } from "@/ui/Button";
@@ -46,9 +47,13 @@ const RouteMap = dynamic(() => import("@/ui/track/RouteMap"), { ssr: false });
 export function RaceScreen({
   accessId,
   plan,
+  points,
+  profile,
 }: {
   accessId: string;
-  plan: NewPlan;
+  plan: StoredPlan;
+  points: ResolvedPoint[];
+  profile: ProfilePoint[];
 }) {
   const [chrono, setChrono] = useState<HMS>(toHMS(plan.settings.targetTimeS));
   const [climb, setClimb] = useState(plan.settings.climbEffort ?? 0);
@@ -64,8 +69,6 @@ export function RaceScreen({
   const { pending, erreur, enregistre, save, reprise } = usePlanSave(accessId);
 
   const totalM = plan.track.distanceM;
-  const points = plan.track.points;
-  const profile = plan.track.profile;
 
   // Le découpage ne dépend que du relief : il survit à tous les réglages
   // d'allure, et ne se refait pas quand un curseur bouge.

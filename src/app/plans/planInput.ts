@@ -65,6 +65,18 @@ export type NewPlan = {
   productCodes: string[];
 };
 
+/**
+ * Un plan tel qu'on le **relit** : la géométrie n'en fait pas partie.
+ *
+ * Les points et le profil pèsent de deux cents kilo-octets à un mégaoctet et
+ * demi ; seuls les deux écrans qui dessinent en ont besoin. Les relire pour
+ * afficher un formulaire, ou pour fusionner une mise à jour qui n'y touche
+ * pas, se paie à chaque navigation — d'où ce type, qui les laisse en base.
+ */
+export type StoredPlan = Omit<NewPlan, "track"> & {
+  track: Omit<NewPlan["track"], "points" | "profile">;
+};
+
 /** Arrondit ce qui existe, laisse absent ce qui l'est. */
 function whole(value: number | undefined): number | undefined {
   return value === undefined ? undefined : Math.round(value);
@@ -81,26 +93,12 @@ function whole(value: number | undefined): number | undefined {
  * 10 000,2 s'écriraient à mille mètres l'un de l'autre, il serait absurde de
  * les refuser sur un écart de 999,8.
  */
-export function normalize(input: NewPlan): NewPlan {
+export function normalize(input: StoredPlan): StoredPlan {
   return {
     track: {
       ...input.track,
       distanceM: Math.round(input.track.distanceM),
       ascentM: Math.round(input.track.ascentM),
-      // Réduits à leurs clés : `jsonb` accepte n'importe quelle forme et
-      // `$type<>` s'efface à la compilation. Rien d'autre ne peut le tenir.
-      //
-      // L'accès est optionnel parce que la normalisation précède la
-      // validation : sur une entrée de travers elle doit rendre la main à
-      // `assertTrack`, pas lever une exception brute que l'écran ne saurait
-      // pas montrer.
-      points: input.track.points.map((p) => ({
-        d: p?.d,
-        lat: p?.lat,
-        lon: p?.lon,
-        ele: p?.ele,
-      })),
-      profile: input.track.profile.map((p) => ({ d: p?.d, ele: p?.ele })),
     },
     settings: {
       ...input.settings,
@@ -141,6 +139,31 @@ export function normalize(input: NewPlan): NewPlan {
 }
 
 /**
+ * La géométrie réduite à ses clés : `jsonb` accepte n'importe quelle forme et
+ * `$type<>` s'efface à la compilation. Rien d'autre ne peut le tenir.
+ *
+ * Séparée de `normalize` parce qu'elle ne sert qu'à la **création** : une
+ * mise à jour ne touche pas à la trace, et remapper quinze mille points pour
+ * les réécrire à l'identique était le prix caché de chaque enregistrement.
+ *
+ * L'accès est optionnel parce que la normalisation précède la validation :
+ * sur une entrée de travers elle doit rendre la main à `assertTrack`, pas
+ * lever une exception brute que l'écran ne saurait pas montrer.
+ */
+export function normalizeTrack(track: NewPlan["track"]): NewPlan["track"] {
+  return {
+    ...track,
+    points: track.points.map((p) => ({
+      d: p?.d,
+      lat: p?.lat,
+      lon: p?.lon,
+      ele: p?.ele,
+    })),
+    profile: track.profile.map((p) => ({ d: p?.d, ele: p?.ele })),
+  };
+}
+
+/**
  * L'écart minimal entre deux bornes d'un secteur, en mètres.
  *
  * Deux ravitos collés fabriquent un secteur qui s'arrondit à zéro seconde et
@@ -154,7 +177,7 @@ const MIN_LEG_M = 1000;
  * Les bornes trop rapprochées, s'il y en a. Le départ et l'arrivée en font
  * partie : un ravito collé à l'un des deux fabrique le même secteur nul.
  */
-function tooClose(input: NewPlan): [number, number] | null {
+function tooClose(input: StoredPlan): [number, number] | null {
   const bounds = [
     0,
     ...input.aidStations.map((aid) => aid.distanceM).sort((a, b) => a - b),
@@ -181,7 +204,7 @@ function isNumber(v: unknown): v is number {
  * s'efface à la compilation : une action est une route POST ouverte, donc
  * c'est ici — et nulle part ailleurs — qu'une trace de travers s'arrête.
  */
-function assertTrack(track: NewPlan["track"]): void {
+export function assertTrack(track: NewPlan["track"]): void {
   if (track.points.length === 0 || track.profile.length === 0) {
     throw new PlanError("Track is empty: points and profile are both required");
   }
@@ -218,9 +241,7 @@ function assertTrack(track: NewPlan["track"]): void {
  * soumettent, sur un plan entier : une mise à jour partielle se fusionne avec
  * l'existant avant de passer ici.
  */
-export function assertValid(input: NewPlan): void {
-  assertTrack(input.track);
-
+export function assertValid(input: StoredPlan): void {
   const collees = tooClose(input);
   if (collees) {
     throw new PlanError(

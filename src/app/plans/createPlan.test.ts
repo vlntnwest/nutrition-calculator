@@ -171,7 +171,9 @@ test("un plan expire six mois après la course, pas après son enregistrement", 
     .from(plans)
     .where(eq(plans.accessId, accessId));
 
-  expect(plan.expiresAt.toISOString().slice(0, 10)).toBe("2027-10-11");
+  expect((plan.expiresAt as Date).toISOString().slice(0, 10)).toBe(
+    "2027-10-11",
+  );
 });
 
 test("une course déjà passée garde six mois à compter de l'enregistrement", async () => {
@@ -186,7 +188,7 @@ test("une course déjà passée garde six mois à compter de l'enregistrement", 
     .from(plans)
     .where(eq(plans.accessId, accessId));
 
-  expect(plan.expiresAt.getTime()).toBeGreaterThan(Date.now());
+  expect((plan.expiresAt as Date).getTime()).toBeGreaterThan(Date.now());
 });
 
 test("les produits retenus sont figés au moment du choix", async () => {
@@ -275,7 +277,7 @@ test("un plan sans date de course garde six mois à compter de l'enregistrement"
     .from(plans)
     .where(eq(plans.accessId, accessId));
 
-  expect(plan.expiresAt.getTime()).toBeGreaterThan(Date.now());
+  expect((plan.expiresAt as Date).getTime()).toBeGreaterThan(Date.now());
 });
 
 /**

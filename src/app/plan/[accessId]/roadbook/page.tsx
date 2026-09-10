@@ -4,7 +4,7 @@ import { duree } from "@/format/number";
 import { ArrowRightIcon } from "@/ui/icons";
 import { EmptyNote } from "@/ui/Notice";
 import { calculable, destinations } from "../_shell/destinations";
-import { planOf, roadbookOf } from "../plan";
+import { planOf, roadbookOf, trackPointsOf } from "../plan";
 import { CalculeDepuis, ComputeButton } from "./ComputeButton";
 import { RaceStart } from "./RaceStart";
 import { RoadbookEditor } from "./RoadbookEditor";
@@ -118,11 +118,17 @@ export default async function Page(
     );
   }
 
+  // Après la sortie du plan non calculé, et pas avant : l'écran qui liste ce
+  // qui manque n'a rien à tracer. La trace simplifiée seule — `LegProfile` ne
+  // dessine que la portion d'un secteur, le profil pleine résolution n'a rien
+  // à faire ici.
+  const points = await trackPointsOf(accessId);
+
   return (
     <RoadbookEditor
       accessId={accessId}
       roadbook={roadbook}
-      points={plan.track.points}
+      points={points}
       cibleGH={cibles.carbsGH}
       entete={entete}
     />

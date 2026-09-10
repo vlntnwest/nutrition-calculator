@@ -124,8 +124,22 @@ npm run db:migrate   # l'applique
 npm run db:seed      # écrit le jeu d'essai de src/fixtures/ — relançable
 npm run db:pull      # recopie une base déployée en local — écrase les données
 npm run db:studio    # inspecte les données
+npm run race:publish # inscrit un plan à l'accueil — voir plus bas
 npm run db:down      # arrête le conteneur — ajouter -v pour effacer le volume
 ```
+
+**Une course officielle n'est pas du code non plus.** C'est un plan comme un autre —
+importé et garni de ses ravitos par les écrans — qu'on inscrit ensuite à l'accueil :
+
+```bash
+npm run race:publish -- <accessId> --slug traversee-des-cimes-2026 \
+  --photo /card-modele.webp --rank 1
+```
+
+Publier fait cesser sa péremption et fige la vignette de son profil. Cliquer la carte
+en tire une copie — la trace et les ravitos, rien d'autre, voir
+[`duplicatePlan`](src/app/plans/duplicatePlan.ts) — et l'identifiant d'accès du modèle,
+qui vaut droit de modification, ne sort jamais du serveur.
 
 **Le catalogue produits n'est pas du code.** C'est une donnée d'exploitation : il vit
 en base, se saisit et se corrige par [`/catalogue`](src/app/catalogue/), et la production
@@ -244,6 +258,13 @@ l'environnement déployé, donc chaque étage migre sa propre base et un preview
 forcément la branche Neon qu'il utilise. Un build qui échoue après la migration laisse
 la base en avance sur le code — c'est le sens normal d'une migration rétro-compatible ;
 une migration destructive se joue toujours à la main, après.
+
+`vercel.json` fixe aussi la **région** des fonctions à `fra1`. Ce n'est pas un détail
+de confort : la base Neon est en `eu-central-1`, et la région par défaut du projet
+plaçait les fonctions à `iad1`. Chaque requête SQL traversait alors l'Atlantique, une
+centaine de millisecondes l'aller-retour, et une page qui en enchaîne deux salves les
+payait toutes. Une fonction se déplace, une base beaucoup moins : c'est la fonction qui
+va à la base.
 
 La branche Neon `staging` dérive à mesure qu'on l'écrit. Le workflow
 **Réinitialiser staging** (onglet Actions, déclenchement manuel) la remet au niveau de

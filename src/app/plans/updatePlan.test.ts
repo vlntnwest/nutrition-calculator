@@ -8,7 +8,7 @@ import { productSnapshots } from "@/db/schema/productSnapshots";
 import { servings } from "@/db/schema/servings";
 import { createPlan } from "./createPlan";
 import { getPlan } from "./getPlan";
-import { newPlan as input } from "./newPlan.fixture";
+import { newPlan as input, storedPlan } from "./newPlan.fixture";
 import { regeneratePlan } from "./regeneratePlan";
 import { updatePlan } from "./updatePlan";
 
@@ -21,7 +21,7 @@ afterEach(async () => {
 });
 
 /** Ce que `getPlan` rend d'un plan intact : l'ordre des produits près. */
-function asRead(plan = input) {
+function asRead(plan = storedPlan) {
   return { ...plan, productCodes: [...plan.productCodes].sort() };
 }
 
@@ -35,6 +35,24 @@ test("un réglage modifié laisse tout le reste en place", async () => {
     ...asRead(),
     settings: { ...input.settings, massKg: 62 },
   });
+});
+
+test("corriger un plan modèle ne lui rend pas de péremption", async () => {
+  const accessId = await createPlan(input);
+  written.push(accessId);
+  await db
+    .update(plans)
+    .set({ expiresAt: sql`null` })
+    .where(eq(plans.accessId, accessId));
+
+  await updatePlan(accessId, { settings: { massKg: 62 } });
+
+  const [plan] = await db
+    .select()
+    .from(plans)
+    .where(eq(plans.accessId, accessId));
+
+  expect(plan.expiresAt).toBeNull();
 });
 
 /**

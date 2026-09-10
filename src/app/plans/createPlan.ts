@@ -8,15 +8,21 @@ import { plans } from "@/db/schema/plans";
 import { tracks } from "@/db/schema/tracks";
 import type { NewPlan } from "./planInput";
 import {
+  assertTrack,
   assertValid,
   insertSnapshots,
   normalize,
+  normalizeTrack,
   settingsColumns,
 } from "./planInput";
 
 /** Écrit un plan et rend son identifiant d'accès. */
 export async function createPlan(raw: NewPlan): Promise<string> {
-  const input = normalize(raw);
+  // La création est la seule écriture qui porte la trace : elle seule la
+  // normalise et la valide. Voir `StoredPlan`.
+  const track = normalizeTrack(raw.track);
+  const input = normalize({ ...raw, track });
+  assertTrack(track);
   assertValid(input);
 
   return db.transaction(async (tx) => {
@@ -35,8 +41,8 @@ export async function createPlan(raw: NewPlan): Promise<string> {
       name: input.track.name,
       distanceM: input.track.distanceM,
       ascentM: input.track.ascentM,
-      points: input.track.points,
-      profile: input.track.profile,
+      points: track.points,
+      profile: track.profile,
     });
 
     await tx.insert(planSettings).values({
