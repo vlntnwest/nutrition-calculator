@@ -13,6 +13,8 @@ import type { LegOverride, StoredPlan } from "./planInput";
 import { regeneratePlan } from "./regeneratePlan";
 import type { RoadbookEdit } from "./saveRoadbook";
 import { saveRoadbook } from "./saveRoadbook";
+import type { PlanSummary } from "./summaries";
+import { planSummaries } from "./summaries";
 import type { PlanPatch } from "./updatePlan";
 import { updatePlan } from "./updatePlan";
 
@@ -102,6 +104,20 @@ export async function loadOfficialRaceTrack(
 
     return points;
   });
+}
+
+/**
+ * Le relevé des plans que cet appareil a retenus, pour la page qui les liste.
+ *
+ * Les identifiants viennent du navigateur, donc de n'importe quoi : ce qui
+ * n'a pas la forme d'un identifiant d'accès est écarté avant la requête,
+ * plutôt que de la faire échouer sur `invalid input syntax for type uuid`.
+ * Un plan absent de la réponse a expiré ou n'existe plus, et l'écran l'oublie.
+ */
+export async function loadPlanSummaries(
+  accessIds: string[],
+): Promise<Result<PlanSummary[]>> {
+  return guard(() => planSummaries(accessIds.filter((id) => UUID.test(id))));
 }
 
 /** Relit un plan — le retour sur un lien, ou un identifiant du navigateur. */
