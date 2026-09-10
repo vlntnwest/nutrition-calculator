@@ -1,17 +1,17 @@
 import { eq, inArray } from "drizzle-orm";
 import { expect, test } from "vitest";
-import { CATALOG } from "@/core/products";
 import { db } from "@/db";
 import { brands } from "@/db/schema/brands";
 import { formats } from "@/db/schema/formats";
 import { products } from "@/db/schema/products";
+import { SAMPLE_PRODUCTS } from "@/fixtures/sampleProducts";
 import { seed } from "./seed";
 
-const codes = CATALOG.map((p) => p.id);
-const marques = [...new Set(CATALOG.map((p) => p.brand))];
-const libelles = [...new Set(CATALOG.map((p) => p.type))];
+const codes = SAMPLE_PRODUCTS.map((p) => p.id);
+const marques = [...new Set(SAMPLE_PRODUCTS.map((p) => p.brand))];
+const libelles = [...new Set(SAMPLE_PRODUCTS.map((p) => p.type))];
 
-test("deux passages du seed ne laissent qu'un seul catalogue", async () => {
+test("deux passages du seed ne laissent qu'un seul jeu d'essai", async () => {
   await seed();
   await seed();
 

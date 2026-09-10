@@ -22,11 +22,11 @@
 
 import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
+import { sampleProductById } from "@/fixtures/sampleProducts";
 import { distributeTime } from "./distribute";
 import { fixedSpans, movingTimeS, nutritionPlan } from "./nutrition";
 import { parseGpx } from "./parseGpx";
 import { prepareTrack } from "./pipeline";
-import { productById } from "./products";
 import type { AidStation, Product, Runner, Targets } from "./type";
 
 const TARGETS: Targets = { carbsGH: 60, fluidMlH: 500, sodiumMgL: 600 };
@@ -38,7 +38,7 @@ const RUNNER: Runner = {
   ],
 };
 const PRODUCTS = ["naak-gel-ultra", "naak-drink-ultra"].map(
-  (id) => productById(id) as Product,
+  (id) => sampleProductById(id) as Product,
 );
 
 const STATIONS: Record<string, AidStation[]> = {

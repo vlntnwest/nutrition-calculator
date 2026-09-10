@@ -1,19 +1,20 @@
 import { sql } from "drizzle-orm";
-import { CATALOG } from "@/core/products";
 import { db } from "@/db";
 import { brands } from "@/db/schema/brands";
 import { formats } from "@/db/schema/formats";
 import { products } from "@/db/schema/products";
+import { SAMPLE_PRODUCTS } from "@/fixtures/sampleProducts";
 
 /**
- * Écrit le catalogue de `core/products.ts` en base. Relançable : chaque table
- * s'upserte sur sa clé naturelle — le nom pour une marque, le libellé pour un
- * format, `code_seed` pour un produit.
+ * Écrit le jeu d'essai en base, pour peupler un poste de développement ou la
+ * base de test. Le catalogue, lui, se saisit par `/catalogue` et ne se sème
+ * pas. Relançable : chaque table s'upserte sur sa clé naturelle — le nom pour
+ * une marque, le libellé pour un format, `code_seed` pour un produit.
  */
 export async function seed(): Promise<void> {
   await db.transaction(async (tx) => {
-    const marques = [...new Set(CATALOG.map((p) => p.brand))];
-    const libelles = [...new Set(CATALOG.map((p) => p.type))];
+    const marques = [...new Set(SAMPLE_PRODUCTS.map((p) => p.brand))];
+    const libelles = [...new Set(SAMPLE_PRODUCTS.map((p) => p.type))];
 
     const brandRows = await tx
       .insert(brands)
@@ -36,7 +37,7 @@ export async function seed(): Promise<void> {
     const brandId = new Map(brandRows.map((b) => [b.name, b.id]));
     const formatId = new Map(formatRows.map((f) => [f.label, f.id]));
 
-    for (const p of CATALOG) {
+    for (const p of SAMPLE_PRODUCTS) {
       const values = {
         codeSeed: p.id,
         brandId: brandId.get(p.brand) as string,

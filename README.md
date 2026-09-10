@@ -46,7 +46,7 @@ npm install
 npm run env:pull     # variables partagées, depuis Vercel — voir « Environnements »
 npm run db:up        # Postgres 18 dans Docker
 npm run db:migrate   # applique les migrations de drizzle/
-npm run db:seed      # écrit le catalogue produits
+npm run db:seed      # onze produits d'essai, de quoi ne pas démarrer à vide
 npm run dev
 ```
 
@@ -121,11 +121,21 @@ migrations générées dans [`drizzle/`](drizzle/).
 npm run db:up        # démarre Postgres, attend qu'il réponde
 npm run db:generate  # écrit une migration à partir du schéma
 npm run db:migrate   # l'applique
-npm run db:seed      # écrit le catalogue de core/products.ts — relançable
+npm run db:seed      # écrit le jeu d'essai de src/fixtures/ — relançable
 npm run db:pull      # recopie une base déployée en local — écrase les données
 npm run db:studio    # inspecte les données
 npm run db:down      # arrête le conteneur — ajouter -v pour effacer le volume
 ```
+
+**Le catalogue produits n'est pas du code.** C'est une donnée d'exploitation : il vit
+en base, se saisit et se corrige par [`/catalogue`](src/app/catalogue/), et la production
+en est la source de vérité — voir
+[ADR 013](docs/adr/013-le-catalogue-est-une-donnee-de-production.md). Ce que sème
+`npm run db:seed`, c'est le **jeu d'essai** de
+[`src/fixtures/sampleProducts.ts`](src/fixtures/sampleProducts.ts) : onze produits pour
+qu'un poste neuf et la base de test ne démarrent pas à vide. Les deux ont divergé et
+c'est normal : le jeu d'essai ne suit pas le marché, et `npm run db:pull` reste le geste
+qui ramène le vrai catalogue en local.
 
 Le conteneur porte **deux** bases : `nutrition-calculator`, celle de `npm run dev`, et
 `nutrition-calculator-test`, où `npm test` travaille. La seconde est créée au premier

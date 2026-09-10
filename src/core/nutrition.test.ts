@@ -1,5 +1,6 @@
 import fc from "fast-check";
 import { expect, test } from "vitest";
+import { SAMPLE_PRODUCTS, sampleProductById } from "@/fixtures/sampleProducts";
 import { pacingIssue } from "./distribute";
 import {
   CARBS_OVERSHOOT_MAX,
@@ -11,7 +12,6 @@ import {
   splitByAidStation,
   suggestedTargets,
 } from "./nutrition";
-import { CATALOG, productById } from "./products";
 import type {
   AidStation,
   Leg,
@@ -39,15 +39,17 @@ function flatTrack(km: number, hours: number): TimedPoint[] {
   return points;
 }
 
-const gel = productById("naak-gel-ultra") as Product;
-const drink = productById("naak-drink-ultra") as Product;
-const baouwGel = productById("baouw-gel") as Product;
-const baouwBar = productById("baouw-bar-extra") as Product;
+const gel = sampleProductById("naak-gel-ultra") as Product;
+const drink = sampleProductById("naak-drink-ultra") as Product;
+const baouwGel = sampleProductById("baouw-gel") as Product;
+const baouwBar = sampleProductById("baouw-bar-extra") as Product;
 
-test("le catalogue est cohérent", () => {
-  expect(new Set(CATALOG.map((p) => p.id)).size).toBe(CATALOG.length);
+test("le jeu d'essai est cohérent", () => {
+  expect(new Set(SAMPLE_PRODUCTS.map((p) => p.id)).size).toBe(
+    SAMPLE_PRODUCTS.length,
+  );
 
-  for (const p of CATALOG) {
+  for (const p of SAMPLE_PRODUCTS) {
     expect(p.carbsG).toBeGreaterThan(0);
     expect(p.energyKcal).toBeGreaterThan(0);
     expect(p.sodiumMg).toBeGreaterThanOrEqual(0);
@@ -283,7 +285,7 @@ test("ce qui comble ne dépasse jamais d'une unité", () => {
     fc.property(
       fc.double({ min: 0.1, max: 20, noNaN: true }),
       fc.double({ min: 0, max: 120, noNaN: true }),
-      fc.uniqueArray(fc.constantFrom(...CATALOG), {
+      fc.uniqueArray(fc.constantFrom(...SAMPLE_PRODUCTS), {
         minLength: 1,
         maxLength: 4,
         selector: (p) => p.id,
@@ -1099,10 +1101,10 @@ test("un dépassement de rangement ne déclenche rien", () => {
  */
 test("un secteur ne porte qu'une seule demi-dose au plus", () => {
   const quatre = [
-    productById("naak-waffle-citron"),
-    productById("naak-bar-ultra"),
-    productById("naak-drink-ultra"),
-    productById("naak-drink-salted-soup"),
+    sampleProductById("naak-waffle-citron"),
+    sampleProductById("naak-bar-ultra"),
+    sampleProductById("naak-drink-ultra"),
+    sampleProductById("naak-drink-salted-soup"),
   ] as Product[];
 
   const plan = nutritionPlan(
@@ -1135,9 +1137,9 @@ test("un secteur ne porte qu'une seule demi-dose au plus", () => {
  */
 test("un secteur ne porte qu'une seule boisson", () => {
   const deux = [
-    productById("naak-drink-ultra"),
-    productById("naak-drink-salted-soup"),
-    productById("naak-bar-ultra"),
+    sampleProductById("naak-drink-ultra"),
+    sampleProductById("naak-drink-salted-soup"),
+    sampleProductById("naak-bar-ultra"),
   ] as Product[];
 
   const plan = nutritionPlan(
@@ -1188,7 +1190,7 @@ test("aucun déplacement ne peut encore améliorer le plan", () => {
     { massKg: 77, flasks: [] },
     TARGETS,
     ["naak-waffle-citron", "naak-bar-ultra", "naak-drink-ultra"].map(
-      (c) => productById(c) as Product,
+      (c) => sampleProductById(c) as Product,
     ),
   );
 
