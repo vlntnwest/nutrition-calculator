@@ -1,17 +1,23 @@
 import Link from "next/link";
 import { entier, km } from "@/format/number";
 import { ArrowLeftIcon } from "@/ui/icons";
+import { ShareButton } from "./ShareButton";
 
 /**
  * L'identité du plan, tenue en haut de chaque destination : de quelle course
  * on parle, et sur quelle distance. Sous `lg`, elle porte aussi le retour
  * vers l'import, que le rail assure ailleurs.
+ *
+ * Le partage se tient contre le titre plutôt qu'au bout de la barre : c'est
+ * ce plan-là qu'on passe, et le geste se lit de là où le nom se lit.
  */
 export function PlanTopBar({
+  accessId,
   nom,
   distanceM,
   ascentM,
 }: {
+  accessId: string;
   nom: string;
   distanceM: number;
   ascentM: number;
@@ -30,6 +36,7 @@ export function PlanTopBar({
         <h1 className="truncate font-semibold text-[17px] text-ink tracking-tight">
           {nom}
         </h1>
+
         <p className="hidden shrink-0 font-mono text-[12px] text-ink-soft sm:block">
           {km(distanceM)} km
           <span className="px-1.5 text-ink-faint">·</span>
@@ -40,6 +47,7 @@ export function PlanTopBar({
       <p className="shrink-0 font-mono text-[12px] text-ink-soft sm:hidden">
         {km(distanceM)} km
       </p>
+      <ShareButton accessId={accessId} nom={nom} />
     </header>
   );
 }

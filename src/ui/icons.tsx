@@ -193,6 +193,19 @@ export function UploadIcon(props: IconProps) {
   );
 }
 
+/** Le partage : le lien d'un plan, passé à qui doit l'ouvrir. */
+export function ShareIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <circle cx="17.5" cy="5.8" r="2.6" />
+      <circle cx="6.5" cy="12" r="2.6" />
+      <circle cx="17.5" cy="18.2" r="2.6" />
+      <path d="M8.8 10.7 15.2 7.1" />
+      <path d="M8.8 13.3 15.2 16.9" />
+    </Glyph>
+  );
+}
+
 export function TrashIcon(props: IconProps) {
   return (
     <Glyph {...props}>
