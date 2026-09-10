@@ -1,4 +1,5 @@
 import { count, eq, inArray } from "drizzle-orm";
+import type { ResolvedPoint } from "@/core/type";
 import { db } from "@/db";
 import { aidStations } from "@/db/schema/aidStations";
 import { officialRaces } from "@/db/schema/officialRaces";
@@ -65,6 +66,29 @@ export async function listOfficialRaces(
     ...race,
     aidStationCount: parPlan.get(planId) ?? 0,
   }));
+}
+
+/**
+ * La trace du modèle derrière une carte, pour la fiche d'ouverture.
+ *
+ * De deux cents kilo-octets à un mégaoctet et demi selon la course : c'est le
+ * prix de la carte et du relief dans la fiche, et il se paie au clic sur une
+ * carte, pas à l'affichage du catalogue. Le profil pleine résolution reste en
+ * base, la fiche ne dessine que les points.
+ *
+ * Rien d'autre ne sort d'ici : l'identifiant d'accès du modèle est son droit
+ * de modification, et il ne franchit pas le serveur.
+ */
+export async function officialRacePoints(
+  slug: string,
+): Promise<ResolvedPoint[] | undefined> {
+  const [row] = await db
+    .select({ points: tracks.points })
+    .from(officialRaces)
+    .innerJoin(tracks, eq(tracks.planId, officialRaces.planId))
+    .where(eq(officialRaces.slug, slug));
+
+  return row?.points;
 }
 
 /**

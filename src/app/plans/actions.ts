@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { createPlan } from "./createPlan";
 import { duplicatePlan } from "./duplicatePlan";
 import { getPlan } from "./getPlan";
-import { officialRacePlanId } from "./officialRaces";
+import { officialRacePlanId, officialRacePoints } from "./officialRaces";
 import { pacingIssueText } from "./pacingErrorText";
 import { PlanError } from "./planError";
 import type { LegOverride, StoredPlan } from "./planInput";
@@ -62,15 +62,45 @@ export async function importTrack(
  * Écran 1, l'autre porte — partir d'une course officielle.
  *
  * La copie s'ouvre sur la trace et les ravitos du modèle ; il ne reste que
- * le chrono, le poids et les produits à saisir. Le modèle lui-même n'est
- * jamais ouvert : le visiteur n'en connaît que le `slug`.
+ * le poids et les produits à saisir, le chrono étant demandé avant la copie.
+ * Le modèle lui-même n'est jamais ouvert : le visiteur n'en connaît que le
+ * `slug`.
+ *
+ * La copie n'a lieu qu'ici, une fois la fiche d'ouverture confirmée. Un clic
+ * sur une carte ne crée plus rien : c'est un catalogue qu'on parcourt, et
+ * chaque coup d'œil laissait jusqu'ici un plan derrière lui.
  */
-export async function startOfficialRace(slug: string): Promise<Result<string>> {
+export async function startOfficialRace(
+  slug: string,
+  { name, targetTimeS }: { name?: string; targetTimeS?: number } = {},
+): Promise<Result<string>> {
   return guard(async () => {
     const planId = await officialRacePlanId(slug);
     if (!planId) throw new PlanError(`Unknown race: ${slug}`);
 
-    return duplicatePlan(planId);
+    // Un nom vidé n'efface pas celui du modèle : la copie le garde.
+    return duplicatePlan(planId, {
+      settings: { targetTimeS },
+      name: name?.trim() || undefined,
+    });
+  });
+}
+
+/**
+ * La trace d'une course officielle, pour la fiche d'ouverture.
+ *
+ * La fiche s'ouvre sans elle et la reçoit ensuite : c'est le seul endroit où
+ * la géométrie d'un modèle traverse le réseau, et elle ne sert qu'à montrer
+ * où l'on court. La copie, elle, se fait de ligne à ligne en base.
+ */
+export async function loadOfficialRaceTrack(
+  slug: string,
+): Promise<Result<ResolvedPoint[]>> {
+  return guard(async () => {
+    const points = await officialRacePoints(slug);
+    if (!points) throw new PlanError(`Unknown race: ${slug}`);
+
+    return points;
   });
 }
 

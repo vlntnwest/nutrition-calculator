@@ -145,7 +145,7 @@ export function HomeScreen({ races }: { races: OfficialRace[] }) {
 
       {parsed && (
         <ImportRaceModal
-          track={parsed}
+          source={{ kind: "gpx", track: parsed }}
           onCancel={() => setParsed(null)}
           onConfirm={confirm}
         />
