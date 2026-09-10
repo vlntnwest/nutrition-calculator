@@ -7,12 +7,19 @@
  * staging, on promeut en production, puis on retire les données réelles pour
  * repartir du terrain plutôt que d'un jeu d'essai vieillissant.
  *
- * La source vit dans `PROD_DATABASE_URL`, à renseigner une fois par machine
- * dans `.env.local`. Ce n'est pas `DATABASE_URL` : sous ce nom-là, le garde-fou
- * de `src/db/env.ts` refuserait de démarrer, et c'est très bien ainsi — une
- * base distante se lit pour être copiée, jamais pour faire tourner l'application.
- * Prendre la connexion **directe**, pas la poolée : `pg_dump` a besoin d'un
- * snapshot cohérent sur une session, et le pooler de Neon est en mode transaction.
+ * La source par défaut est staging, jamais la production : `staging` est une
+ * copie de `production` après un passage du workflow « Réinitialiser staging »,
+ * donc on obtient les mêmes données sans que la production voie personne.
+ * Copier la production est un autre geste, et il se demande :
+ *
+ *   npm run db:pull -- production
+ *
+ * Les deux URL vivent dans `.env.local`, une fois par machine. Aucune ne
+ * s'appelle `DATABASE_URL` : sous ce nom-là, le garde-fou de `src/db/env.ts`
+ * refuserait de démarrer, et c'est très bien ainsi — une base déployée se lit
+ * pour être copiée, jamais pour faire tourner l'application. Prendre la
+ * connexion **directe**, pas la poolée : `pg_dump` a besoin d'un snapshot
+ * cohérent sur une session, et le pooler de Neon est en mode transaction.
  *
  * `pg_dump` s'exécute dans le conteneur et non sur la machine : sa version doit
  * être au moins celle du serveur, et un `pg_dump` installé par Homebrew a
@@ -25,12 +32,39 @@
 import { execFileSync } from "node:child_process";
 import { databaseUrl } from "@/db/env";
 
-const source = process.env.PROD_DATABASE_URL;
+const SOURCES = {
+  staging: "STAGING_DATABASE_URL",
+  production: "PROD_DATABASE_URL",
+} as const;
+
+type Source = keyof typeof SOURCES;
+
+const demande = process.argv[2] ?? "staging";
+
+if (!(demande in SOURCES)) {
+  console.error(
+    `Source « ${demande} » inconnue. Attendu : staging ou production.`,
+  );
+  process.exit(1);
+}
+
+const variable = SOURCES[demande as Source];
+const source = process.env[variable];
 
 if (!source) {
   console.error(
-    "PROD_DATABASE_URL manquante. Renseigner dans .env.local la connexion directe\n" +
+    `${variable} manquante. Renseigner dans .env.local la connexion directe\n` +
       "de la branche Neon à recopier — voir .env.example.",
+  );
+  process.exit(1);
+}
+
+// Le pooler de Neon est en mode transaction : pg_dump y perd le snapshot
+// cohérent dont il a besoin. L'erreur qu'il rend alors ne dit pas pourquoi.
+if (new URL(source).hostname.includes("-pooler")) {
+  console.error(
+    `${variable} vise le pooler. Prendre la connexion directe — le même hôte,\n` +
+      "sans le suffixe -pooler.",
   );
   process.exit(1);
 }
@@ -46,7 +80,7 @@ pg_dump --no-owner --no-privileges --clean --if-exists "$SOURCE" |
   psql -v ON_ERROR_STOP=1 -U postgres -d "${database}" >/dev/null
 `;
 
-console.log(`Recopie vers « ${database} »…`);
+console.log(`Recopie de ${demande} vers « ${database} »…`);
 
 execFileSync(
   "docker",
