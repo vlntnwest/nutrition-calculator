@@ -1,4 +1,4 @@
-import type { LegOverride, NewAidStation, NewPlan } from "./planInput";
+import type { LegOverride, NewAidStation, StoredPlan } from "./planInput";
 
 /**
  * Égalité structurelle, sans dépendre de l'ordre des clés.
@@ -39,7 +39,7 @@ function same(a: unknown, b: unknown): boolean {
  * inoffensif ici. L'oubli fait recalculer pour rien — l'inverse afficherait
  * un roadbook périmé en le disant à jour.
  */
-function splitSettings(settings: NewPlan["settings"]) {
+function splitSettings(settings: StoredPlan["settings"]) {
   const { raceDate: _date, startTime: _heure, massKg, ...read } = settings;
 
   return { massKg, read };
@@ -73,7 +73,7 @@ function byBoundary(list: LegOverride[]) {
  * n'entre pas dans la comparaison — un autre GPX est un autre plan, et
  * `PlanPatch` ne permet pas d'y toucher.
  */
-export function survives(before: NewPlan, after: NewPlan): boolean {
+export function survives(before: StoredPlan, after: StoredPlan): boolean {
   const avant = splitSettings(before.settings);
   const apres = splitSettings(after.settings);
 
@@ -111,7 +111,7 @@ export type Changed = {
  * Rien à voir avec `survives` : le nom d'un ravito et l'heure de départ
  * bougent sans condamner le calcul, mais il faut bien les écrire.
  */
-export function changed(before: NewPlan, after: NewPlan): Changed {
+export function changed(before: StoredPlan, after: StoredPlan): Changed {
   return {
     settings: !same(before.settings, after.settings),
     flasks: !same(before.flasks, after.flasks),

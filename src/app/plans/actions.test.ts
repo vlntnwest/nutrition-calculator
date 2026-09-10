@@ -30,7 +30,7 @@ test("importer une trace ouvre un plan et rend son identifiant", async () => {
   expect(relu).toEqual({
     ok: true,
     value: {
-      track: input.track,
+      track: { name: "Saverne Trail", distanceM: 28350, ascentM: 1314 },
       settings: {
         massKg: undefined,
         targetTimeS: undefined,

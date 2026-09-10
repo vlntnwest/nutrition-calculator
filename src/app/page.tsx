@@ -1,151 +1,27 @@
-"use client";
-
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Hero } from "./_home/Hero";
-import { ImportDropzone, type ImportStatus } from "./_home/ImportDropzone";
-import { ImportRaceModal, type ParsedTrack } from "./_home/ImportRaceModal";
-import { PlansActions } from "./_home/nav/PlansActions";
-import { PlanCards } from "./_home/PlanCards";
-import { analyzeGpx } from "./import/analyzeGpx";
-import { importTrack, savePlan } from "./plans/actions";
-import { rememberPlan } from "./plans/stored";
+import { HomeScreen } from "./_home/HomeScreen";
+import { listOfficialRaces } from "./plans/officialRaces";
 
 /**
- * Écran d'import. Voir le commentaire de contrat de direction dans
- * layout.tsx pour la direction visuelle ; ce fichier orchestre seulement
- * la lecture du GPX et la création du plan, les autres pièces vivent
- * chacune dans leur fichier.
+ * Deux cartes, pas le catalogue : l'accueil est un écran d'import, les
+ * courses officielles y sont une porte de plus, pas le sujet. Le reste se
+ * voit sur `/plans/officiels`, où la tuile « Voir les plans officiels » mène.
  */
-export default function Page() {
-  const [status, setStatus] = useState<ImportStatus>({ kind: "vide" });
-  const [parsed, setParsed] = useState<ParsedTrack | null>(null);
-  const router = useRouter();
+const A_L_ACCUEIL = 2;
 
-  async function read(file: File) {
-    setStatus({ kind: "lecture" });
-    // L'extension sans égard à la casse : les exports d'ordinateur écrivent
-    // parfois `.GPX`, et le sélecteur du téléphone rend le nom tel quel.
-    if (!file.name.toLowerCase().endsWith(".gpx")) {
-      setStatus({
-        kind: "erreur",
-        message: "Le fichier doit être un fichier GPX",
-      });
-      return;
-    }
+/**
+ * L'accueil ne lit aucune API de requête : sans consigne, Next le prérend au
+ * build et fige les deux cartes à l'image de la base ce jour-là — une course
+ * publiée ensuite n'y paraîtrait qu'au déploiement suivant.
+ *
+ * `connection()` le rendrait dynamique, comme la page Catalogue, mais c'est
+ * la page d'entrée : elle se sert aujourd'hui en une centaine de
+ * millisecondes sans toucher la base, contre quatre fois plus dès qu'elle
+ * l'interroge. La revalidation garde les deux — servie depuis le cache,
+ * refaite en fond. Publier une course est un geste rare ; cinq minutes
+ * d'attente sont un prix acceptable, un redéploiement ne l'était pas.
+ */
+export const revalidate = 300;
 
-    // La lecture à part de l'analyse : sur un téléphone, le fichier choisi
-    // dans un stockage en ligne n'est parfois qu'une référence que le
-    // système n'arrive pas à livrer, et l'erreur du navigateur ne dit rien
-    // de ce qu'il faut faire.
-    let xml: string;
-
-    try {
-      xml = await file.text();
-    } catch {
-      setStatus({
-        kind: "erreur",
-        message:
-          "Le fichier n'a pas pu être lu. S'il est rangé dans un stockage en ligne, téléchargez-le d'abord sur l'appareil.",
-      });
-
-      return;
-    }
-
-    if (xml.trim() === "") {
-      setStatus({
-        kind: "erreur",
-        message:
-          "Le fichier est arrivé vide. S'il est rangé dans un stockage en ligne, téléchargez-le d'abord sur l'appareil.",
-      });
-
-      return;
-    }
-
-    try {
-      const analysis = await analyzeGpx(xml);
-      setStatus({ kind: "vide" });
-      setParsed({
-        fileName: file.name,
-        name: analysis.name,
-        distanceM: analysis.distanceM,
-        ascentM: analysis.ascentM,
-        points: analysis.points,
-        profile: analysis.profile,
-      });
-    } catch (error) {
-      setStatus({
-        kind: "erreur",
-        message: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
-
-  /**
-   * La modale valide le nom et le chrono ; le plan n'existe qu'à partir
-   * d'ici. Un message renvoyé rouvre la modale dessus, `null` déclenche la
-   * navigation vers l'onglet Course pour y poser les ravitos.
-   */
-  async function confirm(
-    raceName: string,
-    targetTimeS: number | undefined,
-  ): Promise<string | null> {
-    if (!parsed) return "Le fichier importé a été perdu. Relancez l'import.";
-
-    const created = await importTrack({
-      name: raceName,
-      distanceM: parsed.distanceM,
-      ascentM: Math.round(parsed.ascentM),
-      points: parsed.points,
-      profile: parsed.profile,
-    });
-
-    if (!created.ok) return created.error;
-
-    if (targetTimeS !== undefined) {
-      const saved = await savePlan(created.value, {
-        settings: { targetTimeS },
-      });
-      if (!saved.ok) return saved.error;
-    }
-
-    rememberPlan(created.value);
-    router.push(`/plan/${created.value}`);
-
-    return null;
-  }
-
-  return (
-    <main className="flex min-h-screen flex-col bg-paper text-ink">
-      <Hero>
-        <div className="px-6 pt-4 text-center sm:pt-8 lg:pt-6">
-          <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
-            Importez la trace de votre course
-          </h1>
-          <p className="mx-auto mt-3 max-w-xl text-base text-ink-soft sm:text-lg">
-            Un fichier GPX suffit. Le plan s'ouvre aussitôt et se garde sur cet
-            appareil.
-          </p>
-        </div>
-        <ImportDropzone status={status} onFile={(file) => void read(file)} />
-
-        <div className="flex flex-1 w-full px-4 pb-6 lg:pb-8">
-          <div className="flex w-full flex-col gap-4 pt-16 lg:flex-row">
-            <div className="flex flex-1 flex-wrap gap-4">
-              <PlanCards />
-            </div>
-            <PlansActions />
-          </div>
-        </div>
-      </Hero>
-
-      {parsed && (
-        <ImportRaceModal
-          track={parsed}
-          onCancel={() => setParsed(null)}
-          onConfirm={confirm}
-        />
-      )}
-    </main>
-  );
+export default async function Page() {
+  return <HomeScreen races={await listOfficialRaces(A_L_ACCUEIL)} />;
 }

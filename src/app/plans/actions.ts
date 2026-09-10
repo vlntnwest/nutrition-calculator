@@ -4,10 +4,12 @@ import { pacingIssue } from "@/core/distribute";
 import type { ProfilePoint, ResolvedPoint } from "@/core/type";
 import { db } from "@/db";
 import { createPlan } from "./createPlan";
+import { duplicatePlan } from "./duplicatePlan";
 import { getPlan } from "./getPlan";
+import { officialRacePlanId } from "./officialRaces";
 import { pacingIssueText } from "./pacingErrorText";
 import { PlanError } from "./planError";
-import type { LegOverride, NewPlan } from "./planInput";
+import type { LegOverride, StoredPlan } from "./planInput";
 import { regeneratePlan } from "./regeneratePlan";
 import type { RoadbookEdit } from "./saveRoadbook";
 import { saveRoadbook } from "./saveRoadbook";
@@ -56,8 +58,24 @@ export async function importTrack(
   );
 }
 
+/**
+ * Écran 1, l'autre porte — partir d'une course officielle.
+ *
+ * La copie s'ouvre sur la trace et les ravitos du modèle ; il ne reste que
+ * le chrono, le poids et les produits à saisir. Le modèle lui-même n'est
+ * jamais ouvert : le visiteur n'en connaît que le `slug`.
+ */
+export async function startOfficialRace(slug: string): Promise<Result<string>> {
+  return guard(async () => {
+    const planId = await officialRacePlanId(slug);
+    if (!planId) throw new PlanError(`Unknown race: ${slug}`);
+
+    return duplicatePlan(planId);
+  });
+}
+
 /** Relit un plan — le retour sur un lien, ou un identifiant du navigateur. */
-export async function loadPlan(accessId: string): Promise<Result<NewPlan>> {
+export async function loadPlan(accessId: string): Promise<Result<StoredPlan>> {
   return guard(async () => {
     const plan = await getPlan(accessId);
     if (!plan) throw new PlanError(`Unknown plan: ${accessId}`);
@@ -76,7 +94,7 @@ export async function loadPlan(accessId: string): Promise<Result<NewPlan>> {
 export async function savePlan(
   accessId: string,
   patch: PlanPatch,
-): Promise<Result<NewPlan>> {
+): Promise<Result<StoredPlan>> {
   return guard(async () => {
     await updatePlan(accessId, patch);
     const plan = await getPlan(accessId);
