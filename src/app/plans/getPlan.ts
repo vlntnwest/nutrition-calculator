@@ -26,8 +26,15 @@ import type { StoredPlan } from "./planInput";
  *
  * Une date nulle est celle d'un plan modèle : la copie qu'on en tire, elle,
  * porte les six mois de tout le monde.
+ *
+ * Exportée pour `planSummaries`, qui lit plusieurs plans d'un coup : la règle
+ * d'expiration ne s'écrit qu'ici, sans quoi une liste montrerait des plans que
+ * la lecture, elle, refuse d'ouvrir.
  */
-const alive = or(isNull(plans.expiresAt), gt(plans.expiresAt, sql`now()`));
+export const alive = or(
+  isNull(plans.expiresAt),
+  gt(plans.expiresAt, sql`now()`),
+);
 
 /**
  * Relit un plan par son identifiant d'accès, **sans sa géométrie**.

@@ -6,6 +6,7 @@ import { planSettings } from "@/db/schema/planSettings";
 import { plans } from "@/db/schema/plans";
 import { tracks } from "@/db/schema/tracks";
 import { PlanError } from "./planError";
+import type { NewPlan } from "./planInput";
 import { settingsColumns } from "./planInput";
 
 /**
@@ -15,11 +16,22 @@ import { settingsColumns } from "./planInput";
  * repartent à vide. Un modèle prête son parcours, pas le chrono ni le poids
  * de qui l'a posé — et un roadbook n'a rien à copier, il se calcule.
  *
+ * `settings` et `name` sont ce que la fiche d'ouverture a demandé avant la
+ * copie : le chrono visé, et le nom si le coureur l'a changé. Ils s'écrivent
+ * dans les insertions plutôt qu'en mise à jour derrière — un plan neuf n'a
+ * rien à fusionner, et la copie sort de sa transaction déjà complète.
+ *
  * La géométrie ne remonte pas dans Node : un `insert … select` la recopie de
  * ligne à ligne, là où la relire pour la réécrire coûterait le mégaoctet et
  * demi d'une trace de cent soixante-seize kilomètres à chaque clic.
  */
-export async function duplicatePlan(sourceId: string): Promise<string> {
+export async function duplicatePlan(
+  sourceId: string,
+  {
+    settings = {},
+    name,
+  }: { settings?: NewPlan["settings"]; name?: string } = {},
+): Promise<string> {
   return db.transaction(async (tx) => {
     const [source] = await tx
       .select({ accessId: plans.accessId })
@@ -35,11 +47,11 @@ export async function duplicatePlan(sourceId: string): Promise<string> {
       .values({})
       .returning({ accessId: plans.accessId });
 
-    await copyTrack(tx, sourceId, plan.accessId);
+    await copyTrack(tx, sourceId, plan.accessId, name);
 
     await tx
       .insert(planSettings)
-      .values({ planId: plan.accessId, ...settingsColumns({}) });
+      .values({ planId: plan.accessId, ...settingsColumns(settings) });
 
     const aids = await tx
       .select()
@@ -60,13 +72,20 @@ export async function duplicatePlan(sourceId: string): Promise<string> {
  * Recopie la trace en base, sans la faire transiter par l'application.
  *
  * Les colonnes se lisent du schéma : celle qui s'y ajoutera demain suivra
- * d'elle-même, sauf `plan_id`, qui change, et `imported_at`, qui date la
- * copie et non l'import d'origine.
+ * d'elle-même, sauf `plan_id`, qui change, `imported_at`, qui date la copie
+ * et non l'import d'origine, et `name`, que la fiche d'ouverture peut avoir
+ * réécrit. Le `coalesce` garde le nom du modèle quand elle n'y a pas touché.
  */
-async function copyTrack(tx: Tx, sourceId: string, planId: string) {
+async function copyTrack(
+  tx: Tx,
+  sourceId: string,
+  planId: string,
+  name?: string,
+) {
   const {
     planId: _cible,
     importedAt: _date,
+    name: _nom,
     ...copiees
   } = getTableColumns(tracks);
   const colonnes = sql.raw(
@@ -76,8 +95,8 @@ async function copyTrack(tx: Tx, sourceId: string, planId: string) {
   );
 
   await tx.execute(sql`
-    insert into ${tracks} ("plan_id", ${colonnes})
-    select ${planId}::uuid, ${colonnes}
+    insert into ${tracks} ("plan_id", "name", ${colonnes})
+    select ${planId}::uuid, coalesce(${name ?? null}::text, ${tracks.name}), ${colonnes}
     from ${tracks}
     where ${tracks.planId} = ${sourceId}::uuid
   `);
