@@ -4,7 +4,7 @@ import { seed } from "@/db/seed";
 
 async function main() {
   await seed();
-  console.log("Catalogue écrit.");
+  console.log("Jeu d'essai écrit.");
   process.exit(0);
 }
 
