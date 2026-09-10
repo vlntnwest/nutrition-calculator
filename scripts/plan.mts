@@ -56,7 +56,6 @@ import {
 } from "../src/core/nutrition.ts";
 import { parseGpx } from "../src/core/parseGpx.ts";
 import { prepareTrack, SETTINGS } from "../src/core/pipeline.ts";
-import { CATALOG, productById } from "../src/core/products.ts";
 import { splitBySlope } from "../src/core/split.ts";
 import type {
   AidStation,
@@ -67,6 +66,10 @@ import type {
   Targets,
   Warning,
 } from "../src/core/type.ts";
+import {
+  SAMPLE_PRODUCTS,
+  sampleProductById,
+} from "../src/fixtures/sampleProducts.ts";
 
 const args = process.argv.slice(2);
 const option = (name: string) => {
@@ -132,10 +135,10 @@ const massKg = number(positional[2] ?? "70", "Masse");
 const products = (option("products") ?? "naak-gel-ultra,naak-drink-ultra")
   .split(",")
   .map((id) => {
-    const p = productById(id);
+    const p = sampleProductById(id);
     if (!p) {
       throw new Error(
-        `Produit inconnu : ${id}\nConnus : ${CATALOG.map((x) => x.id).join(", ")}`,
+        `Produit inconnu : ${id}\nConnus : ${SAMPLE_PRODUCTS.map((x) => x.id).join(", ")}`,
       );
     }
 
@@ -528,7 +531,7 @@ if (args.includes("--segments")) {
 
 console.log(`\n── Le sac complet`);
 for (const [id, units] of plan.total.units) {
-  const p = productById(id);
+  const p = sampleProductById(id);
   console.log(`   ${amount(units)} × ${p?.brand} ${p?.name}`);
 }
 console.log(

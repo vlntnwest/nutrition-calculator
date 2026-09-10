@@ -1,6 +1,10 @@
-import type { Product } from "./type.ts";
+import type { Product } from "../core/type.ts";
 
 /**
+ * Onze produits pour peupler une base vide : le développement local et les
+ * tests. **Ce n'est pas le catalogue** — celui-ci vit en base, se saisit par
+ * `/catalogue` et n'a qu'un identifiant en commun avec ce jeu d'essai.
+ *
  * Relevé sur les sites des marques et sur Nutri-Bay en août 2026. Les valeurs
  * varient d'un parfum à l'autre : ce sont des références, pas un contrat.
  *
@@ -8,7 +12,7 @@ import type { Product } from "./type.ts";
  * à la demi-mesure, une barre se casse, un gel et une dosette de purée se
  * finissent — on ne referme pas un sachet entamé pendant 3 h de course.
  */
-export const CATALOG: Product[] = [
+export const SAMPLE_PRODUCTS: Product[] = [
   {
     id: "naak-gel-ultra",
     brand: "Näak",
@@ -154,6 +158,6 @@ export const CATALOG: Product[] = [
   },
 ];
 
-export function productById(id: string): Product | undefined {
-  return CATALOG.find((p) => p.id === id);
+export function sampleProductById(id: string): Product | undefined {
+  return SAMPLE_PRODUCTS.find((p) => p.id === id);
 }

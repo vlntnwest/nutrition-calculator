@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { seed } from "@/db/seed";
 
 // Une seule fois avant toute la suite. Trois fichiers de test ont besoin du
-// catalogue ; les laisser le semer chacun de leur côté fait s'entre-bloquer
+// jeu d'essai ; les laisser le semer chacun de leur côté fait s'entre-bloquer
 // des upserts concurrents sur les mêmes lignes.
 //
 // La migration est ici et non dans une étape à retenir : la base de test est

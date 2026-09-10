@@ -99,7 +99,9 @@ avant de s'appliquer en course ».
 - **Dix fixtures GPX de courses françaises réelles** confrontées à leur D+ officiel
   publié (`src/core/fixtures/references/`) — SaintéLyon, Strasparis, UTDC, UTHK,
   Saverne, Andlau.
-- Un catalogue produits réel, semé en base (`src/core/products.ts`).
+- Un catalogue produits réel, saisi par `/catalogue` et conservé en base de
+  production — 45 produits. Le dépôt n'en porte qu'un jeu d'essai de onze
+  références (`src/fixtures/sampleProducts.ts`).
 - Les références scientifiques et la tension non résolue ACSM / ISSN sur les
   glucides en ultra : `docs/sources.md`.
 - Les décisions structurantes : `docs/adr/`.
