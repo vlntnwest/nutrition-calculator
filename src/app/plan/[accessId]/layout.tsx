@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { destinations } from "./_shell/destinations";
 import { PlanRail, PlanTabs } from "./_shell/PlanNav";
 import { PlanTopBar } from "./_shell/PlanTopBar";
+import { RememberOpenedPlan } from "./_shell/RememberOpenedPlan";
 import { planOf, roadbookOf } from "./plan";
 
 /**
@@ -32,6 +33,8 @@ export default async function Layout(props: LayoutProps<"/plan/[accessId]">) {
 
   return (
     <div className="fixed inset-0 flex overflow-hidden overscroll-none bg-paper text-ink">
+      <RememberOpenedPlan accessId={accessId} />
+
       <PlanRail accessId={accessId} items={items} />
 
       <div className="flex min-w-0 flex-1 flex-col">
