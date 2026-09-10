@@ -189,15 +189,25 @@ Le point de tout ceci est de tourner en rond, pas d'empiler des étages :
    locale. On repart du terrain réel plutôt que d'un jeu d'essai qui vieillit, et le
    tour recommence.
 
-L'étape 4 demande `PROD_DATABASE_URL` dans `.env.local`, la connexion **directe** de la
+L'étape 4 lit `STAGING_DATABASE_URL` dans `.env.local`, la connexion **directe** de la
 branche Neon à recopier — une fois par machine. Ce n'est délibérément pas `DATABASE_URL` :
 sous ce nom, le garde-fou refuserait de démarrer. Une base déployée se lit pour être
-copiée, jamais pour faire tourner l'application. `npm run db:pull` **écrase la base de
-développement** ; la base de test, elle, n'est pas touchée.
+copiée, jamais pour faire tourner l'application.
 
-Pour que l'étape 4 rende des données de production sans interroger la production, le
-workflow **Réinitialiser staging** remet la branche Neon `staging` au niveau de
-`production` — on recopie alors `staging`, et la production ne voit passer personne.
+**`npm run db:pull` prend staging, jamais la production.** Après un passage du workflow
+**Réinitialiser staging**, la branche Neon `staging` est une copie de `production` : on
+obtient donc les mêmes données sans que la production voie passer personne. La copier
+directement reste possible, mais c'est un autre geste, qui se demande — et qui lit
+`PROD_DATABASE_URL` :
+
+```bash
+npm run db:pull                 # staging
+npm run db:pull -- production   # la production elle-même
+```
+
+Dans les deux cas l'opération **écrase la base de développement** ; la base de test, elle,
+n'est pas touchée. Une URL poolée est refusée : `pg_dump` a besoin d'un snapshot cohérent
+sur une session, que le pooler de Neon, en mode transaction, ne lui donne pas.
 
 **Staging n'est pas un environnement Vercel**, qui demanderait un plan payant : c'est un
 déploiement de branche ordinaire, servi par l'alias stable
