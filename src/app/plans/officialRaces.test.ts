@@ -60,6 +60,31 @@ test("les cartes sortent dans l'ordre du rang", async () => {
   expect(slugs).toEqual(["premiere-course", "seconde-course"]);
 });
 
+/**
+ * L'accueil n'en montre que deux. La borne est dans la requête et non dans
+ * un `slice` de l'appelant : sans elle, la page d'entrée lirait tout le
+ * catalogue pour en jeter la fin.
+ */
+test("une borne rend les premières cartes du rang, pas le catalogue", async () => {
+  await publier("borne-troisieme", 3);
+  await publier("borne-premiere", 1);
+  await publier("borne-seconde", 2);
+
+  const deux = await listOfficialRaces(2);
+
+  expect(deux).toHaveLength(2);
+  expect(deux.map((race) => race.slug)).toEqual([
+    "borne-premiere",
+    "borne-seconde",
+  ]);
+
+  const toutes = (await listOfficialRaces())
+    .map((race) => race.slug)
+    .filter((slug) => slug.startsWith("borne-"));
+
+  expect(toutes).toHaveLength(3);
+});
+
 test("le lien public rend le plan modèle, et rien pour un lien inconnu", async () => {
   const planId = await publier("cimes-2026");
 

@@ -22,9 +22,15 @@ export type OfficialRace = {
  * pour qu'une correction apportée au modèle se voie sur la carte sans
  * republication. Le tracé de la vignette, lui, est figé à la publication :
  * le profil pleine résolution pèse trop pour être relu à chaque accueil.
+ *
+ * `limit` borne la requête, il ne coupe pas après coup : l'accueil n'affiche
+ * que les deux premières et n'a aucune raison de lire les autres. Absent, le
+ * catalogue entier — c'est ce que demande la page qui les montre toutes.
  */
-export async function listOfficialRaces(): Promise<OfficialRace[]> {
-  const rows = await db
+export async function listOfficialRaces(
+  limit?: number,
+): Promise<OfficialRace[]> {
+  const affiche = db
     .select({
       slug: officialRaces.slug,
       planId: officialRaces.planId,
@@ -37,6 +43,8 @@ export async function listOfficialRaces(): Promise<OfficialRace[]> {
     .from(officialRaces)
     .innerJoin(tracks, eq(tracks.planId, officialRaces.planId))
     .orderBy(officialRaces.rank, officialRaces.slug);
+
+  const rows = await (limit === undefined ? affiche : affiche.limit(limit));
 
   if (rows.length === 0) return [];
 
