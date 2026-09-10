@@ -36,6 +36,7 @@ export default async function Layout(props: LayoutProps<"/plan/[accessId]">) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <PlanTopBar
+          accessId={accessId}
           nom={plan.track.name}
           distanceM={plan.track.distanceM}
           ascentM={plan.track.ascentM}

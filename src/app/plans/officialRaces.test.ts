@@ -5,7 +5,11 @@ import { officialRaces } from "@/db/schema/officialRaces";
 import { plans } from "@/db/schema/plans";
 import { createPlan } from "./createPlan";
 import { newPlan as input } from "./newPlan.fixture";
-import { listOfficialRaces, officialRacePlanId } from "./officialRaces";
+import {
+  listOfficialRaces,
+  officialRacePlanId,
+  officialRacePoints,
+} from "./officialRaces";
 
 const written: string[] = [];
 
@@ -90,4 +94,17 @@ test("le lien public rend le plan modèle, et rien pour un lien inconnu", async 
 
   expect(await officialRacePlanId("cimes-2026")).toBe(planId);
   expect(await officialRacePlanId("course-fantome")).toBeUndefined();
+});
+
+/**
+ * La fiche d'ouverture montre le tracé du modèle, et c'est le seul endroit où
+ * sa géométrie traverse le réseau.
+ */
+test("la trace du modèle se lit par le lien public", async () => {
+  await publier("trace-publique");
+
+  expect(await officialRacePoints("trace-publique")).toEqual(
+    input.track.points,
+  );
+  expect(await officialRacePoints("course-fantome")).toBeUndefined();
 });

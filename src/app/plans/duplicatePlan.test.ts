@@ -84,6 +84,38 @@ test("la copie ne prend ni les réglages, ni les flasques, ni les produits", asy
   ).toEqual([]);
 });
 
+/**
+ * La fiche d'ouverture demande le chrono avant que la copie n'existe : il
+ * s'écrit donc avec elle, et non en mise à jour derrière.
+ */
+test("le chrono demandé avant la copie part avec elle", async () => {
+  const accessId = await duplicatePlan(await modele(), {
+    settings: { targetTimeS: 13500 },
+  });
+  written.push(accessId);
+
+  expect((await getPlan(accessId))?.settings).toEqual({
+    climbEffort: 0,
+    paceSplit: 0,
+    targetTimeS: 13500,
+  });
+});
+
+/**
+ * La fiche d'ouverture laisse corriger le nom. Sans correction, la copie
+ * garde celui du modèle : c'est le `coalesce` de `copyTrack`.
+ */
+test("le nom corrigé sur la fiche remplace celui du modèle", async () => {
+  const source = await modele();
+
+  const renomme = await duplicatePlan(source, { name: "Saverne, plan A" });
+  written.push(renomme);
+  const telQuel = await copie(source);
+
+  expect((await getPlan(renomme))?.track.name).toBe("Saverne, plan A");
+  expect((await getPlan(telQuel))?.track.name).toBe("Saverne Trail");
+});
+
 test("la copie périme dans six mois, même tirée d'un modèle qui ne périme pas", async () => {
   const source = await modele();
   await db
