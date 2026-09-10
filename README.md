@@ -124,8 +124,22 @@ npm run db:migrate   # l'applique
 npm run db:seed      # écrit le jeu d'essai de src/fixtures/ — relançable
 npm run db:pull      # recopie une base déployée en local — écrase les données
 npm run db:studio    # inspecte les données
+npm run race:publish # inscrit un plan à l'accueil — voir plus bas
 npm run db:down      # arrête le conteneur — ajouter -v pour effacer le volume
 ```
+
+**Une course officielle n'est pas du code non plus.** C'est un plan comme un autre —
+importé et garni de ses ravitos par les écrans — qu'on inscrit ensuite à l'accueil :
+
+```bash
+npm run race:publish -- <accessId> --slug traversee-des-cimes-2026 \
+  --photo /card-modele.webp --rank 1
+```
+
+Publier fait cesser sa péremption et fige la vignette de son profil. Cliquer la carte
+en tire une copie — la trace et les ravitos, rien d'autre, voir
+[`duplicatePlan`](src/app/plans/duplicatePlan.ts) — et l'identifiant d'accès du modèle,
+qui vaut droit de modification, ne sort jamais du serveur.
 
 **Le catalogue produits n'est pas du code.** C'est une donnée d'exploitation : il vit
 en base, se saisit et se corrige par [`/catalogue`](src/app/catalogue/), et la production

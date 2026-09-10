@@ -29,9 +29,13 @@ export const plans = snakeCase.table(
       precision: 6,
       withTimezone: true,
     }),
-    expiresAt: timestamp({ precision: 6, withTimezone: true })
-      .notNull()
-      .default(sql`now() + interval '6 months'`),
+    /**
+     * Quand le plan s'efface de lui-même. Nulle sur un plan modèle : une
+     * course officielle ne périme pas. Cf. `official_races`.
+     */
+    expiresAt: timestamp({ precision: 6, withTimezone: true }).default(
+      sql`now() + interval '6 months'`,
+    ),
   },
   (table) => [
     primaryKey({

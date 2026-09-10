@@ -37,6 +37,24 @@ test("un réglage modifié laisse tout le reste en place", async () => {
   });
 });
 
+test("corriger un plan modèle ne lui rend pas de péremption", async () => {
+  const accessId = await createPlan(input);
+  written.push(accessId);
+  await db
+    .update(plans)
+    .set({ expiresAt: sql`null` })
+    .where(eq(plans.accessId, accessId));
+
+  await updatePlan(accessId, { settings: { massKg: 62 } });
+
+  const [plan] = await db
+    .select()
+    .from(plans)
+    .where(eq(plans.accessId, accessId));
+
+  expect(plan.expiresAt).toBeNull();
+});
+
 /**
  * `legs_end_position_fkey` retient les ravitos et n'a pas de cascade : sans
  * les secteurs supprimés d'abord, Postgres refuse d'en déplacer un.

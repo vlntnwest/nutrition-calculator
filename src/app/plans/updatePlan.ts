@@ -158,7 +158,10 @@ export async function updatePlan(
         generatedAt: garde ? undefined : null,
         // Le calcul jeté emporte les retouches qui portaient dessus.
         editedAt: garde ? undefined : null,
-        expiresAt: sql`greatest(now(), ${merged.settings.raceDate ?? null}::timestamptz) + interval '6 months'`,
+        // Le compte repart de la dernière sauvegarde, sauf sur un plan
+        // modèle : une date nulle le reste, sinon la première correction
+        // apportée à une course officielle lui rendrait une péremption.
+        expiresAt: sql`case when ${plans.expiresAt} is null then null else greatest(now(), ${merged.settings.raceDate ?? null}::timestamptz) + interval '6 months' end`,
       })
       .where(eq(plans.accessId, accessId));
   };

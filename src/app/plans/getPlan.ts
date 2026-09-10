@@ -1,4 +1,13 @@
-import { and, eq, getTableColumns, gt, lte, sql } from "drizzle-orm";
+import {
+  and,
+  eq,
+  getTableColumns,
+  gt,
+  isNull,
+  lte,
+  or,
+  sql,
+} from "drizzle-orm";
 import { db } from "@/db";
 import { aidStations } from "@/db/schema/aidStations";
 import { flasks } from "@/db/schema/flasks";
@@ -11,6 +20,14 @@ import { products } from "@/db/schema/products";
 import { tracks } from "@/db/schema/tracks";
 import { warnings } from "@/db/schema/warnings";
 import type { StoredPlan } from "./planInput";
+
+/**
+ * Le plan n'a pas expiré — ou ne peut pas expirer.
+ *
+ * Une date nulle est celle d'un plan modèle : la copie qu'on en tire, elle,
+ * porte les six mois de tout le monde.
+ */
+const alive = or(isNull(plans.expiresAt), gt(plans.expiresAt, sql`now()`));
 
 /**
  * Relit un plan par son identifiant d'accès, **sans sa géométrie**.
@@ -33,7 +50,7 @@ export async function getPlan(accessId: string): Promise<StoredPlan | null> {
     .from(plans)
     .innerJoin(tracks, eq(tracks.planId, plans.accessId))
     .innerJoin(planSettings, eq(planSettings.planId, plans.accessId))
-    .where(and(eq(plans.accessId, accessId), gt(plans.expiresAt, sql`now()`)));
+    .where(and(eq(plans.accessId, accessId), alive));
 
   if (!row) {
     await deleteIfExpired(accessId);

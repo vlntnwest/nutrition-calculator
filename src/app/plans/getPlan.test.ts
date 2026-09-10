@@ -34,6 +34,17 @@ async function expire(accessId: string) {
     .where(eq(plans.accessId, accessId));
 }
 
+test("un plan modèle, sans date de péremption, se relit toujours", async () => {
+  const accessId = await createPlan(input);
+  written.push(accessId);
+  await db
+    .update(plans)
+    .set({ expiresAt: sql`null` })
+    .where(eq(plans.accessId, accessId));
+
+  expect(await getPlan(accessId)).not.toBeNull();
+});
+
 test("un plan expiré ne se relit pas", async () => {
   const accessId = await createPlan(input);
   written.push(accessId);

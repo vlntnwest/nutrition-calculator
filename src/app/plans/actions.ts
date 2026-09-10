@@ -4,7 +4,9 @@ import { pacingIssue } from "@/core/distribute";
 import type { ProfilePoint, ResolvedPoint } from "@/core/type";
 import { db } from "@/db";
 import { createPlan } from "./createPlan";
+import { duplicatePlan } from "./duplicatePlan";
 import { getPlan } from "./getPlan";
+import { officialRacePlanId } from "./officialRaces";
 import { pacingIssueText } from "./pacingErrorText";
 import { PlanError } from "./planError";
 import type { LegOverride, StoredPlan } from "./planInput";
@@ -54,6 +56,22 @@ export async function importTrack(
       productCodes: [],
     }),
   );
+}
+
+/**
+ * Écran 1, l'autre porte — partir d'une course officielle.
+ *
+ * La copie s'ouvre sur la trace et les ravitos du modèle ; il ne reste que
+ * le chrono, le poids et les produits à saisir. Le modèle lui-même n'est
+ * jamais ouvert : le visiteur n'en connaît que le `slug`.
+ */
+export async function startOfficialRace(slug: string): Promise<Result<string>> {
+  return guard(async () => {
+    const planId = await officialRacePlanId(slug);
+    if (!planId) throw new PlanError(`Unknown race: ${slug}`);
+
+    return duplicatePlan(planId);
+  });
 }
 
 /** Relit un plan — le retour sur un lien, ou un identifiant du navigateur. */
