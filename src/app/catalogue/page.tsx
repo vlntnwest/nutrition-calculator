@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { listProducts } from "@/app/plans/catalogue";
 import { entier, quantite } from "@/format/number";
 import { NewProductForm } from "./NewProductForm";
@@ -10,6 +11,12 @@ export const metadata = { title: "Catalogue — nouveau produit" };
  * coureur.
  */
 export default async function CataloguePage() {
+  // Sans cela, Next prérend la page au build : elle ne lit aucune API de
+  // requête, donc il la croit identique pour tout le monde et la fige à
+  // l'image de la base ce jour-là. Un produit ajouté ensuite n'y paraissait
+  // qu'au déploiement suivant, tout en s'affichant partout ailleurs.
+  await connection();
+
   const catalogue = await listProducts();
   const marques = [...new Set(catalogue.map((p) => p.brandName))].sort();
   const formats = [...new Set(catalogue.map((p) => p.formatLabel))].sort();
