@@ -66,6 +66,27 @@ test("déplacer un ravito sur un plan déjà calculé passe", async () => {
   ]);
 });
 
+/**
+ * Zéro est une consigne — « je passe sans m'arrêter » — et non une absence de
+ * consigne. `aid_stations_stop_duration_positive` l'interdisait, alors que
+ * l'écran l'accepte et que `toRow` arrondit à la minute : un arrêt de vingt
+ * secondes s'affiche « 0 » et se réenregistre à zéro.
+ */
+test("un arrêt de zéro minute s'enregistre", async () => {
+  const accessId = await createPlan(input);
+  written.push(accessId);
+
+  await updatePlan(accessId, {
+    aidStations: [
+      { name: "Ravito Haberacker", distanceM: 9800, stopS: 0 },
+      { name: "Ravito Ochsenstein", distanceM: 20800, stopS: 240 },
+    ],
+  });
+
+  const plan = await getPlan(accessId);
+  expect(plan?.aidStations.map((a) => a.stopS)).toEqual([0, 240]);
+});
+
 test("mettre à jour jette le calcul devenu faux", async () => {
   const accessId = await createPlan(input);
   written.push(accessId);

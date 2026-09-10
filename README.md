@@ -122,6 +122,7 @@ npm run db:up        # démarre Postgres, attend qu'il réponde
 npm run db:generate  # écrit une migration à partir du schéma
 npm run db:migrate   # l'applique
 npm run db:seed      # écrit le catalogue de core/products.ts — relançable
+npm run db:pull      # recopie une base déployée en local — écrase les données
 npm run db:studio    # inspecte les données
 npm run db:down      # arrête le conteneur — ajouter -v pour effacer le volume
 ```
@@ -172,6 +173,31 @@ feature/x ──PR──▶ staging ──PR──▶ main
               branche Vercel      Vercel
               Neon staging      Neon production
 ```
+
+### La boucle
+
+Le point de tout ceci est de tourner en rond, pas d'empiler des étages :
+
+1. **Développer en local**, sur le Postgres Docker. `npm run db:generate` puis
+   `npm run db:migrate` pour une évolution de schéma.
+2. **Éprouver sur staging** — `gh pr create --base staging`. Le preview de la PR migre
+   la branche Neon qu'il utilise ; le merge déploie sur l'alias staging, contre la
+   branche Neon `staging`.
+3. **Promouvoir en production** — une PR `staging → main`. Le check
+   `Promouvoir depuis staging` refuse toute autre source.
+4. **Retirer les données** — `npm run db:pull` recopie une base déployée dans la base
+   locale. On repart du terrain réel plutôt que d'un jeu d'essai qui vieillit, et le
+   tour recommence.
+
+L'étape 4 demande `PROD_DATABASE_URL` dans `.env.local`, la connexion **directe** de la
+branche Neon à recopier — une fois par machine. Ce n'est délibérément pas `DATABASE_URL` :
+sous ce nom, le garde-fou refuserait de démarrer. Une base déployée se lit pour être
+copiée, jamais pour faire tourner l'application. `npm run db:pull` **écrase la base de
+développement** ; la base de test, elle, n'est pas touchée.
+
+Pour que l'étape 4 rende des données de production sans interroger la production, le
+workflow **Réinitialiser staging** remet la branche Neon `staging` au niveau de
+`production` — on recopie alors `staging`, et la production ne voit passer personne.
 
 **Staging n'est pas un environnement Vercel**, qui demanderait un plan payant : c'est un
 déploiement de branche ordinaire, servi par l'alias stable
