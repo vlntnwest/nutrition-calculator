@@ -1,4 +1,4 @@
-import type { NewPlan } from "./planInput";
+import type { NewPlan, StoredPlan } from "./planInput";
 
 // On teste la persistance, pas le noyau — mais les ravitos tombent sur des
 // points : une durée imposée ne se tient qu'à la résolution de la trace, et
@@ -43,3 +43,12 @@ export const newPlan = {
   legOverrides: [],
   productCodes: ["naak-gel-ultra", "decathlon-iso-plus"],
 } satisfies NewPlan;
+
+/**
+ * Le même plan tel que `getPlan` le rend : sans sa géométrie, que seuls les
+ * deux écrans qui dessinent relisent. Voir `StoredPlan`.
+ */
+export const storedPlan = {
+  ...newPlan,
+  track: { name: "Saverne Trail", distanceM: 28350, ascentM: 1314 },
+} satisfies StoredPlan;

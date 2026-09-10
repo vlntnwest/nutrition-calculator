@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, getTableColumns } from "drizzle-orm";
 import { db } from "@/db";
 import { aidStations } from "@/db/schema/aidStations";
 import { fill } from "@/db/schema/fill";
@@ -150,19 +150,22 @@ const EMPTY: Supply = { carbsG: 0, energyKcal: 0, sodiumMg: 0, fluidMl: 0 };
  * affiché juste au-dessus.
  */
 export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
+  // Projection explicite : `tracks` porte `points` et `profile`, dont on ne
+  // veut ici que la distance totale. Voir `getPlan`.
   const [row] = await db
-    .select()
+    .select({
+      generatedAt: plans.generatedAt,
+      editedAt: plans.editedAt,
+      distanceM: tracks.distanceM,
+      settings: getTableColumns(planSettings),
+    })
     .from(plans)
     .innerJoin(planSettings, eq(planSettings.planId, plans.accessId))
     .innerJoin(tracks, eq(tracks.planId, plans.accessId))
     .where(eq(plans.accessId, accessId));
 
-  const settings = row?.plan_settings;
-  if (
-    !row?.plans.generatedAt ||
-    !settings?.targetTimeS ||
-    settings.massKg === null
-  ) {
+  const settings = row?.settings;
+  if (!row?.generatedAt || !settings?.targetTimeS || settings.massKg === null) {
     return null;
   }
 
@@ -263,7 +266,7 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
   );
   // Le dernier secteur s'achève à l'arrivée, qu'aucun ravito ne borne.
   const boundOf = (endPositionM: number | null) =>
-    endPositionM ?? row.tracks.distanceM;
+    endPositionM ?? row.distanceM;
 
   const byLeg = <T extends { legRank: number }>(rows: T[], rank: number) =>
     rows.filter((r) => r.legRank === rank);
@@ -375,9 +378,9 @@ export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
       volumeMl: f.volumeMl,
       onlyWater: f.onlyWater,
     })),
-    edited: row.plans.editedAt !== null,
-    generatedAt: row.plans.generatedAt,
-    totalM: row.tracks.distanceM,
+    edited: row.editedAt !== null,
+    generatedAt: row.generatedAt,
+    totalM: row.distanceM,
     total: {
       carbsG: legsOut.reduce((t, l) => t + l.supply.carbsG, 0),
       energyKcal: legsOut.reduce((t, l) => t + l.supply.energyKcal, 0),

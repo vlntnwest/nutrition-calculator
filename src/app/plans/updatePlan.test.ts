@@ -8,7 +8,7 @@ import { productSnapshots } from "@/db/schema/productSnapshots";
 import { servings } from "@/db/schema/servings";
 import { createPlan } from "./createPlan";
 import { getPlan } from "./getPlan";
-import { newPlan as input } from "./newPlan.fixture";
+import { newPlan as input, storedPlan } from "./newPlan.fixture";
 import { regeneratePlan } from "./regeneratePlan";
 import { updatePlan } from "./updatePlan";
 
@@ -21,7 +21,7 @@ afterEach(async () => {
 });
 
 /** Ce que `getPlan` rend d'un plan intact : l'ordre des produits près. */
-function asRead(plan = input) {
+function asRead(plan = storedPlan) {
   return { ...plan, productCodes: [...plan.productCodes].sort() };
 }
 

@@ -245,6 +245,13 @@ forcément la branche Neon qu'il utilise. Un build qui échoue après la migrati
 la base en avance sur le code — c'est le sens normal d'une migration rétro-compatible ;
 une migration destructive se joue toujours à la main, après.
 
+`vercel.json` fixe aussi la **région** des fonctions à `fra1`. Ce n'est pas un détail
+de confort : la base Neon est en `eu-central-1`, et la région par défaut du projet
+plaçait les fonctions à `iad1`. Chaque requête SQL traversait alors l'Atlantique, une
+centaine de millisecondes l'aller-retour, et une page qui en enchaîne deux salves les
+payait toutes. Une fonction se déplace, une base beaucoup moins : c'est la fonction qui
+va à la base.
+
 La branche Neon `staging` dérive à mesure qu'on l'écrit. Le workflow
 **Réinitialiser staging** (onglet Actions, déclenchement manuel) la remet au niveau de
 `production`, pour valider une promotion contre des données réalistes.

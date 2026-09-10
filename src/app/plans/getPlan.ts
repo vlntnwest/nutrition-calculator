@@ -1,4 +1,4 @@
-import { and, eq, gt, lte, sql } from "drizzle-orm";
+import { and, eq, getTableColumns, gt, lte, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { aidStations } from "@/db/schema/aidStations";
 import { flasks } from "@/db/schema/flasks";
@@ -10,12 +10,26 @@ import { productSnapshots } from "@/db/schema/productSnapshots";
 import { products } from "@/db/schema/products";
 import { tracks } from "@/db/schema/tracks";
 import { warnings } from "@/db/schema/warnings";
-import type { NewPlan } from "./planInput";
+import type { StoredPlan } from "./planInput";
 
-/** Relit un plan par son identifiant d'accès. */
-export async function getPlan(accessId: string): Promise<NewPlan | null> {
+/**
+ * Relit un plan par son identifiant d'accès, **sans sa géométrie**.
+ *
+ * La projection est explicite parce que `points` et `profile` sont dans la
+ * même ligne que le nom et la distance : un `select()` nu les emporte, et un
+ * écran qui n'affiche qu'un formulaire paie alors le mégaoctet de la trace à
+ * chaque navigation. Qui dessine appelle `getTrackPoints` — voir `getTrack`.
+ */
+export async function getPlan(accessId: string): Promise<StoredPlan | null> {
   const [row] = await db
-    .select()
+    .select({
+      track: {
+        name: tracks.name,
+        distanceM: tracks.distanceM,
+        ascentM: tracks.ascentM,
+      },
+      settings: getTableColumns(planSettings),
+    })
     .from(plans)
     .innerJoin(tracks, eq(tracks.planId, plans.accessId))
     .innerJoin(planSettings, eq(planSettings.planId, plans.accessId))
@@ -51,16 +65,10 @@ export async function getPlan(accessId: string): Promise<NewPlan | null> {
       .orderBy(legOverrides.endPositionM),
   ]);
 
-  const settings = row.plan_settings;
+  const settings = row.settings;
 
   return {
-    track: {
-      name: row.tracks.name,
-      distanceM: row.tracks.distanceM,
-      ascentM: row.tracks.ascentM,
-      points: row.tracks.points,
-      profile: row.tracks.profile,
-    },
+    track: row.track,
     settings: {
       massKg: settings.massKg ?? undefined,
       targetTimeS: settings.targetTimeS ?? undefined,

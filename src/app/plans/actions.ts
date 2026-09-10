@@ -7,7 +7,7 @@ import { createPlan } from "./createPlan";
 import { getPlan } from "./getPlan";
 import { pacingIssueText } from "./pacingErrorText";
 import { PlanError } from "./planError";
-import type { LegOverride, NewPlan } from "./planInput";
+import type { LegOverride, StoredPlan } from "./planInput";
 import { regeneratePlan } from "./regeneratePlan";
 import type { RoadbookEdit } from "./saveRoadbook";
 import { saveRoadbook } from "./saveRoadbook";
@@ -57,7 +57,7 @@ export async function importTrack(
 }
 
 /** Relit un plan — le retour sur un lien, ou un identifiant du navigateur. */
-export async function loadPlan(accessId: string): Promise<Result<NewPlan>> {
+export async function loadPlan(accessId: string): Promise<Result<StoredPlan>> {
   return guard(async () => {
     const plan = await getPlan(accessId);
     if (!plan) throw new PlanError(`Unknown plan: ${accessId}`);
@@ -76,7 +76,7 @@ export async function loadPlan(accessId: string): Promise<Result<NewPlan>> {
 export async function savePlan(
   accessId: string,
   patch: PlanPatch,
-): Promise<Result<NewPlan>> {
+): Promise<Result<StoredPlan>> {
   return guard(async () => {
     await updatePlan(accessId, patch);
     const plan = await getPlan(accessId);

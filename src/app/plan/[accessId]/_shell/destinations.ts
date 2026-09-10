@@ -1,4 +1,4 @@
-import type { NewPlan } from "@/app/plans/planInput";
+import type { StoredPlan } from "@/app/plans/planInput";
 
 /**
  * Les quatre destinations d'un plan, et l'état de chacune.
@@ -19,7 +19,7 @@ export type Destination = {
 };
 
 /** Le plan porte-t-il tout ce qu'il faut pour lancer un calcul ? */
-export function calculable(plan: NewPlan): boolean {
+export function calculable(plan: StoredPlan): boolean {
   return (
     plan.settings.targetTimeS !== undefined &&
     plan.settings.massKg !== undefined &&
@@ -28,7 +28,7 @@ export function calculable(plan: NewPlan): boolean {
 }
 
 export function destinations(
-  plan: NewPlan,
+  plan: StoredPlan,
   roadbookCalcule: boolean,
 ): Destination[] {
   const ravitos = plan.aidStations.length;

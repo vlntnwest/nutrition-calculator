@@ -5,7 +5,7 @@ import { plans } from "@/db/schema/plans";
 import { tracks } from "@/db/schema/tracks";
 import { createPlan } from "./createPlan";
 import { getPlan } from "./getPlan";
-import { newPlan as input } from "./newPlan.fixture";
+import { newPlan as input, storedPlan } from "./newPlan.fixture";
 
 const written: string[] = [];
 
@@ -21,7 +21,7 @@ test("un plan relu rend exactement ce qu'on avait écrit", async () => {
 
   // `productCodes` revient trié : c'est un ensemble, pas une suite.
   expect(await getPlan(accessId)).toEqual({
-    ...input,
+    ...storedPlan,
     productCodes: [...input.productCodes].sort(),
   });
 });
@@ -67,7 +67,9 @@ test("un plan en autonomie complète se relit aussi", async () => {
   written.push(accessId);
 
   expect(await getPlan(accessId)).toEqual({
-    ...autonome,
+    ...storedPlan,
+    flasks: [],
+    aidStations: [],
     productCodes: [...autonome.productCodes].sort(),
   });
 });

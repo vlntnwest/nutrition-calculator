@@ -12,7 +12,7 @@ import { products } from "@/db/schema/products";
 import { warnings } from "@/db/schema/warnings";
 import { getPlan } from "./getPlan";
 import { PlanError } from "./planError";
-import type { NewPlan } from "./planInput";
+import type { NewPlan, StoredPlan } from "./planInput";
 import {
   assertValid,
   insertSnapshots,
@@ -60,7 +60,7 @@ export async function updatePlan(
   const current = await getPlan(accessId);
   if (!current) throw new PlanError(`Unknown plan: ${accessId}`);
 
-  const merged: NewPlan = normalize({
+  const merged: StoredPlan = normalize({
     track: current.track,
     settings: { ...current.settings, ...patch.settings },
     flasks: patch.flasks ?? current.flasks,
@@ -176,7 +176,7 @@ export async function updatePlan(
 async function syncSnapshots(
   tx: Tx,
   accessId: string,
-  merged: NewPlan,
+  merged: StoredPlan,
 ): Promise<void> {
   const existants = await tx
     .select({ id: productSnapshots.id, codeSeed: products.codeSeed })
@@ -213,7 +213,7 @@ async function syncSnapshots(
 async function writeAidStations(
   tx: Tx,
   accessId: string,
-  merged: NewPlan,
+  merged: StoredPlan,
 ): Promise<void> {
   const lignes = merged.aidStations.map((aid) => ({
     planId: accessId,

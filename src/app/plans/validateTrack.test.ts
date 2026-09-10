@@ -1,11 +1,11 @@
 import { expect, test } from "vitest";
 import { newPlan as input } from "./newPlan.fixture";
-import { assertValid, normalize } from "./planInput";
+import { assertTrack, normalizeTrack } from "./planInput";
 
-/** Le plan de la fixture, dont on abîme la trace. */
+/** La trace de la fixture, qu'on abîme. */
 const avec = (track: Partial<typeof input.track>) => ({
-  ...input,
-  track: { ...input.track, ...track },
+  ...input.track,
+  ...track,
 });
 
 test.each([
@@ -48,13 +48,13 @@ test.each([
     "points",
   ],
 ])("%s est refusé", (_, track, motif) => {
-  expect(() => assertValid(normalize(avec(track)))).toThrow(
+  expect(() => assertTrack(normalizeTrack(avec(track)))).toThrow(
     new RegExp(motif, "i"),
   );
 });
 
 test("la trace de la fixture passe", () => {
-  expect(() => assertValid(normalize(input))).not.toThrow();
+  expect(() => assertTrack(normalizeTrack(input.track))).not.toThrow();
 });
 
 /**
@@ -70,7 +70,7 @@ test("le profil est réduit à ses deux clés", () => {
     ] as never,
   });
 
-  expect(normalize(sale).track.profile).toEqual([
+  expect(normalizeTrack(sale).profile).toEqual([
     { d: 0, ele: 200 },
     { d: 10, ele: 201 },
   ]);
@@ -81,7 +81,7 @@ test("un point est réduit à ses quatre clés", () => {
     points: [{ d: 0, lat: 48.7, lon: 7.3, ele: 200, intrus: "x" }] as never,
   });
 
-  expect(normalize(sale).track.points).toEqual([
+  expect(normalizeTrack(sale).points).toEqual([
     { d: 0, lat: 48.7, lon: 7.3, ele: 200 },
   ]);
 });
