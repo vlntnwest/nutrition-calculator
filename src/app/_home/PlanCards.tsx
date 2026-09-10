@@ -6,6 +6,7 @@ import { useState } from "react";
 import { startOfficialRace } from "@/app/plans/actions";
 import type { OfficialRace } from "@/app/plans/officialRaces";
 import { rememberPlan } from "@/app/plans/stored";
+import { planImageUrl } from "@/format/plan";
 
 const metres = new Intl.NumberFormat("fr-FR");
 
@@ -61,9 +62,10 @@ export function PlanCards({ races }: { races: OfficialRace[] }) {
             className="absolute inset-0 flex flex-col text-left disabled:cursor-progress"
           >
             <Image
-              src={race.photoPath}
+              src={planImageUrl(race.slug)}
               alt=""
               fill
+              unoptimized
               sizes="(min-width: 640px) 50vw, 100vw"
               className="object-cover"
             />
@@ -87,7 +89,7 @@ export function PlanCards({ races }: { races: OfficialRace[] }) {
               </span>
             </div>
 
-            <div className="relative z-10 flex flex-1 items-center px-1">
+            <div className="relative z-10 flex flex-1 items-center px-1 opacity-50">
               <svg
                 viewBox="0 0 400 160"
                 preserveAspectRatio="none"
@@ -96,6 +98,7 @@ export function PlanCards({ races }: { races: OfficialRace[] }) {
               >
                 <path
                   d={race.profilePath}
+                  vectorEffect="non-scaling-stroke"
                   fill="none"
                   stroke="var(--paper)"
                   strokeWidth={5}
