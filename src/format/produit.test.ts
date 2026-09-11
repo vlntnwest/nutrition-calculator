@@ -18,8 +18,11 @@ test("un format inconnu ressort tel quel plutôt que de disparaître", () => {
 test.each([
   ["gel", "gels"],
   ["puree", "purées"],
-  // « boissons » : le pluriel ne double pas un mot déjà terminé par un s.
   ["bar", "barres"],
+  ["drink", "boissons"],
+  // Aucun format traduit ne finit par un s : seul un libellé que la base
+  // porte sans traduction peut arriver déjà au pluriel.
+  ["chips", "chips"],
 ])("formatPluriel(%o) → %o", (label, attendu) => {
   expect(formatPluriel(label)).toBe(attendu);
 });

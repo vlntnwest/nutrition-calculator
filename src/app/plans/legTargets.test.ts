@@ -74,3 +74,33 @@ test("relever la cible d'un secteur y met davantage à manger", async () => {
   // Et il y a plus dans le sac.
   expect(apres?.total.carbsG).toBeGreaterThan(avant?.total.carbsG ?? 0);
 });
+
+/**
+ * L'arrivée n'est fermée par aucun ravito : sa consigne voyage à part, par
+ * `finishTargets`. Elle se relit comme les autres — encore faut-il qu'elle
+ * atteigne le noyau, ce que seule la relecture du roadbook montre.
+ */
+test("relever la cible du dernier secteur y met davantage à manger", async () => {
+  const nominal = await createPlan(input);
+  written.push(nominal);
+  await regeneratePlan(nominal);
+
+  const force = await createPlan({
+    ...input,
+    legOverrides: [
+      { endPositionM: input.track.distanceM, targets: { carbsGH: 90 } },
+    ],
+  });
+  written.push(force);
+  await regeneratePlan(force);
+
+  const avant = await getRoadbook(nominal);
+  const apres = await getRoadbook(force);
+
+  expect(apres?.legs[2].needG).toBeCloseTo(
+    (avant?.legs[2].needG ?? 0) * 1.5,
+    4,
+  );
+  expect(apres?.legs[0].needG).toBeCloseTo(avant?.legs[0].needG ?? 0, 4);
+  expect(apres?.total.carbsG).toBeGreaterThan(avant?.total.carbsG ?? 0);
+});

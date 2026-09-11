@@ -130,7 +130,10 @@ test("la copie périme dans six mois, même tirée d'un modèle qui ne périme p
     .where(eq(plans.accessId, accessId));
 
   expect(plan.expiresAt).not.toBeNull();
-  expect((plan.expiresAt as Date).getTime()).toBeGreaterThan(Date.now());
+  // En jours : six mois valent de 181 à 184 selon la date de la copie.
+  const jours = ((plan.expiresAt as Date).getTime() - Date.now()) / 86_400_000;
+  expect(jours).toBeGreaterThan(179);
+  expect(jours).toBeLessThan(186);
 });
 
 test("copier un plan inconnu est refusé", async () => {

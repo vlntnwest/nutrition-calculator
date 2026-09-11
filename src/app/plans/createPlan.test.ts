@@ -20,18 +20,6 @@ afterEach(async () => {
   }
 });
 
-test("écrire un plan rend son identifiant d'accès", async () => {
-  const accessId = await createPlan(input);
-  written.push(accessId);
-
-  const rows = await db
-    .select()
-    .from(plans)
-    .where(eq(plans.accessId, accessId));
-
-  expect(rows).toHaveLength(1);
-});
-
 test("la trace est écrite avec le plan, points compris", async () => {
   const accessId = await createPlan(input);
   written.push(accessId);
@@ -176,6 +164,14 @@ test("un plan expire six mois après la course, pas après son enregistrement", 
   );
 });
 
+/**
+ * En jours, pas en mois : Postgres cale `+ interval '6 months'` sur le
+ * dernier jour du mois, et six mois valent de 181 à 184 jours selon la date.
+ */
+function joursAvant(date: Date): number {
+  return (date.getTime() - Date.now()) / 86_400_000;
+}
+
 test("une course déjà passée garde six mois à compter de l'enregistrement", async () => {
   const accessId = await createPlan({
     ...input,
@@ -188,7 +184,8 @@ test("une course déjà passée garde six mois à compter de l'enregistrement", 
     .from(plans)
     .where(eq(plans.accessId, accessId));
 
-  expect((plan.expiresAt as Date).getTime()).toBeGreaterThan(Date.now());
+  expect(joursAvant(plan.expiresAt as Date)).toBeGreaterThan(179);
+  expect(joursAvant(plan.expiresAt as Date)).toBeLessThan(186);
 });
 
 test("les produits retenus sont figés au moment du choix", async () => {
@@ -277,7 +274,8 @@ test("un plan sans date de course garde six mois à compter de l'enregistrement"
     .from(plans)
     .where(eq(plans.accessId, accessId));
 
-  expect((plan.expiresAt as Date).getTime()).toBeGreaterThan(Date.now());
+  expect(joursAvant(plan.expiresAt as Date)).toBeGreaterThan(179);
+  expect(joursAvant(plan.expiresAt as Date)).toBeLessThan(186);
 });
 
 /**
