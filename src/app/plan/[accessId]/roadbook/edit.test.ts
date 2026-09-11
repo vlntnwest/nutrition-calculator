@@ -391,6 +391,25 @@ test("une boisson se retouche flasque par flasque, pas par demi-dose", () => {
   expect(servingStep(CATALOGUE[0], FLASQUES)).toBe(1);
 });
 
+test("le pas se prend sur la plus petite flasque qui accepte la boisson", () => {
+  // La petite est réservée à l'eau claire : c'est la grande qui donne le pas,
+  // sans quoi le stepper proposerait des doses qu'aucune flasque ne porte.
+  const flasques: Roadbook["flasks"] = [
+    { rank: 1, volumeMl: 250, onlyWater: true },
+    { rank: 2, volumeMl: 500, onlyWater: false },
+  ];
+
+  expect(servingStep(CATALOGUE[1], flasques)).toBe(1);
+});
+
+test("sans flasque qui l'accepte, une boisson retombe sur son propre pas", () => {
+  const eauSeule: Roadbook["flasks"] = [
+    { rank: 1, volumeMl: 500, onlyWater: true },
+  ];
+
+  expect(servingStep({ ...CATALOGUE[1], divisibleBy: 2 }, eauSeule)).toBe(0.5);
+});
+
 test("poser un solide ne touche à aucune flasque", () => {
   const avant = edit({
     fills: [[{ flaskRank: 1, productSnapshotId: null, volumeMl: 500 }], []],

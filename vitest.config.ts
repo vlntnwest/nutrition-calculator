@@ -6,6 +6,9 @@ import { configDefaults, defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     environment: "node",
+    // `shortDate` rend la date du fuseau de la machine : sans réglage, un
+    // instant UTC se lit la veille à l'ouest et la suite rougit là-bas seule.
+    env: { TZ: "Europe/Paris" },
     globalSetup: ["./src/db/seed.globalSetup.ts"],
     // Les tests d'intégration partagent une seule base : deux fichiers qui
     // écrivent en même temps s'entre-bloquent. Le noyau, lui, n'y perd rien.

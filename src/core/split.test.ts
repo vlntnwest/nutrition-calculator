@@ -60,18 +60,30 @@ test("le plat est classé roulant", () => {
 });
 
 // C'est la propriété que Douglas-Peucker seul ne donne pas : il ne voit que
-// l'écart à la corde, jamais la longueur.
+// l'écart à la corde, jamais la longueur. La descente doit donc être assez
+// franche pour qu'il en fasse une borne — sinon c'est lui qui l'efface, et le
+// plancher n'a plus rien à fusionner.
 test("aucun tronçon ne passe sous le plancher", () => {
   const climb = ramp(start, 100, 0.5);
   const bump = climb[climb.length - 1];
-  // Une micro-descente de 100 m, franche mais bien trop courte pour compter.
-  const dip = ramp(bump, 10, -1);
+  // 60 m de descente sur 200 : un décrochement que la corde voit, deux fois
+  // trop court pour tenir comme tronçon.
+  const dip = ramp(bump, 20, -3);
   const resumed = dip[dip.length - 1];
-
   const points = [start, ...climb, ...dip, ...ramp(resumed, 100, 0.5)];
-  const segments = splitBySlope(points, 30, 300);
 
-  for (const t of segments) expect(t.lengthM).toBeGreaterThanOrEqual(300);
+  // Sans plancher, le décrochement fait bien un tronçon à lui seul.
+  expect(splitBySlope(points, 30, 30).map((t) => t.lengthM)).toContain(200);
+
+  for (const t of splitBySlope(points, 30, 300)) {
+    expect(t.lengthM).toBeGreaterThanOrEqual(300);
+  }
+
+  // Le même plancher sans le dire : `paceSegments` appelle avec les défauts,
+  // et c'est le grain de la bande d'allure de l'écran Course.
+  for (const t of splitBySlope(points)) {
+    expect(t.lengthM).toBeGreaterThanOrEqual(300);
+  }
 });
 
 test("les tronçons sont jointifs et couvrent toute la trace", () => {

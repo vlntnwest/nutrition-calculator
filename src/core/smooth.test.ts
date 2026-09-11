@@ -33,7 +33,7 @@ test("un pic de 200 m disparaît, une côte de 50 m survit", () => {
   expect(elevationGain(smooth(trace(climb), 30, 0), 0)).toBeCloseTo(50, 6);
 });
 
-test("rend les mediannes en fonction de la fenêtre en mètre", () => {
+test("la médiane se prend sur une fenêtre en mètres", () => {
   expect(
     medianFilter(
       [
@@ -54,7 +54,7 @@ test("rend les mediannes en fonction de la fenêtre en mètre", () => {
   ]);
 });
 
-test("rend les moyennes en fonction de la fenêtre en mètre", () => {
+test("la moyenne se prend sur une fenêtre en mètres", () => {
   expect(
     meanFilter(
       [
