@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { distributeTime } from "@/core/distribute";
-import { fixedSpans, movingTimeS } from "@/core/nutrition";
+import { fixedSpans, movingTimeS } from "@/core/legs";
 import type {
   AidStation,
   Product,

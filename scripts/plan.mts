@@ -48,12 +48,8 @@ import {
   pacingIssue,
   timeSegments,
 } from "../src/core/distribute.ts";
-import {
-  fixedSpans,
-  movingTimeS,
-  nutritionPlan,
-  suggestedTargets,
-} from "../src/core/nutrition.ts";
+import { fixedSpans, movingTimeS } from "../src/core/legs.ts";
+import { nutritionPlan, suggestedTargets } from "../src/core/nutrition.ts";
 import { parseGpx } from "../src/core/parseGpx.ts";
 import { prepareTrack, SETTINGS } from "../src/core/pipeline.ts";
 import { splitBySlope } from "../src/core/split.ts";
