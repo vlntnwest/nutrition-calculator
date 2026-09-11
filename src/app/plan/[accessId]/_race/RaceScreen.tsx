@@ -1,11 +1,11 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import type { StoredPlan } from "@/app/plans/planInput";
 import type { ProfilePoint, ResolvedPoint } from "@/core/type";
-import { type HMS, paceLabel, toHMS, toSecondsHMS } from "@/format/clock";
-import { duree, toNumber } from "@/format/number";
+import { type HMS, toHMS, toSecondsHMS } from "@/format/clock";
+import { duree } from "@/format/number";
 import { Button } from "@/ui/Button";
 import { ChronoInput } from "@/ui/Chrono";
 import { ChevronIcon, PlusIcon } from "@/ui/icons";
@@ -15,20 +15,12 @@ import { Panel, PanelHead, Rule } from "@/ui/Panel";
 import { SaveBar } from "@/ui/SaveBar";
 import { Slider } from "@/ui/Slider";
 import { ElevationChart } from "@/ui/track/ElevationChart";
-import type { Reserves } from "@/ui/track/RouteMap";
 import { usePlanSave } from "../save";
 import { AidStationCard } from "./AidStationCard";
-import { paceAxisRange, paceBand, paceSegments } from "./pacing";
-import {
-  insererTriee,
-  kmTexte,
-  pointIndexAt,
-  type Row,
-  rangees,
-  survivingOverrides,
-  toRow,
-  toStations,
-} from "./stations";
+import { usePacePreview } from "./pacePreview";
+import { useReserves } from "./reserves";
+import { useStationEditing } from "./stationEditing";
+import { rangees, survivingOverrides, toStations } from "./stations";
 
 // Leaflet lit `window` dès son import : un module client-only, jamais rendu
 // côté serveur pour l'hydratation.
@@ -58,184 +50,45 @@ export function RaceScreen({
   const [chrono, setChrono] = useState<HMS>(toHMS(plan.settings.targetTimeS));
   const [climb, setClimb] = useState(plan.settings.climbEffort ?? 0);
   const [split, setSplit] = useState(plan.settings.paceSplit ?? 0);
-  const [lignes, setLignes] = useState<Row[]>(plan.aidStations.map(toRow));
-  const [ouverte, setOuverte] = useState<number | null>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [depliee, setDepliee] = useState(false);
-  /** Le rang d'une borne à amener sous les yeux, le temps d'un rendu. */
-  const [vise, setVise] = useState<number | null>(null);
-  const [modifie, setModifie] = useState(false);
-  const [reproche, setReproche] = useState<string | null>(null);
   const { pending, erreur, enregistre, save, reprise } = usePlanSave(accessId);
 
   const totalM = plan.track.distanceM;
 
-  // Le découpage ne dépend que du relief : il survit à tous les réglages
-  // d'allure, et ne se refait pas quand un curseur bouge.
-  const segments = useMemo(() => paceSegments(profile), [profile]);
+  const {
+    lignes,
+    setLignes,
+    ouverte,
+    setOuverte,
+    modifie,
+    setModifie,
+    reproche,
+    setReproche,
+    change,
+    poser,
+    ouvrir,
+    deplacer,
+    bornes,
+    marqueurs,
+  } = useStationEditing({
+    aidStations: plan.aidStations,
+    points,
+    reprise,
+    deplier: () => setDepliee(true),
+  });
 
-  useEffect(() => {
-    if (vise === null) return;
-
-    document
-      .getElementById(`ravito-${vise}`)
-      ?.scrollIntoView({ behavior: "smooth", block: "center" });
-    setVise(null);
-  }, [vise]);
-
-  function change(fait: () => void) {
-    fait();
-    setModifie(true);
-    setReproche(null);
-    reprise();
-  }
-
-  /**
-   * Poser une borne : elle prend son rang sur la trace, s'ouvre aussitôt, et
-   * la précédente se replie.
-   */
-  function poser(positionM: number) {
-    change(() => {
-      const { lignes: suite, rang } = insererTriee(lignes, positionM);
-      setLignes(suite);
-      setOuverte(rang - 1);
-    });
-  }
-
-  /**
-   * Ouvrir la carte d'une borne visée sur le profil ou sur la carte.
-   *
-   * Au pouce, la feuille se déplie d'abord : la carte demandée tombe sinon
-   * sous le bord de l'écran, et l'on aurait cliqué pour rien.
-   *
-   * Le rang visé passe par un état plutôt que par un défilement immédiat :
-   * la carte s'ouvre et la feuille grandit dans le même rendu, et viser la
-   * position d'avant ne bougeait presque pas la colonne. L'effet ci-dessous
-   * défile une fois la mise en page faite, puis oublie le rang — sans quoi
-   * replier la carte à la main ferait défiler à nouveau.
-   */
-  function ouvrir(rang: number) {
-    setOuverte(rang - 1);
-    setDepliee(true);
-    setVise(rang);
-  }
-
-  /**
-   * Glisse une borne le long du profil : sa position suit le doigt, et la
-   * colonne se range derrière elle comme à la frappe dans sa carte — voir
-   * `rangees`. Pas de `setVise` ici : `ouvrir` a déjà amené la carte sous les
-   * yeux au premier contact, la faire défiler à chaque frame giflerait la
-   * colonne.
-   */
-  function deplacer(rang: number, positionM: number) {
-    const cible = lignes[rang - 1];
-    if (!cible) return;
-
-    change(() => {
-      const suite = rangees(
-        lignes.map((l) =>
-          l.id === cible.id ? { ...l, km: kmTexte(positionM) } : l,
-        ),
-      );
-      setLignes(suite);
-      setOuverte(suite.findIndex((l) => l.id === cible.id));
-    });
-  }
-
-  // Les bornes lisibles alimentent à la fois le profil et la carte : une
-  // position encore à moitié tapée n'a pas à faire disparaître les autres.
-  const bornes = useMemo(
-    () =>
-      lignes.flatMap((ligne, i) => {
-        const valeur = toNumber(ligne.km);
-
-        return valeur === undefined
-          ? []
-          : [
-              {
-                rank: i + 1,
-                positionM: valeur * 1000,
-                libelle:
-                  ligne.name.trim() === ""
-                    ? `Ravito ${i + 1}`
-                    : ligne.name.trim(),
-              },
-            ];
-      }),
-    [lignes],
-  );
-
-  const marqueurs = useMemo(
-    () =>
-      bornes.map((borne) => ({
-        rank: borne.rank,
-        index: pointIndexAt(points, borne.positionM),
-      })),
-    [bornes, points],
-  );
-
-  // La hauteur de la feuille repliée, en dur ici comme en classe plus bas :
-  // c'est la même décision de mise en page, et la carte doit la connaître en
-  // pixels pour cadrer la trace au-dessus.
-  const FEUILLE_REPLIEE = 0.46;
-  /** La largeur de la colonne de papier à partir de `lg`, `w-[27rem]`. */
-  const COLONNE_LG = 432;
-
-  // Ce que l'interface pose par-dessus la carte, pour que le recadrage vise
-  // le vide plutôt que le cadre entier : la feuille montante au pouce, la
-  // colonne de saisie sur grand écran. Le socle du profil, lui, est déjà
-  // hors de la carte — elle s'arrête à `lg:bottom-72`.
-  const [large, setLarge] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    const requete = window.matchMedia("(min-width: 1024px)");
-    const suivre = () => setLarge(requete.matches);
-
-    suivre();
-    requete.addEventListener("change", suivre);
-
-    return () => requete.removeEventListener("change", suivre);
-  }, []);
-
-  const reserves = useMemo(
-    (): Reserves =>
-      large === null
-        ? {}
-        : large
-          ? { left: COLONNE_LG }
-          : {
-              bottom: Math.round(window.innerHeight * FEUILLE_REPLIEE),
-            },
-    [large],
-  );
+  const reserves = useReserves();
 
   const targetTimeS = toSecondsHMS(chrono);
-  const arretsS = lignes.reduce(
-    (total, ligne) => total + (toNumber(ligne.stopMin) ?? 0) * 60,
-    0,
-  );
-  // ADR 010 : les arrêts se retranchent du chrono visé, donc l'allure de
-  // mouvement est plus rapide que le chrono divisé par la distance.
-  const mouvementS =
-    targetTimeS === undefined ? undefined : Math.max(targetTimeS - arretsS, 0);
-  const allure = paceLabel(mouvementS, totalM);
-  // L'allure par tronçon, refaite à chaque frappe du chrono et à chaque
-  // déplacement d'un curseur : c'est le seul endroit du produit où l'on voit
-  // ce que ces trois réglages font au parcours, avant de l'enregistrer.
-  const bande = useMemo(
-    () =>
-      paceBand(profile, segments, mouvementS, {
-        climbEffort: climb,
-        split,
-      }),
-    [profile, segments, mouvementS, climb, split],
-  );
-  // Bornée sur ce que les curseurs peuvent produire, jamais sur leur
-  // position du moment : voir `paceAxisRange`.
-  const axeAllure = useMemo(
-    () => paceAxisRange(profile, segments, mouvementS),
-    [profile, segments, mouvementS],
-  );
+  const { arretsS, allure, bande, axeAllure } = usePacePreview({
+    profile,
+    lignes,
+    targetTimeS,
+    totalM,
+    climb,
+    split,
+  });
 
   function submit() {
     const stations = toStations(lignes, totalM);
