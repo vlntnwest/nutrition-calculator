@@ -1,11 +1,11 @@
 import { expect, test } from "vitest";
 import { elevationGain, fillMissingElevation } from "./elevation";
 
-test("renvoie erreuer si le tableau est vide en entrée", () => {
+test("une trace sans point est refusée", () => {
   expect(() => fillMissingElevation([])).toThrow("File without points");
 });
 
-test("renvoie erreuer si le tableau n'a pas d'élévation", () => {
+test("une trace sans la moindre altitude est refusée", () => {
   expect(() =>
     fillMissingElevation([
       { lat: 0, lon: 0, ele: null, d: 0 },
@@ -15,7 +15,7 @@ test("renvoie erreuer si le tableau n'a pas d'élévation", () => {
   ).toThrow("File without elevation data");
 });
 
-test("calcul l'elevation entre les points avec un null", () => {
+test("une altitude absente s'interpole entre ses voisines", () => {
   expect(
     fillMissingElevation([
       { lat: 0, lon: 0, ele: 100, d: 0 },
@@ -31,7 +31,7 @@ test("calcul l'elevation entre les points avec un null", () => {
   ]);
 });
 
-test("l'elevation est interpolé sur d et non sur l'index", () => {
+test("l'interpolation suit l'abscisse, pas le rang du point", () => {
   expect(
     fillMissingElevation([
       { lat: 0, lon: 0, ele: 100, d: 0 },
@@ -47,7 +47,7 @@ test("l'elevation est interpolé sur d et non sur l'index", () => {
   ]);
 });
 
-test("complete les null en début de tableau", () => {
+test("les altitudes absentes au départ prennent la première connue", () => {
   expect(
     fillMissingElevation([
       { lat: 0, lon: 0, ele: null, d: 0 },
@@ -63,7 +63,7 @@ test("complete les null en début de tableau", () => {
   ]);
 });
 
-test("complete les null en fin de tableau", () => {
+test("les altitudes absentes à l'arrivée prennent la dernière connue", () => {
   expect(
     fillMissingElevation([
       { lat: 0, lon: 0, ele: 100, d: 0 },
@@ -79,7 +79,7 @@ test("complete les null en fin de tableau", () => {
   ]);
 });
 
-test("deux points consécutifs sans elevation au meme endroit", () => {
+test("deux points confondus sans altitude prennent la même", () => {
   expect(
     fillMissingElevation([
       { lat: 0, lon: 0, ele: 100, d: 0 },
@@ -95,7 +95,7 @@ test("deux points consécutifs sans elevation au meme endroit", () => {
   ]);
 });
 
-test("point before et after le null au meme endroit recupere le before", () => {
+test("un trou encadré au même endroit reprend l'altitude d'avant", () => {
   expect(
     fillMissingElevation([
       { lat: 0, lon: 0, ele: 100, d: 0 },
@@ -129,7 +129,7 @@ test("ignore le bruit sous le seuil et garde la montée nette", () => {
   ).toEqual(4);
 });
 
-test("elevation gain simple", () => {
+test("une montée franche se compte en entier", () => {
   expect(
     elevationGain(
       [
