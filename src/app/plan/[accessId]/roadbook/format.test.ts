@@ -1,5 +1,4 @@
 import { expect, test } from "vitest";
-import type { Roadbook } from "@/app/plans/getRoadbook";
 import {
   estVersable,
   excessive,
@@ -17,74 +16,7 @@ import {
   spanStart,
   startOf,
 } from "./format";
-
-type Leg = Roadbook["legs"][number];
-type Catalogue = Roadbook["catalogue"];
-
-const CATALOGUE: Catalogue = [
-  {
-    id: "gel-1",
-    name: "Gel citron",
-    brandName: "Marque",
-    divisibleBy: 1,
-    formatLabel: "gel",
-    carbsG: 25,
-    energyKcal: 100,
-    sodiumMg: 50,
-    fluidMl: 0,
-    weightG: 40,
-  },
-  {
-    id: "drink-1",
-    name: "Boisson orange",
-    brandName: "Marque",
-    divisibleBy: 1,
-    formatLabel: "drink",
-    carbsG: 45,
-    energyKcal: 180,
-    sodiumMg: 400,
-    fluidMl: 500,
-    weightG: 60,
-  },
-  {
-    id: "drink-2",
-    name: "Boisson menthe",
-    brandName: "Marque",
-    divisibleBy: 2,
-    formatLabel: "drink",
-    carbsG: 45,
-    energyKcal: 180,
-    sodiumMg: 400,
-    fluidMl: 500,
-    weightG: 60,
-  },
-];
-
-function leg(patch: Partial<Leg>): Leg {
-  return {
-    rank: 1,
-    endPositionM: 9800,
-    endName: null,
-    imposedDurationS: null,
-    imposedCarbsGH: null,
-    ascentM: 420,
-    descentM: 180,
-    durationS: 4500,
-    stopS: null,
-    elapsedS: 4500,
-    servings: [],
-    fills: [],
-    opensLiquidSpan: true,
-    opensSolidSpan: true,
-    supply: { carbsG: 0, energyKcal: 0, sodiumMg: 0, fluidMl: 0 },
-    needG: 75,
-    needFluidMl: 620,
-    needSodiumMg: 372,
-    marginG: 0,
-    warnings: [],
-    ...patch,
-  };
-}
+import { CATALOGUE, leg } from "./roadbook.fixture";
 
 test("un secteur se nomme par ses deux bornes", () => {
   const legs = [
