@@ -2,73 +2,7 @@ import { expect, test } from "vitest";
 import type { Roadbook } from "@/app/plans/getRoadbook";
 import type { RoadbookEdit } from "@/app/plans/saveRoadbook";
 import { flaskCapacityUnits, servingStep, withFill, withServing } from "./edit";
-
-type Leg = Roadbook["legs"][number];
-
-const CATALOGUE: Roadbook["catalogue"] = [
-  {
-    id: "gel-1",
-    name: "Gel citron",
-    brandName: "Marque",
-    divisibleBy: 1,
-    formatLabel: "gel",
-    carbsG: 25,
-    energyKcal: 100,
-    sodiumMg: 50,
-    fluidMl: 0,
-    weightG: 40,
-  },
-  {
-    id: "drink-1",
-    name: "Boisson orange",
-    brandName: "Marque",
-    divisibleBy: 1,
-    formatLabel: "drink",
-    carbsG: 45,
-    energyKcal: 180,
-    sodiumMg: 400,
-    fluidMl: 500,
-    weightG: 60,
-  },
-  {
-    id: "drink-2",
-    name: "Boisson menthe",
-    brandName: "Marque",
-    divisibleBy: 1,
-    formatLabel: "drink",
-    carbsG: 40,
-    energyKcal: 160,
-    sodiumMg: 300,
-    fluidMl: 500,
-    weightG: 55,
-  },
-];
-
-function leg(patch: Partial<Leg>): Leg {
-  return {
-    rank: 1,
-    endPositionM: 9800,
-    endName: null,
-    imposedDurationS: null,
-    imposedCarbsGH: null,
-    ascentM: 0,
-    descentM: 0,
-    durationS: 4500,
-    stopS: null,
-    elapsedS: 4500,
-    servings: [],
-    fills: [],
-    opensLiquidSpan: true,
-    opensSolidSpan: true,
-    supply: { carbsG: 0, energyKcal: 0, sodiumMg: 0, fluidMl: 0 },
-    needG: 75,
-    needFluidMl: 620,
-    needSodiumMg: 372,
-    marginG: 0,
-    warnings: [],
-    ...patch,
-  };
-}
+import { CATALOGUE, leg } from "./roadbook.fixture";
 
 /** Une course dont chaque ravito donne de l'eau : une portée par secteur. */
 const SOLO = [leg({ rank: 1 }), leg({ rank: 2 })];
