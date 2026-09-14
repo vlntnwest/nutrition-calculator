@@ -1,36 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import {
-  CARBS_GUIDE_G_H,
-  CARBS_SINGLE_SOURCE_MAX_G_H,
-  FLUID_GUIDE_ML_H,
-} from "@/core/nutrition";
 import type { Flask, Targets } from "@/core/type";
 import { duree, entier, toNumber } from "@/format/number";
-import { Button, IconButton } from "@/ui/Button";
-import { ToggleChip } from "@/ui/Chip";
-import { Hint, MeasureField } from "@/ui/Field";
-import { PlusIcon, TrashIcon } from "@/ui/icons";
+import { MeasureField } from "@/ui/Field";
 import { Val } from "@/ui/Measure";
-import { EmptyNote, ErrorNote, Notice } from "@/ui/Notice";
-import { Panel, PanelHead, Rule } from "@/ui/Panel";
-import { Reglage } from "@/ui/Reglage";
+import { ErrorNote } from "@/ui/Notice";
+import { Panel, Rule } from "@/ui/Panel";
 import { SaveBar } from "@/ui/SaveBar";
 import { usePlanSave } from "../save";
-import { paliersBoisson, paliersGlucides, paliersSodium } from "./paliers";
+import { FlaskTable, useFlaskRows, volumesLisibles } from "./FlaskTable";
 import { synthetiser } from "./synthese";
-
-/** `id` n'est jamais écrit : il tient l'identité d'une ligne pendant la saisie. */
-type FlaskRow = { id: string; volumeMl: string; onlyWater: boolean };
-
-let compteur = 0;
-
-function nouvelId(): string {
-  compteur += 1;
-
-  return `flasque-${compteur}`;
-}
+import { TargetsPanel } from "./TargetsPanel";
 
 const DEFAUT: Targets = { carbsGH: 60, fluidMlH: 500, sodiumMgL: 600 };
 
@@ -54,13 +35,7 @@ export function TargetsForm({
     targets ?? suggestion ?? DEFAUT,
   );
   const [masse, setMasse] = useState(String(massKg ?? ""));
-  const [lignes, setLignes] = useState<FlaskRow[]>(
-    flasks.map((f) => ({
-      id: nouvelId(),
-      volumeMl: String(f.volumeMl),
-      onlyWater: f.onlyWater,
-    })),
-  );
+  const [lignes, setLignes] = useFlaskRows(flasks);
   const [modifie, setModifie] = useState(false);
   const [reproche, setReproche] = useState<string | null>(null);
   const { pending, erreur, enregistre, save, reprise } = usePlanSave(accessId);
@@ -161,164 +136,15 @@ export function TargetsForm({
               />
             </Panel>
 
-            <Panel className="p-4">
-              {/* Trois réglages indépendants, côte à côte dès que la largeur
-                  le permet : chacun se lit d'un regard, sans faire défiler
-                  les deux autres pour l'atteindre. `items-start` évite
-                  qu'une remarque conditionnelle, plus haute dans une
-                  colonne, n'étire les deux autres. */}
-              <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:gap-0 lg:divide-x lg:divide-line">
-                <div className="flex flex-col gap-3 lg:flex-1 lg:px-5 lg:first:pl-0 lg:last:pr-0">
-                  <Reglage
-                    label="Glucides"
-                    unite="g/h"
-                    value={cibles.carbsGH}
-                    crans={paliersGlucides(cibles.carbsGH)}
-                    onChange={(carbsGH) =>
-                      change(() => setCibles({ ...cibles, carbsGH }))
-                    }
-                  />
-                  {cibles.carbsGH > CARBS_GUIDE_G_H && (
-                    <Notice>
-                      Au-delà de <Val unite="g/h">{CARBS_GUIDE_G_H}</Val>, on
-                      sort des fourchettes publiées. Le calcul suivra quand
-                      même, et le signalera sur le roadbook.
-                    </Notice>
-                  )}
-                  {cibles.carbsGH > CARBS_SINGLE_SOURCE_MAX_G_H && (
-                    <Hint>
-                      Au-dessus de {CARBS_SINGLE_SOURCE_MAX_G_H} g/h, un seul
-                      type de sucre ne passe plus : il faut au moins un produit
-                      qui annonce un mélange glucose et fructose.
-                    </Hint>
-                  )}
-                </div>
+            <TargetsPanel
+              cibles={cibles}
+              onChange={(suite) => change(() => setCibles(suite))}
+            />
 
-                <Rule className="lg:hidden" />
-
-                <div className="flex flex-col gap-3 lg:flex-1 lg:px-5 lg:first:pl-0 lg:last:pr-0">
-                  <Reglage
-                    label="Boisson"
-                    unite="mL/h"
-                    value={cibles.fluidMlH}
-                    crans={paliersBoisson(cibles.fluidMlH)}
-                    onChange={(fluidMlH) =>
-                      change(() => setCibles({ ...cibles, fluidMlH }))
-                    }
-                  />
-                  {cibles.fluidMlH > FLUID_GUIDE_ML_H && (
-                    <Notice>
-                      Au-delà de{" "}
-                      <Val unite="mL/h">{entier(FLUID_GUIDE_ML_H)}</Val>, le
-                      risque n'est plus la déshydratation mais l'excès d'eau.
-                    </Notice>
-                  )}
-                </div>
-
-                <Rule className="lg:hidden" />
-
-                <div className="flex flex-col gap-3 lg:flex-1 lg:px-5 lg:first:pl-0 lg:last:pr-0">
-                  <Reglage
-                    label="Sodium dans la boisson"
-                    unite="mg/L"
-                    value={cibles.sodiumMgL}
-                    crans={paliersSodium(cibles.sodiumMgL)}
-                    onChange={(sodiumMgL) =>
-                      change(() => setCibles({ ...cibles, sodiumMgL }))
-                    }
-                  />
-                </div>
-              </div>
-            </Panel>
-
-            <Panel>
-              <PanelHead
-                titre="Flasques emportées"
-                aide="Sans flasque, le roadbook ne dit pas où verser la boisson."
-              />
-              <Rule />
-
-              <div className="flex flex-col gap-3 p-4">
-                {lignes.length === 0 && (
-                  <EmptyNote titre="Rien à porter pour l'instant">
-                    Ajoutez au moins un contenant : le calcul a besoin de savoir
-                    dans quoi la boisson part.
-                  </EmptyNote>
-                )}
-
-                {lignes.map((ligne, i) => (
-                  <div key={ligne.id} className="flex items-end gap-3">
-                    {/* Le libellé du champ dit déjà « Flasque N » : une icône
-                        de flasque identique à côté ne distingue rien, elle
-                        répète ce que le texte a déjà dit. */}
-                    <MeasureField
-                      label={`Flasque ${i + 1}`}
-                      unite="mL"
-                      placeholder="500"
-                      largeur="w-32"
-                      value={ligne.volumeMl}
-                      onChange={(event) =>
-                        change(() =>
-                          setLignes(
-                            lignes.map((l, j) =>
-                              j === i
-                                ? { ...l, volumeMl: event.target.value }
-                                : l,
-                            ),
-                          ),
-                        )
-                      }
-                    />
-
-                    <div className="flex flex-1 items-center gap-2 pb-1">
-                      <ToggleChip
-                        actif={ligne.onlyWater}
-                        onChange={(onlyWater) =>
-                          change(() =>
-                            setLignes(
-                              lignes.map((l, j) =>
-                                j === i ? { ...l, onlyWater } : l,
-                              ),
-                            ),
-                          )
-                        }
-                      >
-                        eau claire seulement
-                      </ToggleChip>
-                    </div>
-
-                    <div className="pb-1">
-                      <IconButton
-                        libelle={`Retirer la flasque ${i + 1}`}
-                        onClick={() =>
-                          change(() =>
-                            setLignes(lignes.filter((_, j) => j !== i)),
-                          )
-                        }
-                      >
-                        <TrashIcon className="size-4" />
-                      </IconButton>
-                    </div>
-                  </div>
-                ))}
-
-                <Button
-                  taille="sm"
-                  icone={<PlusIcon className="size-4" />}
-                  className="self-start"
-                  onClick={() =>
-                    change(() =>
-                      setLignes([
-                        ...lignes,
-                        { id: nouvelId(), volumeMl: "500", onlyWater: false },
-                      ]),
-                    )
-                  }
-                >
-                  Ajouter une flasque
-                </Button>
-              </div>
-            </Panel>
+            <FlaskTable
+              lignes={lignes}
+              onChange={(suite) => change(() => setLignes(suite))}
+            />
           </div>
 
           {synthese && (
@@ -376,15 +202,4 @@ export function TargetsForm({
       </div>
     </div>
   );
-}
-
-/** Les contenances déjà lisibles, pour la synthèse affichée au fil de la saisie. */
-function volumesLisibles(lignes: FlaskRow[]): Flask[] {
-  return lignes.flatMap((ligne) => {
-    const volumeMl = toNumber(ligne.volumeMl);
-
-    return volumeMl === undefined || volumeMl <= 0
-      ? []
-      : [{ volumeMl, onlyWater: ligne.onlyWater }];
-  });
 }

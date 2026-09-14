@@ -1,6 +1,6 @@
 import type { Roadbook, Supply } from "@/app/plans/getRoadbook";
 import type { RoadbookEdit } from "@/app/plans/saveRoadbook";
-import { CARBS_OVERSHOOT_MAX } from "@/core/nutrition";
+import { CARBS_OVERSHOOT_MAX } from "@/core/guides";
 import { km } from "@/format/number";
 import type { PaceBand } from "@/ui/track/ElevationChart";
 
