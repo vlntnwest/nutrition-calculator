@@ -2,163 +2,31 @@
 
 import {
   Chart as ChartJS,
-  type ChartOptions,
   Filler,
   LinearScale,
   LineElement,
   PointElement,
-  type Scale,
-  type ScriptableContext,
-  type ScriptableLineSegmentContext,
   Tooltip,
 } from "chart.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Line } from "react-chartjs-2";
 import type { ProfilePoint } from "@/core/type";
-import { paceLabel } from "@/format/clock";
-import { PACE_GRADIENT, paceGradientStops, paceRampColor } from "./paceColor";
-import { gradePercent, SLOPE_BUCKETS, slopeColor } from "./slopeColor";
+import { chartData, paceSeries } from "./chartData";
+import { chartOptions } from "./chartOptions";
+import { LARGEUR_SUPERPOSITION, POINTS_TRACES } from "./chartTheme";
+import type {
+  Gouttieres,
+  PaceAxisRange,
+  PaceBand,
+  ProfileMark,
+} from "./chartTypes";
+import { SlopeLegend } from "./SlopeLegend";
 
 ChartJS.register(LinearScale, PointElement, LineElement, Filler, Tooltip);
 
-/**
- * Les couleurs du carnet, en dur : un `<canvas>` dessine avec l'API 2D, qui
- * ne résout pas les variables CSS — seule la SVG (la carte, plus haut) vit
- * dans le DOM et en profite. Ces valeurs miroitent `globals.css` ; les
- * changer là-bas sans les changer ici les désynchronise.
- */
-const INK = "#131313";
-const INK_SOFT = "#5c5c5c";
-const LINE = "#1313131f";
-const LINE_STRONG = "#13131333";
-const PAPER = "#ffffff";
-
-/** L'aplat sous la courbe : de l'encre à cinq pour cent, la masse du relief. */
-const FILL = "#1313130d";
-
-/**
- * `context.font` sur un `<canvas>` ne résout pas non plus les variables CSS
- * (`var(--font-geist-mono)` n'y vaudrait rien) : une pile mono littérale,
- * pas la police Geist chargée par `next/font` pour le reste de la page.
- */
-const MONO_STACK = "ui-monospace, Menlo, Consolas, monospace";
-
-/**
- * Le nombre de points réellement tracés.
- *
- * Chaque segment porte sa propre couleur de pente et son propre
- * remplissage : en dessous d'un pixel de large, ils se moirent et le relief
- * se lit comme un code-barres. Quatre cents points suffisent à dessiner un
- * profil à n'importe quelle largeur d'écran, et le survol continue de
- * désigner le point d'origine, celui que la carte connaît.
- */
-const POINTS_TRACES = 400;
-
-/**
- * En dessous de cette largeur de cadre, l'allure cesse de se superposer au
- * relief : les marches se resserrent au point de couvrir la silhouette, et
- * l'écran étroit n'a pas la place de les faire cohabiter. Elles prennent
- * alors un bandeau à part, en haut, et le relief garde le reste.
- */
-const LARGEUR_SUPERPOSITION = 640;
-
-/** Le nom de la pile qui range l'allure au-dessus du relief. */
-const PILE = "profil";
-
-/**
- * Ce que les axes prennent de part et d'autre du relief tracé, en pixels.
- *
- * Chart.js réserve à gauche la place des altitudes et à droite celle de la
- * dernière graduation de distance : le relief ne commence donc pas au bord du
- * composant. Ce qui s'aligne dessous — la bande des secteurs du roadbook —
- * doit reprendre ces gouttières, faute de quoi un secteur tombe à côté du
- * bout de relief qu'il décrit, et l'écart grandit avec la largeur de l'écran.
- */
-export type Gouttieres = { gauche: number; droite: number };
-
-/** Une borne posée sur le profil : un ravito, ou la fin d'un secteur. */
-export type ProfileMark = {
-  /** Le numéro lu sur la pastille. */
-  rank: number;
-  positionM: number;
-  libelle?: string;
-};
-
-/**
- * L'allure que le chrono visé donne à chaque tronçon, telle qu'elle se trace
- * par-dessus le relief. Produite par `paceBand` sur l'écran Course.
- */
-export type PaceBand = {
-  /** Les tronçons, jointifs et dans l'ordre. */
-  segments: { startM: number; endM: number; sPerKm: number }[];
-  /** L'allure de mouvement sur la course entière : le vert de la rampe. */
-  meanSPerKm: number;
-  /** L'allure du tronçon le plus lent : le bleu plein. */
-  slowestSPerKm: number;
-  /** L'allure du tronçon le plus rapide : le rouge plein. */
-  fastestSPerKm: number;
-};
-
-/**
- * Les bornes de l'axe d'allure, indépendantes de la `PaceBand` du moment —
- * voir `paceAxisRange` sur l'écran Course, où les curseurs font varier la
- * seconde sans que le cadre qui la mesure doive suivre.
- */
-export type PaceAxisRange = {
-  slowestSPerKm: number;
-  fastestSPerKm: number;
-};
-
-/**
- * Le dégradé du trait d'allure : bleu plein sur le tronçon le plus lent de la
- * trace, vert sur l'allure moyenne, rouge plein sur le plus rapide. Chaque
- * pixel du trait prend la couleur de l'endroit où il passe, contremarches
- * comprises.
- *
- * Tendu entre les deux allures extrêmes, jamais entre les bords du cadre :
- * l'axe se donne une marge de 8 % au-dessus et en dessous des données, et le
- * tronçon le plus rapide n'aurait donc jamais atteint le rouge. Un dégradé de
- * canevas prolonge sa couleur de bout au-delà de ses bornes, si bien que la
- * marge se remplit d'elle-même.
- *
- * Rendu à chaque dessin, parce qu'un `CanvasGradient` naît d'un contexte 2D et
- * de coordonnées en pixels : ni l'un ni l'autre n'existent avant que Chart.js
- * n'ait placé son cadre. Tant qu'il ne l'a pas fait, une couleur unie tient
- * lieu de secours.
- */
-function paceStroke(
-  chart: ChartJS<"line">,
-  band: PaceBand,
-): CanvasGradient | string {
-  const { chartArea, scales } = chart;
-  const echelle = scales.yPace;
-
-  if (!chartArea || !echelle) return paceRampColor(0.5);
-
-  // L'échelle est inversée : le rapide, petit nombre de secondes, est haut
-  // dans le cadre, donc à la plus petite ordonnée.
-  const lent = echelle.getPixelForValue(band.slowestSPerKm);
-  const rapide = echelle.getPixelForValue(band.fastestSPerKm);
-  const ecart = lent - rapide;
-
-  // Une trace sans écart d'allure n'a pas de rampe à tendre : tout y vaut la
-  // moyenne, et deux arrêts au même pixel feraient un dégradé dégénéré.
-  if (!(ecart > 0)) return paceRampColor(0.5);
-
-  const gradient = chart.ctx.createLinearGradient(0, lent, 0, rapide);
-  const meanAt = (lent - echelle.getPixelForValue(band.meanSPerKm)) / ecart;
-
-  for (const stop of paceGradientStops(meanAt)) {
-    gradient.addColorStop(stop.offset, stop.color);
-  }
-
-  return gradient;
-}
-
-/** `336` en `05:36`. L'échelle du graphique lit des secondes par kilomètre. */
-function paceText(sPerKm: number): string {
-  return paceLabel(sPerKm, 1000) ?? "";
-}
+// Les types vivent à part, mais c'est d'ici qu'on importe le graphique : les
+// écrans qui le posent n'ont pas à connaître son découpage.
+export type { Gouttieres, PaceAxisRange, PaceBand, ProfileMark };
 
 /**
  * Le profil altimétrique, tracé par palier de pente plutôt qu'en aplat
@@ -352,233 +220,25 @@ export function ElevationChart({
     [traces, paceBand],
   );
 
-  const data = useMemo(() => {
-    if (traces.length < 2) return null;
+  const data = useMemo(
+    () => chartData({ traces, relief, allures, paceBand }),
+    [traces, relief, allures, paceBand],
+  );
 
-    // Chart.js pose un point de survol par jeu, et le mode `index` les
-    // désigne tous d'un coup : le relief, la moyenne et les marches en
-    // portaient donc trois, sur deux échelles différentes. Le seul marqueur
-    // du survol est le disque dessiné à la main plus bas, celui que la carte
-    // partage.
-    const muet = { pointRadius: 0, pointHoverRadius: 0 };
-
-    return {
-      datasets: [
-        // La masse du relief : un seul tracé, une seule couleur. Coloré
-        // segment par segment, l'aplat laissait voir ses coutures verticales
-        // là où il n'y a qu'un relief continu.
-        {
-          ...muet,
-          data: relief,
-          yAxisID: "y",
-          borderWidth: 0,
-          fill: "origin" as const,
-          backgroundColor: FILL,
-        },
-        // La pente, portée par le trait seul. Sous une bande d'allure, elle
-        // rend sa couleur et redevient une silhouette : deux échelles de
-        // couleur sur un même cadre ne se lisent plus ni l'une ni l'autre, et
-        // c'est l'allure qu'on est venu voir.
-        {
-          ...muet,
-          data: relief,
-          yAxisID: "y",
-          borderWidth: paceBand ? 1 : 2,
-          fill: false as const,
-          ...(paceBand
-            ? { borderColor: LINE_STRONG }
-            : {
-                segment: {
-                  borderColor: (ctx: ScriptableLineSegmentContext) =>
-                    slopeColor(segmentSlope(ctx, traces)),
-                },
-              }),
-        },
-        // L'allure moyenne, en pointillé : sans elle, les marches disent
-        // laquelle est la plus lente mais pas laquelle est en retard.
-        ...(paceBand && allures
-          ? [
-              {
-                ...muet,
-                data: relief.map((p) => ({ x: p.x, y: paceBand.meanSPerKm })),
-                yAxisID: "yPace",
-                borderColor: LINE_STRONG,
-                borderWidth: 1,
-                borderDash: [4, 4],
-                fill: false as const,
-              },
-              // Les marches : l'allure du tronçon qui contient chaque point.
-              // Deux points voisins d'un même tronçon portent la même valeur,
-              // et le passage au suivant fait la contremarche.
-              {
-                ...muet,
-                data: relief.map((p, i) => ({ x: p.x, y: allures[i] })),
-                yAxisID: "yPace",
-                borderWidth: 2,
-                fill: false as const,
-                borderColor: (ctx: ScriptableContext<"line">) =>
-                  paceStroke(ctx.chart as ChartJS<"line">, paceBand),
-              },
-            ]
-          : []),
-      ],
-    };
-  }, [traces, relief, allures, paceBand]);
-
-  const options = useMemo((): ChartOptions<"line"> | null => {
-    if (traces.length < 2) return null;
-
-    // Le cadre étroit sépare les deux lectures au lieu de les superposer :
-    // l'allure sur le tiers haut, le relief sur les deux tiers du bas.
-    const empile = paceBand != null && etroit === true;
-
-    const elevations = traces.map((p) => p.ele);
-    const min = Math.min(...elevations);
-    const max = Math.max(...elevations);
-    // Une marge d'un dixième de l'amplitude : sans elle, le point le plus
-    // haut touche le bord du cadre.
-    const marge = Math.max((max - min) * 0.1, 15);
-    // Arrondis au palier de 50 m : les bornes du cadre sont aussi les
-    // étiquettes de ses graduations, jamais une altitude à la décimale près.
-    const palier = 50;
-    const yMin = Math.max(0, Math.floor((min - marge) / palier) * palier);
-    const yMax = Math.ceil((max + marge) / palier) * palier;
-
-    return {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: false,
-      interaction: { intersect: false, mode: "index" },
-      onResize: () => redessiner((n) => n + 1),
-      onHover: (_event, elements) => {
-        onHoverIndex?.(
-          elements.length > 0 ? (origine[elements[0].index] ?? null) : null,
-        );
-      },
-      scales: {
-        x: {
-          type: "linear",
-          min: 0,
-          max: traces[traces.length - 1].d / 1000,
-          grid: { display: false },
-          ticks: {
-            color: INK_SOFT,
-            font: { size: 9, family: MONO_STACK },
-            maxTicksLimit: 5,
-            callback: (value) => `${Math.round(value as number)} km`,
-          },
-          border: { color: LINE },
-        },
-        y: {
-          // L'altitude cède l'axe de gauche à l'allure quand il y en a une :
-          // à gauche se lit ce qu'on est venu régler. Empilés, les deux
-          // partagent le bord gauche — c'est la condition de l'empilement,
-          // et l'écran étroit y gagne la gouttière de droite.
-          position: paceBand && !empile ? "right" : "left",
-          min: yMin,
-          max: yMax,
-          grid: { color: LINE },
-          ...(empile
-            ? {
-                stack: PILE,
-                stackWeight: 2,
-                // La graduation la plus haute tomberait sur la couture, là où
-                // le bandeau d'allure pose déjà la sienne : elle cède.
-                afterBuildTicks: (axe: Scale) => {
-                  axe.ticks = axe.ticks.slice(0, -1);
-                },
-              }
-            : {}),
-          ticks: {
-            color: INK_SOFT,
-            font: { size: 9, family: MONO_STACK },
-            // Empilée, l'altitude perd sa graduation du haut : il lui en
-            // faut quelques-unes de plus à distribuer pour qu'il en reste
-            // une échelle.
-            maxTicksLimit: empile ? 8 : 4,
-            callback: (value) => `${Math.round(value as number)} m`,
-          },
-          border: { display: false },
-        },
-        // Déclarée après l'altitude : deux axes empilés au bord gauche se
-        // posent du dernier donné au premier, et l'allure va en haut.
-        yPace: {
-          display: paceBand != null,
-          position: "left",
-          // Des secondes par kilomètre : le rapide est le petit nombre, et
-          // c'est lui qu'on veut en haut du cadre.
-          reverse: true,
-          // `paceAxisRange` fixe des bornes explicites, la marge se pose
-          // donc à la main — `grace` ne joue que sur un axe qui s'ajuste
-          // encore à ses données. Sans borne fournie, l'axe continue de
-          // s'ajuster à `paceBand` comme avant.
-          ...(paceAxisRange
-            ? {
-                min:
-                  paceAxisRange.fastestSPerKm -
-                  (paceAxisRange.slowestSPerKm - paceAxisRange.fastestSPerKm) *
-                    0.08,
-                max:
-                  paceAxisRange.slowestSPerKm +
-                  (paceAxisRange.slowestSPerKm - paceAxisRange.fastestSPerKm) *
-                    0.08,
-              }
-            : { grace: "8%" }),
-          grid: { display: false },
-          ...(empile && paceBand
-            ? {
-                stack: PILE,
-                stackWeight: 1,
-                // Un bandeau de quelques dizaines de pixels n'a pas la place
-                // des paliers ronds de Chart.js. Les trois allures que la
-                // rampe de couleur nomme déjà en font une échelle : la plus
-                // rapide en haut, la moyenne sur son pointillé, la plus lente
-                // en bas. La marge de `grace` les tient à distance des bords.
-                afterBuildTicks: (axe: Scale) => {
-                  axe.ticks = [
-                    paceBand.fastestSPerKm,
-                    paceBand.meanSPerKm,
-                    paceBand.slowestSPerKm,
-                  ].map((value) => ({ value }));
-                },
-              }
-            : {}),
-          ticks: {
-            color: INK_SOFT,
-            font: { size: 9, family: MONO_STACK },
-            maxTicksLimit: 4,
-            callback: (value) => paceText(value as number),
-          },
-          border: { display: false },
-        },
-      },
-      plugins: {
-        tooltip: {
-          backgroundColor: INK,
-          titleColor: PAPER,
-          bodyColor: PAPER,
-          padding: 8,
-          cornerRadius: 6,
-          displayColors: false,
-          // Les deux jeux portent la même altitude : sans ce filtre,
-          // l'infobulle la donnerait deux fois.
-          filter: (item) => item.datasetIndex === 1,
-          bodyFont: { family: MONO_STACK, size: 11 },
-          titleFont: { family: MONO_STACK, size: 11 },
-          callbacks: {
-            title: ([item]) =>
-              item ? `${(item.parsed.x as number).toFixed(1)} km` : "",
-            label: (item) => {
-              const altitude = `${Math.round(item.parsed.y ?? 0)} m`;
-              const allure = allures?.[item.dataIndex];
-
-              return allure ? [altitude, `${paceText(allure)} /km`] : altitude;
-            },
-          },
-        },
-      },
-    };
-  }, [traces, origine, onHoverIndex, paceBand, paceAxisRange, allures, etroit]);
+  const options = useMemo(
+    () =>
+      chartOptions({
+        traces,
+        origine,
+        allures,
+        paceBand,
+        paceAxisRange,
+        etroit,
+        onHoverIndex,
+        onResize: () => redessiner((n) => n + 1),
+      }),
+    [traces, origine, onHoverIndex, paceBand, paceAxisRange, allures, etroit],
+  );
 
   if (!data || !options) return null;
 
@@ -737,95 +397,12 @@ export function ElevationChart({
 }
 
 /** L'allure du tronçon qui contient une distance. */
+
+/** L'allure du tronçon qui contient une distance. */
 function paceAt(band: PaceBand, distanceM: number): number | null {
   const segment = band.segments.find(
     (s) => distanceM >= s.startM && distanceM <= s.endM,
   );
 
   return segment?.sPerKm ?? null;
-}
-
-/**
- * L'allure de chaque point tracé : celle du tronçon qui le contient.
- *
- * Tous les jeux du graphique partagent la grille du relief, et c'est une
- * condition de son fonctionnement, pas une commodité : le mode `index` de
- * Chart.js lit l'indice du jeu le plus proche du curseur puis va chercher cet
- * indice-là dans tous les autres. Des marches portées par deux points par
- * tronçon rendaient donc un indice qui ne désignait aucun point de la trace,
- * et la carte surlignait un point sans rapport avec le curseur.
- *
- * Un seul passage : les deux tableaux sont triés sur la distance.
- */
-function paceSeries(traces: ProfilePoint[], band: PaceBand): number[] {
-  const allures = new Array<number>(traces.length);
-  let k = 0;
-
-  for (let i = 0; i < traces.length; i++) {
-    while (
-      k < band.segments.length - 1 &&
-      traces[i].d > band.segments[k].endM
-    ) {
-      k++;
-    }
-    allures[i] = band.segments[k].sPerKm;
-  }
-
-  return allures;
-}
-
-/**
- * La pente entre les deux points qui portent un segment du tracé Chart.js —
- * jamais celle d'un seul point, une pente n'existe qu'entre deux.
- */
-function segmentSlope(
-  ctx: ScriptableLineSegmentContext,
-  points: ProfilePoint[],
-): number {
-  const a = points[ctx.p0DataIndex];
-  const b = points[ctx.p0DataIndex + 1];
-
-  if (!a || !b) return 0;
-
-  return gradePercent(a, b) ?? 0;
-}
-
-/**
- * « La couleur ne peut jamais porter seule une information » — les seuils de
- * `slopeColor` en texte, ou, quand l'allure a pris la couleur du cadre, ses
- * deux extrêmes en toutes lettres de part et d'autre de la rampe. Jamais les
- * deux : une seule échelle de couleur à la fois.
- */
-function SlopeLegend({ pace }: { pace: boolean }) {
-  if (pace) {
-    return (
-      <div className="flex shrink-0 items-center justify-center gap-1.5 px-1 text-[9px] text-ink-soft">
-        plus lente
-        <span
-          className="h-1.5 w-20 rounded-full"
-          style={{ backgroundImage: PACE_GRADIENT }}
-          aria-hidden="true"
-        />
-        plus rapide
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex shrink-0 items-center gap-2.5 px-1">
-      {SLOPE_BUCKETS.map((bucket) => (
-        <span
-          key={bucket.label}
-          className="flex items-center gap-1 text-[9px] text-ink-soft"
-        >
-          <span
-            className="size-1.5 rounded-full"
-            style={{ backgroundColor: bucket.color }}
-            aria-hidden="true"
-          />
-          {bucket.label}
-        </span>
-      ))}
-    </div>
-  );
 }
