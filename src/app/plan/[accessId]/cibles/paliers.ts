@@ -2,7 +2,7 @@ import {
   CARBS_GUIDE_G_H,
   CARBS_SINGLE_SOURCE_MAX_G_H,
   FLUID_GUIDE_ML_H,
-} from "@/core/nutrition";
+} from "@/core/guides";
 
 /**
  * Une valeur proposée pour une cible horaire, et ce qu'elle vaut.
