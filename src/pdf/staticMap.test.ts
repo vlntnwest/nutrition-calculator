@@ -153,40 +153,61 @@ describe("pointADistance", () => {
 });
 
 describe("bornesOf", () => {
-  const AR = [
-    { lat: 48.0, lon: 7.0, d: 0 },
-    { lat: 48.1, lon: 7.1, d: 5000 },
-  ];
+  /** Une trace, et le cadrage qui la porte : les repères se mesurent dessus. */
+  function bornes(
+    points: { lat: number; lon: number; d: number }[],
+    aidStations: { distanceM: number }[] = [],
+  ) {
+    return bornesOf(cadrageOf(points, CADRE), points, aidStations).map(
+      (b) => b.label,
+    );
+  }
 
   test("marque le départ, chaque ravito dans l'ordre, puis l'arrivée", () => {
-    const bornes = bornesOf(
-      [
-        { lat: 48.0, lon: 7.0, d: 0 },
-        { lat: 48.2, lon: 7.2, d: 5000 },
-        { lat: 48.4, lon: 7.4, d: 10000 },
-      ],
-      // Posés dans le désordre : c'est la course qui donne les rangs.
-      [{ distanceM: 10000 }, { distanceM: 5000 }],
-    );
-
-    expect(bornes.map((b) => b.label)).toEqual(["D", "1", "2", "A"]);
+    expect(
+      bornes(
+        [
+          { lat: 48.0, lon: 7.0, d: 0 },
+          { lat: 48.2, lon: 7.2, d: 5000 },
+          { lat: 48.4, lon: 7.4, d: 10000 },
+        ],
+        // Posés dans le désordre : c'est la course qui donne les rangs.
+        [{ distanceM: 10000 }, { distanceM: 5000 }],
+      ),
+    ).toEqual(["D", "1", "2", "A"]);
   });
 
   test("ne marque pas deux fois le même endroit sur une boucle", () => {
     // Départ et arrivée au même point : un seul repère, celui du départ.
-    const bornes = bornesOf(
-      [
+    expect(
+      bornes([
         { lat: 48.0, lon: 7.0, d: 0 },
         { lat: 48.2, lon: 7.2, d: 5000 },
         { lat: 48.0, lon: 7.0, d: 10000 },
-      ],
-      [],
-    );
-
-    expect(bornes.map((b) => b.label)).toEqual(["D"]);
+      ]),
+    ).toEqual(["D"]);
   });
 
   test("marque les deux bouts quand la trace n'est pas une boucle", () => {
-    expect(bornesOf(AR, []).map((b) => b.label)).toEqual(["D", "A"]);
+    expect(
+      bornes([
+        { lat: 48.0, lon: 7.0, d: 0 },
+        { lat: 48.1, lon: 7.1, d: 5000 },
+      ]),
+    ).toEqual(["D", "A"]);
+  });
+
+  test("juge le recouvrement sur le cadre, pas sur des degrés", () => {
+    // Deux traces de forme identique, à deux échelles. Sur l'une comme sur
+    // l'autre, l'arrivée est au centième de la trace : elle recouvre le
+    // départ dans les deux cas, quel que soit le zoom retenu.
+    const forme = (echelle: number) => [
+      { lat: 48.0, lon: 7.0, d: 0 },
+      { lat: 48.0 + echelle, lon: 7.0 + echelle, d: 5000 },
+      { lat: 48.0 + echelle / 100, lon: 7.0, d: 10000 },
+    ];
+
+    expect(bornes(forme(0.02))).toEqual(["D"]);
+    expect(bornes(forme(2))).toEqual(["D"]);
   });
 });

@@ -195,7 +195,7 @@ export function SheetProfile({
 
         {/* Un trait par palier et par contremarche, chacun avec sa couleur
             de rampe : voir `escalier` dans `profile.ts`. */}
-        {figure.allure?.segments.map((segment) => (
+        {figure.allure?.map((segment) => (
           <Line
             key={`${segment.x1}-${segment.y1}-${segment.x2}-${segment.y2}`}
             x1={segment.x1}

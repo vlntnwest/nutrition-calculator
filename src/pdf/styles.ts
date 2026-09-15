@@ -29,7 +29,7 @@ export const GRILLE = "#e4e4e4";
 export const MARGE = 42.5;
 
 /** La largeur d'une A4 en points PDF, et ce qu'il en reste entre les marges. */
-export const LARGEUR_A4 = 595.28;
+const LARGEUR_A4 = 595.28;
 export const LARGEUR_UTILE = LARGEUR_A4 - MARGE * 2;
 
 export const HAUTEUR_CARTE = 200;

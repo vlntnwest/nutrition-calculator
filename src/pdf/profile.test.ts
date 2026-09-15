@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { ProfilePoint } from "@/core/type";
 import {
+  axe,
   couleurAllure,
   courbe,
   echantillonne,
@@ -65,6 +66,49 @@ describe("graduations", () => {
   });
 });
 
+describe("axe", () => {
+  const textes = (min: number, max: number, cible: number) =>
+    axe(min, max, cible).map((g) => g.texte);
+
+  test("écrit assez de décimales pour distinguer deux graduations", () => {
+    // Un pas de 2,5 km écrit en entiers donnait « 0 3 5 8 10 13 » : le trait
+    // étiqueté 3 tombait à 2,5 km.
+    // Uniformément décimées, comme tout axe gradué : « 0 2,5 5 » mélange
+    // deux écritures sur la même règle.
+    expect(textes(0, 13, 6)).toEqual([
+      "0,0",
+      "2,5",
+      "5,0",
+      "7,5",
+      "10,0",
+      "12,5",
+    ]);
+  });
+
+  test("n'en écrit aucune quand le pas est entier", () => {
+    expect(textes(0, 132.2, 6)).toEqual(["0", "25", "50", "75", "100", "125"]);
+    expect(textes(400, 1200, 4)).toEqual(["400", "600", "800", "1000", "1200"]);
+  });
+
+  test("ne répète jamais deux fois la même étiquette", () => {
+    for (const [min, max, cible] of [
+      [0, 5, 6],
+      [0, 13, 6],
+      [0, 0.8, 6],
+      [400, 403, 4],
+    ] as const) {
+      const vus = textes(min, max, cible);
+      expect(new Set(vus).size).toBe(vus.length);
+    }
+  });
+
+  test("n'écrit pas de séparateur de milliers", () => {
+    // Les polices intégrées n'ont pas l'espace fine insécable, et `pdfSafe`
+    // ne passe pas sur le profil : voir la section 5.1 du document.
+    expect(textes(0, 4000, 4).join("")).not.toMatch(/[\u2009\u202f\u00a0]/);
+  });
+});
+
 describe("figureOf", () => {
   const POINTS = trace([100, 140, 300, 260, 180, 180, 220, 100]);
 
@@ -99,7 +143,7 @@ describe("figureOf", () => {
     });
 
     // Deux paliers, et la contremarche qui les relie.
-    expect(figure.allure?.segments).toHaveLength(3);
+    expect(figure.allure).toHaveLength(3);
   });
 
   test("met le rapide en haut du cadre, comme l'écran Course", () => {
@@ -119,7 +163,7 @@ describe("figureOf", () => {
     });
 
     // Le premier tronçon est le plus rapide : son palier est au-dessus.
-    const [rapide, , lent] = figure.allure?.segments ?? [];
+    const [rapide, , lent] = figure.allure ?? [];
     expect(rapide.y1).toBeLessThan(lent.y1);
   });
 
@@ -155,6 +199,21 @@ describe("figureOf", () => {
     });
 
     expect(figure.graduations.every((g) => g.allure === "")).toBe(true);
+  });
+
+  test("gradue les distances en kilomètres, sans doublon", () => {
+    // Une trace de 5 km : le pas rond en mètres valait 500, et les étiquettes
+    // en kilomètres entiers donnaient « 0 1 1 2 2 3 3 4 4 5 5 ».
+    const courte = trace([100, 120, 140, 130, 110, 100], 1000);
+    const figure = figureOf({
+      points: courte,
+      band: null,
+      bornes: [],
+      cadre: CADRE,
+    });
+    const vus = figure.distances.map((g) => g.texte);
+
+    expect(new Set(vus).size).toBe(vus.length);
   });
 
   test("pose les bornes à leur abscisse, dans le cadre", () => {

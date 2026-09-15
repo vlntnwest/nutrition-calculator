@@ -253,6 +253,14 @@ couleurs : altitude à droite, allure à gauche, mêmes lignes.
 Les trois axes portent leur titre, les deux verticaux couchés le long de leur
 gouttière : `Allure (/km)`, `Altitude (m)`, `Distance (km)`.
 
+**L'écriture des graduations se déduit du pas.** Le pas rond peut valoir 2,5,
+et l'écrire en entiers étiquetait « 3 » un trait tombant à 2,5 km ; sur une
+trace de cinq kilomètres, la moitié des étiquettes se répétaient. `axe` compte
+les décimales du pas et les applique à toutes, uniformément. Les distances se
+graduent en kilomètres, pas en mètres, pour la même raison. `toFixed` et non
+`toLocaleString` : ce dernier sépare les milliers d'une espace fine
+insécable, et `pdfSafe` ne passe pas sur le profil (voir 5.1).
+
 ### 4.2 Le repère, qui relie la carte au tableau
 
 La carte marque le départ d'un `D`, chaque ravito de son rang, l'arrivée d'un
@@ -263,6 +271,12 @@ pouvoir retrouver la ligne. Le tableau porte donc une colonne `repere`, et
 
 Sur une boucle, le départ et l'arrivée tombent au même endroit et leurs deux
 pastilles se superposeraient en un glyphe illisible : l'arrivée saute alors.
+Le recouvrement se mesure **en pixels du cadre**, contre le diamètre d'une
+pastille, et jamais en degrés : ce qui décide est la place que les deux
+pastilles prennent sur la feuille, et elle dépend du zoom retenu. Un seuil en
+degrés ne valait qu'à un seul zoom, sautant l'arrivée d'un trail court dont
+les deux bouts étaient pourtant bien séparés, et la gardant sur un ultra où
+elles se chevauchaient.
 Deux ravitos au même village se recouvrent de la même façon, et là on ne peut
 rien : c'est le tableau qui porte l'information complète, la carte n'est qu'un
 repérage.

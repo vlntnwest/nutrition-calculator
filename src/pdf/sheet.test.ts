@@ -34,16 +34,6 @@ describe("fileNameOf", () => {
 });
 
 describe("secteurs", () => {
-  test("titre un secteur par ses deux bornes", () => {
-    const sheet = sheetOf(
-      plan(),
-      roadbook({ legs: [leg({ endName: "Haberacker" })] }),
-      CIBLES,
-    );
-
-    expect(sheet.secteurs[0].titre).toBe("Départ > Haberacker");
-  });
-
   test("porte la borne qui le clôt, pour la forme à un tableau", () => {
     // La forme « un tableau » fond les deux tableaux en un : chaque secteur
     // doit donc porter lui-même ce que sa ligne de passage disait, plutôt que

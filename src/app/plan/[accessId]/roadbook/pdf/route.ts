@@ -36,7 +36,10 @@ export async function GET(
 
   // Un plan jamais calculé n'a pas de feuille : il n'a ni secteur, ni ration.
   if (!plan || !roadbook) {
-    return new Response("Ce plan n'a pas encore été calculé.", { status: 404 });
+    return new Response(
+      "Ce plan n'a pas encore été calculé. Ouvrez son roadbook et lancez le calcul.",
+      { status: 404 },
+    );
   }
 
   // La même décision que le calcul et que l'écran : l'écart montré doit

@@ -14,7 +14,7 @@
 export const TAILLE_TUILE = 256;
 
 /** Le zoom le plus fin que sert OpenStreetMap. */
-export const ZOOM_MAX = 19;
+const ZOOM_MAX = 19;
 
 export type Point = { lat: number; lon: number };
 export type Cadre = { largeurPx: number; hauteurPx: number };
@@ -79,11 +79,7 @@ function bbox(points: Point[]) {
  * en Mercator, le milieu de deux latitudes ne se projette pas au milieu des
  * deux ordonnées, et une trace nord-sud arriverait décentrée.
  */
-export function cadrageOf(
-  points: Point[],
-  cadre: Cadre,
-  zoomMax = ZOOM_MAX,
-): Cadrage {
+export function cadrageOf(points: Point[], cadre: Cadre): Cadrage {
   const { minLat, maxLat, minLon, maxLon } = bbox(points);
   const coins = (zoom: number) => ({
     // Le coin haut-gauche est au nord et à l'ouest : latitude maximale.
@@ -92,7 +88,7 @@ export function cadrageOf(
   });
 
   let zoom = 0;
-  for (let z = zoomMax; z >= 0; z--) {
+  for (let z = ZOOM_MAX; z >= 0; z--) {
     const { a, b } = coins(z);
     if (b.x - a.x <= cadre.largeurPx && b.y - a.y <= cadre.hauteurPx) {
       zoom = z;

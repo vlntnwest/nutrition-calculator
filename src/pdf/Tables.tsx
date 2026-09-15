@@ -43,7 +43,9 @@ export function TableauUnique({ secteurs }: { secteurs: Secteur[] }) {
     <View>
       <Text style={s.section}>La course, secteur par secteur</Text>
 
-      <View style={[s.rangee, s.filetFort]}>
+      {/* `fixed` : la ligne d'en-tête se répète sur chaque page que le
+          tableau déborde, sans quoi les colonnes y sont anonymes. */}
+      <View style={[s.rangee, s.filetFort]} fixed>
         <Text style={[s.enteteCellule, { width: pc(U.repere) }]} />
         <Text style={[s.enteteCellule, { flex: 1 }]}>Borne et rations</Text>
         <Text style={[s.enteteCellule, droite, { width: pc(U.km) }]}>km</Text>
@@ -62,7 +64,7 @@ export function TableauUnique({ secteurs }: { secteurs: Secteur[] }) {
       </View>
 
       {secteurs.map((secteur) => (
-        <View key={secteur.titre} style={{ marginTop: 6 }} wrap={false}>
+        <View key={secteur.repere} style={{ marginTop: 6 }} wrap={false}>
           {/* La ligne du secteur porte la borne qui le clôt : c'est d'elle
               que parlent l'heure de passage et l'arrêt. */}
           <View style={[s.rangee, s.filet]}>
@@ -152,7 +154,9 @@ export function CoursesTable({
     <View>
       <Text style={s.section}>La liste de courses</Text>
 
-      <View style={[s.rangee, s.filetFort]}>
+      {/* `fixed` : la ligne d'en-tête se répète sur chaque page que le
+          tableau déborde, sans quoi les colonnes y sont anonymes. */}
+      <View style={[s.rangee, s.filetFort]} fixed>
         <Text style={[s.enteteCellule, { width: "10%" }]}>Quantité</Text>
         <Text style={[s.enteteCellule, { flex: 1 }]}>Produit</Text>
         <Text style={[s.enteteCellule, { width: "30%" }]}>Marque</Text>

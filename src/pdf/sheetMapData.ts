@@ -5,6 +5,7 @@ import {
   cadrageOf,
   type Point,
   pointADistance,
+  projeter,
   tuilesOf,
 } from "./staticMap";
 import { FINESSE, HAUTEUR_CARTE, LARGEUR_UTILE } from "./styles";
@@ -39,15 +40,15 @@ export async function carteOf(
     cadrage,
     tuiles: await chargerTuiles(tuilesOf(cadrage)),
     points,
-    bornes: bornesOf(points, plan.aidStations),
+    bornes: bornesOf(cadrage, points, plan.aidStations),
   };
 }
 
 /**
- * En deçà de cette distance, deux repères se recouvrent au lieu de se lire.
- * C'est le diamètre d'une pastille, rapporté à la longueur de la trace.
+ * Le diamètre d'une pastille, en pixels du cadre : `SheetMap` les trace au
+ * rayon 13. En deçà, deux repères se recouvrent au lieu de se lire.
  */
-const RECOUVREMENT = 0.004;
+const DIAMETRE_PASTILLE = 26;
 
 /**
  * Les repères à poser sur la carte : `D` au départ, le rang de chaque ravito
@@ -60,6 +61,8 @@ const RECOUVREMENT = 0.004;
  * le coureur qui court une boucle sait où il la finit.
  */
 export function bornesOf(
+  /** Le cadrage retenu : c'est sur lui que se juge un recouvrement. */
+  cadrage: Cadrage,
   /** La trace, dont seules les coordonnées et l'abscisse servent ici. */
   points: (Point & { d: number })[],
   aidStations: { distanceM: number }[],
@@ -67,9 +70,12 @@ export function bornesOf(
   const depart = points[0];
   const arrivee = points[points.length - 1];
   const totalM = arrivee.d - depart.d;
-  const boucle =
-    Math.hypot(arrivee.lat - depart.lat, arrivee.lon - depart.lon) <
-    RECOUVREMENT;
+  // Mesuré en pixels du cadre, jamais en degrés : ce qui décide est la place
+  // que deux pastilles prennent sur la feuille, et elle dépend du zoom
+  // retenu. Un écart en degrés valait le bon seuil à un seul zoom.
+  const ici = projeter(cadrage, depart);
+  const la = projeter(cadrage, arrivee);
+  const boucle = Math.hypot(la.x - ici.x, la.y - ici.y) < DIAMETRE_PASTILLE;
 
   const ravitos = [...aidStations]
     .sort((a, b) => a.distanceM - b.distanceM)

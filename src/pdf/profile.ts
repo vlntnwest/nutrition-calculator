@@ -1,5 +1,4 @@
 import type { ProfilePoint } from "@/core/type";
-import { POINTS_TRACES } from "@/ui/track/chartTheme";
 import type { PaceBand } from "@/ui/track/chartTypes";
 import { paceRampColor } from "@/ui/track/paceColor";
 
@@ -19,20 +18,21 @@ import { paceRampColor } from "@/ui/track/paceColor";
 
 export type Cadre = { largeur: number; hauteur: number };
 
+/** Un palier d'allure, ou la contremarche qui mène au suivant. */
+export type Marche = {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  couleur: string;
+};
+
 export type ProfileFigure = {
   cadre: Cadre;
   /** L'aplat du relief, fermé sur le sol, et la crête qui le souligne. */
   relief: { aplat: string; crete: string };
   /** L'escalier d'allure : les paliers, les contremarches, et leur couleur. */
-  allure: {
-    segments: {
-      x1: number;
-      y1: number;
-      x2: number;
-      y2: number;
-      couleur: string;
-    }[];
-  } | null;
+  allure: Marche[] | null;
   /**
    * Les lignes de repère, communes aux deux échelles : l'altitude se lit à
    * droite, l'allure à gauche, à la même hauteur. C'est ce qui permet de
@@ -105,6 +105,43 @@ export function graduations(min: number, max: number, cible: number): number[] {
   return valeurs.length >= 2 ? valeurs : [min, max];
 }
 
+/**
+ * Les graduations d'un axe, chacune écrite avec juste assez de décimales pour
+ * se distinguer de sa voisine.
+ *
+ * Le pas rond peut valoir 2,5 : l'écrire en entiers étiquetait « 3 » un trait
+ * tombant à 2,5, et deux traits voisins portaient parfois le même nombre.
+ * L'écriture se déduit donc du pas, pas du hasard.
+ *
+ * `toFixed` et non `toLocaleString` : ce dernier sépare les milliers d'une
+ * espace fine insécable, que les polices intégrées n'ont pas et que `pdfSafe`
+ * ne vient pas convertir ici. Voir la section 5.1 du document.
+ */
+export function axe(
+  min: number,
+  max: number,
+  cible: number,
+): { valeur: number; texte: string }[] {
+  const valeurs = graduations(min, max, cible);
+  const pas = valeurs.length > 1 ? valeurs[1] - valeurs[0] : 1;
+  const decimales = decimalesDe(pas);
+
+  return valeurs.map((valeur) => ({
+    valeur,
+    texte: valeur.toFixed(decimales).replace(".", ","),
+  }));
+}
+
+/** Combien de décimales il faut pour écrire ce pas sans le tronquer. */
+function decimalesDe(pas: number): number {
+  for (let d = 0; d <= 6; d++) {
+    const echelle = 10 ** d;
+    if (Math.abs(pas * echelle - Math.round(pas * echelle)) < 1e-9) return d;
+  }
+
+  return 6;
+}
+
 /** Le pas rond immédiatement utile : 1, 2, 2,5 ou 5 fois une puissance de dix. */
 function arrondi(brut: number): number {
   const puissance = 10 ** Math.floor(Math.log10(brut));
@@ -117,14 +154,13 @@ function arrondi(brut: number): number {
 /**
  * Un point sur `pas`, le dernier toujours gardé.
  *
- * Chaque palier de pente porte son propre aplat. En dessous d'un point par
- * pixel ils se moirent et le relief se lit comme un code-barres : le même
- * plafond que l'écran, et pour la même raison. Le dernier point ferme le
- * tracé sur la distance totale, où que le pas s'arrête.
+ * Le plafond se donne, il n'a pas de défaut : la finesse utile est celle du
+ * cadre, jamais un nombre fixe (section 5.2 du document). Le dernier point
+ * ferme le tracé sur la distance totale, où que le pas s'arrête.
  */
 export function echantillonne(
   points: ProfilePoint[],
-  max = POINTS_TRACES,
+  max: number,
 ): ProfilePoint[] {
   const pas = Math.max(1, Math.ceil(points.length / max));
   if (pas === 1) return points;
@@ -217,26 +253,29 @@ export function figureOf({
       solM,
     ),
 
-    allure: band === null ? null : { segments: escalier(band, x, cadre) },
+    allure: band === null ? null : escalier(band, x, cadre),
 
     // Les altitudes commandent la grille, parce qu'elles tombent sur des
     // nombres ronds ; l'allure se lit ensuite à la hauteur où la ligne passe,
     // et ses valeurs ne sont donc pas rondes. Le PacePro fait de même : une
     // grille lisible vaut mieux que deux séries de nombres ronds qui ne
     // tomberaient jamais aux mêmes hauteurs.
-    graduations: graduations(basse, haute, 4).map((ele) => {
-      const y = yEle(ele);
+    graduations: axe(basse, haute, 4).map(({ valeur, texte }) => {
+      const y = yEle(valeur);
 
       return {
         y,
-        altitude: `${Math.round(ele)}`,
+        altitude: texte,
         allure: band === null ? "" : allureTexte(allureA(y, band, cadre)),
       };
     }),
 
-    distances: graduations(departM, finM, 6).map((d) => ({
-      x: x(d),
-      texte: `${Math.round(d / 1000)}`,
+    // Graduées en kilomètres, pas en mètres : un pas rond en mètres peut
+    // valoir 500 ou 2 500, que des étiquettes en kilomètres entiers
+    // dupliquaient ou décalaient d'un demi-kilomètre.
+    distances: axe(departM / 1000, finM / 1000, 6).map(({ valeur, texte }) => ({
+      x: x(valeur * 1000),
+      texte,
     })),
 
     bornes: bornes.map((borne) => ({
@@ -314,7 +353,7 @@ function escalier(
   band: PaceBand,
   x: (d: number) => number,
   cadre: Cadre,
-): NonNullable<ProfileFigure["allure"]>["segments"] {
+): Marche[] {
   const y = (sPerKm: number) => yAllure(sPerKm, band, cadre);
 
   return band.segments.flatMap((segment, i) => {

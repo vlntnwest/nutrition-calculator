@@ -62,6 +62,10 @@ export function SheetDocument({
             { cle: "glucides", valeur: cibles.carbs },
             { cle: "boisson", valeur: cibles.boisson },
             { cle: "sodium", valeur: cibles.sodium },
+            // Le poids du sac n'est pas une cible, mais c'est le nombre qu'on
+            // veut voir avant de partir : il n'a pas à attendre la dernière
+            // page. Section 4 du document.
+            { cle: "porté au départ", valeur: feuille.totaux.poids },
           ].map((cible) => (
             <View key={cible.cle}>
               <Text style={[s.nombre, { fontSize: 11 }]}>{cible.valeur}</Text>

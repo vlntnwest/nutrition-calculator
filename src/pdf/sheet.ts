@@ -31,11 +31,7 @@ export type Ration = {
 };
 
 export type Secteur = {
-  titre: string;
-  /**
-   * La borne qui clôt le secteur, seule. Le titre la porte déjà avec celle
-   * d'où l'on part ; la forme à un tableau n'a la place que de la seconde.
-   */
+  /** La borne qui clôt le secteur : c'est par elle qu'il se nomme. */
   arrivee: string;
   /** Le repère de cette borne, le même que sur la carte et sur les passages. */
   repere: string;
@@ -160,7 +156,6 @@ export function sheetOf(
       const bornes = legBounds(legs, i);
 
       return {
-        titre: `${bornes.depart} → ${bornes.arrivee}`,
         arrivee: bornes.arrivee,
         repere: i === legs.length - 1 ? "A" : String(i + 1),
         km: `${km(startOf(legs, i))} → ${km(borneM(leg))}`,
