@@ -5,7 +5,7 @@ import { SheetProfile } from "./SheetProfile";
 import type { Sheet as Feuille } from "./sheet";
 import type { Carte } from "./sheetMapData";
 import { HAUTEUR_CARTE, HAUTEUR_PROFIL, LARGEUR_UTILE, s } from "./styles";
-import { CoursesTable, PassagesTable, RavitaillementTable } from "./Tables";
+import { CoursesTable, TableauUnique } from "./Tables";
 
 /**
  * La feuille à emporter, en A4. Voir `docs/pdf-du-roadbook.md`.
@@ -106,8 +106,7 @@ export function SheetDocument({
           </View>
         )}
 
-        <PassagesTable passages={feuille.passages} />
-        <RavitaillementTable secteurs={feuille.secteurs} />
+        <TableauUnique secteurs={feuille.secteurs} />
         <CoursesTable courses={feuille.courses} totaux={feuille.totaux} />
 
         <View style={s.pied} fixed>

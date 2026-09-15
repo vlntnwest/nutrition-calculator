@@ -20,24 +20,6 @@ import { formatFr, nomProduit } from "@/format/produit";
  * brancher pour rien.
  */
 
-/** Une borne de la course, et ce que le secteur qui y mène a coûté. */
-export type Passage = {
-  /**
-   * Le repère que la carte porte sur cette borne : `D` au départ, le rang du
-   * ravito ensuite, `A` à l'arrivée. Sans lui, un numéro lu sur la carte ne
-   * renverrait à aucune ligne du tableau, qui nomme ses bornes.
-   */
-  repere: string;
-  borne: string;
-  km: string;
-  denivele: string;
-  duree: string;
-  /** L'heure de la journée. Vide tant que la course n'a pas d'heure de départ. */
-  passage: string;
-  ecoule: string;
-  arret: string;
-};
-
 /** Une ration posée sur un secteur, et ce qu'elle apporte à elle seule. */
 export type Ration = {
   quantite: string;
@@ -50,12 +32,22 @@ export type Ration = {
 
 export type Secteur = {
   titre: string;
+  /**
+   * La borne qui clôt le secteur, seule. Le titre la porte déjà avec celle
+   * d'où l'on part ; la forme à un tableau n'a la place que de la seconde.
+   */
+  arrivee: string;
+  /** Le repère de cette borne, le même que sur la carte et sur les passages. */
+  repere: string;
   km: string;
   duree: string;
   besoin: string;
   apport: string;
   /** L'écart signé aux glucides visés. Vide sous le gramme. */
   ecart: string;
+  /** L'heure de passage à la borne qui clôt, et l'arrêt qu'on y fait. */
+  passage: string;
+  arret: string;
   rations: Ration[];
   avertissements: string[];
 };
@@ -73,7 +65,6 @@ export type Sheet = {
     allure: string;
   };
   cibles: { carbs: string; boisson: string; sodium: string };
-  passages: Passage[];
   secteurs: Secteur[];
   courses: Course[];
   totaux: {
@@ -165,42 +156,20 @@ export function sheetOf(
       sodium: `${entier(cibles.sodiumMgL)} mg/L`,
     },
 
-    passages: [
-      // Le départ n'a pas de secteur qui y mène : il ne porte que son
-      // kilomètre et l'heure du coup de feu, seule ligne où elle se lise.
-      {
-        repere: "D",
-        borne: "Départ",
-        km: km(0),
-        denivele: "",
-        duree: "",
-        passage: heure(0),
-        ecoule: "",
-        arret: "",
-      },
-      ...legs.map((leg, i) => ({
-        // Le dernier secteur s'achève à l'arrivée, que rien ne ravitaille.
-        repere: i === legs.length - 1 ? "A" : String(i + 1),
-        borne: legBounds(legs, i).arrivee,
-        km: km(borneM(leg)),
-        denivele: `+${entier(leg.ascentM)} / −${entier(leg.descentM)}`,
-        duree: duree(leg.durationS),
-        passage: heure(leg.elapsedS),
-        ecoule: duree(leg.elapsedS),
-        arret: leg.stopS === null ? "" : duree(leg.stopS),
-      })),
-    ],
-
     secteurs: legs.map((leg, i) => {
       const bornes = legBounds(legs, i);
 
       return {
         titre: `${bornes.depart} → ${bornes.arrivee}`,
+        arrivee: bornes.arrivee,
+        repere: i === legs.length - 1 ? "A" : String(i + 1),
         km: `${km(startOf(legs, i))} → ${km(borneM(leg))}`,
         duree: duree(leg.durationS),
         besoin: `${entier(leg.needG)} g`,
         apport: `${entier(leg.supply.carbsG)} g`,
         ecart: ecart(leg.marginG),
+        passage: heure(leg.elapsedS),
+        arret: leg.stopS === null ? "" : duree(leg.stopS),
         rations: leg.servings.map((r) => ({
           quantite: quantite(r.quantity),
           produit: nomProduit(r.name),

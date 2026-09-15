@@ -33,96 +33,6 @@ describe("fileNameOf", () => {
   });
 });
 
-describe("passages", () => {
-  test("porte une ligne de plus qu'il n'y a de secteurs", () => {
-    const deux = roadbook({
-      legs: [
-        leg({ rank: 1, endPositionM: 9800 }),
-        leg({ rank: 2, endPositionM: null, elapsedS: 9000 }),
-      ],
-    });
-
-    expect(sheetOf(plan(), deux, CIBLES).passages).toHaveLength(3);
-  });
-
-  test("numérote les bornes comme la carte les marque", () => {
-    const trois = roadbook({
-      legs: [
-        leg({ rank: 1, endPositionM: 9800 }),
-        leg({ rank: 2, endPositionM: 20800 }),
-        leg({ rank: 3, endPositionM: null }),
-      ],
-    });
-
-    expect(
-      sheetOf(plan(), trois, CIBLES).passages.map((p) => p.repere),
-    ).toEqual(["D", "1", "2", "A"]);
-  });
-
-  test("ouvre sur le départ, à zéro kilomètre et sans durée", () => {
-    const [depart] = sheetOf(plan(), roadbook(), CIBLES).passages;
-
-    expect(depart.borne).toBe("Départ");
-    expect(depart.km).toBe("0,0");
-    expect(depart.duree).toBe("");
-  });
-
-  test("donne au départ l'heure de départ pour heure de passage", () => {
-    const [depart] = sheetOf(
-      plan(),
-      roadbook({ startTime: "08:00" }),
-      CIBLES,
-    ).passages;
-
-    expect(depart.passage).toBe("08 h 00");
-  });
-
-  test("laisse l'heure de passage vide quand la course n'a pas d'heure", () => {
-    const sheet = sheetOf(plan(), roadbook({ startTime: null }), CIBLES);
-
-    expect(sheet.passages.every((p) => p.passage === "")).toBe(true);
-  });
-
-  test("nomme Arrivée la borne que rien ne clôt", () => {
-    // Le dernier secteur porte `endPositionM: null` : rien ne le clôt.
-    const sheet = sheetOf(
-      plan(),
-      roadbook({ legs: [leg({ endPositionM: null })] }),
-      CIBLES,
-    );
-
-    expect(sheet.passages.at(-1)?.borne).toBe("Arrivée");
-  });
-
-  test("retombe sur le kilomètre quand le ravito n'a pas de nom", () => {
-    const deux = roadbook({
-      legs: [
-        leg({ rank: 1, endPositionM: 9800, endName: null }),
-        leg({ rank: 2, endPositionM: null }),
-      ],
-    });
-
-    expect(sheetOf(plan(), deux, CIBLES).passages[1].borne).toBe("9,8 km");
-  });
-
-  test("écrit la durée du secteur qui mène à la borne, et son arrêt", () => {
-    const sheet = sheetOf(
-      plan(),
-      roadbook({
-        legs: [leg({ durationS: 4500, stopS: 300, endName: "Haberacker" })],
-      }),
-      CIBLES,
-    );
-
-    expect(sheet.passages[1]).toMatchObject({
-      borne: "Haberacker",
-      duree: "1 h 15",
-      arret: "5 min",
-      denivele: "+420 / -180",
-    });
-  });
-});
-
 describe("secteurs", () => {
   test("titre un secteur par ses deux bornes", () => {
     const sheet = sheetOf(
@@ -132,6 +42,41 @@ describe("secteurs", () => {
     );
 
     expect(sheet.secteurs[0].titre).toBe("Départ > Haberacker");
+  });
+
+  test("porte la borne qui le clôt, pour la forme à un tableau", () => {
+    // La forme « un tableau » fond les deux tableaux en un : chaque secteur
+    // doit donc porter lui-même ce que sa ligne de passage disait, plutôt que
+    // de faire coïncider deux listes par leur indice.
+    const sheet = sheetOf(
+      plan(),
+      roadbook({
+        startTime: "08:00",
+        legs: [
+          leg({ rank: 1, endName: "Haberacker", stopS: 300 }),
+          leg({ rank: 2, endPositionM: null, elapsedS: 9300 }),
+        ],
+      }),
+      CIBLES,
+    );
+
+    expect(sheet.secteurs[0]).toMatchObject({
+      repere: "1",
+      arrivee: "Haberacker",
+      passage: "09 h 15",
+      arret: "5 min",
+    });
+    expect(sheet.secteurs[1]).toMatchObject({
+      repere: "A",
+      arrivee: "Arrivée",
+      arret: "",
+    });
+  });
+
+  test("laisse l'heure de passage vide quand la course n'a pas d'heure", () => {
+    const sheet = sheetOf(plan(), roadbook({ startTime: null }), CIBLES);
+
+    expect(sheet.secteurs.every((s) => s.passage === "")).toBe(true);
   });
 
   test("signe l'écart aux glucides visés", () => {

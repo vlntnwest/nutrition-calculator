@@ -17,7 +17,7 @@ de bureau, souvent en noir et blanc. Elle porte, de haut en bas :
 4. les temps de passage et les rations ;
 5. la liste de courses, le sac complet.
 
-Deux mises en page sont produites pour être comparées, puis une seule survit
+La mise en page des tableaux a été tranchée après comparaison de deux formes
 (section 6).
 
 ## 2. Décisions arrêtées
@@ -310,46 +310,47 @@ désormais. Les traits sont à bouts francs : paliers et contremarches partagent
 leurs extrémités, et deux bouts arrondis superposés épaississent le joint au
 lieu de le fermer.
 
-## 6. Les deux mises en page
+## 6. La mise en page des tableaux
 
-Un paramètre de requête les sépare : `?forme=deux` et `?forme=une`. Comparer,
-c'est ouvrir deux onglets. Une seule survit ; l'autre part au même commit que
-le choix.
+Deux formes ont été écrites et comparées sur un ultra de dix secteurs : l'une
+séparait les temps de passage des rations, l'autre les fondait. **C'est la
+seconde qui a été retenue**, le 15 septembre 2026. La première a été supprimée
+au même commit, ainsi que la liste `passages` de `sheet.ts`, qui n'avait plus
+de lecteur.
 
-### 6.1 Forme « deux tableaux »
+### 6.1 Une ligne par borne, ses rations dessous
 
-Elle sépare selon deux gestes distincts, savoir où l'on en est et savoir ce
-qu'on mange.
+Une ligne de secteur, en gras, portant la borne qui le clôt et ses colonnes de
+temps — km, durée, heure de passage, arrêt — puis, à droite, son apport sur
+son besoin avec l'écart signé. Dessous, ses rations : quantité, produit,
+marque et format, et leurs propres glucides et sodium dans les deux colonnes
+de droite. Les colonnes de temps y restent vides, elles ne disent rien d'une
+ration.
 
-**Temps de passage**, une ligne par borne, du départ à l'arrivée : km, nom,
-D+ et D− du secteur qui y mène, durée de ce secteur, heure de passage, temps
-écoulé, arrêt.
+Le secteur porte lui-même la borne qui le clôt (`arrivee`, `repere`,
+`passage`, `arret`). Sans cela, fondre les deux tableaux demandait de faire
+coïncider `passages[i + 1]` avec `secteurs[i]`, un couplage par indice qui
+casse au premier changement.
 
-**Ravitaillement**, par secteur : une ligne de titre portant les deux bornes,
-la durée et le besoin en glucides ; puis une ligne par produit, quantité,
-produit, marque et format, glucides, sodium ; puis le total du secteur et
-l'écart signé.
+Les largeurs sont des nombres et non des chaînes : la largeur des colonnes de
+temps, laissée vide sur la ligne d'une ration, se déduit de la somme des
+autres. Recopiée en dur, elle était déjà fausse au premier rendu.
 
-### 6.2 Forme « un tableau »
+**Ce qui dérange.** La forme retenue charge la ligne, et sur un ultra à quinze
+ravitos le tableau sera long. Elle a en revanche l'avantage de ne jamais
+demander de revenir en arrière en course, là où deux tableaux imposent
+l'aller-retour entre deux pages.
 
-Elle tient le fil de la course en une lecture. Une ligne de secteur portant ses
-colonnes de temps (km d'arrivée, nom de la borne, durée, heure de passage,
-arrêt), suivie de ses lignes de produits en retrait dans les mêmes colonnes,
-les colonnes de droite portant glucides et sodium. Un filet plus appuyé sépare
-les secteurs.
+**Ce qu'elle a coûté.** Le D+ et le D− de chaque secteur, et le temps écoulé
+depuis le départ, que la forme à deux tableaux montrait et que celle-ci n'a
+pas la place de porter. Ils restent dans `roadbook.legs`, à trois lignes de
+distance si la refonte les réclame.
 
-### 6.3 Le compromis
+### 6.2 La liste de courses
 
-La forme à deux tableaux se lit vite pour un usage à la fois, et oblige à
-l'aller-retour entre deux pages en course. La forme à un tableau ne demande
-jamais de revenir en arrière, et charge la ligne : sur un ultra à quinze
-ravitos, le tableau sera long.
-
-### 6.4 La liste de courses
-
-Identique dans les deux formes, en fin de document : le sac complet, quantité,
-produit, marque, puis les totaux de `roadbook.total` — glucides et écart,
-énergie, sodium, boisson, poids porté au départ.
+En fin de document : le sac complet, quantité, produit, marque, puis les
+totaux de `roadbook.total` — glucides et écart, énergie, sodium, boisson,
+poids porté au départ.
 
 ## 7. Ordre d'écriture
 
@@ -369,7 +370,10 @@ Chaque étape se vérifie seule.
    bornes sans les numéroter, d'où la colonne `repere` (voir 4.1).
 4. ~~**`profile.ts`, le relief et la bande d'allure.**~~ Fait. Voir 5.2 pour
    les deux pièges du rendu vectoriel.
-5. **La forme « une »**, en variante du seul bloc qui change.
+5. ~~**La forme « une »**, en variante du seul bloc qui change.~~ Fait. Le
+   secteur porte désormais lui-même la borne qui le clôt (`arrivee`,
+   `repere`, `passage`, `arret`) : fondre les deux tableaux demandait sinon de
+   faire coïncider deux listes par leur indice.
 6. **Le bouton** dans `RoadbookEditor`, inerte tant que `sale`.
 
 ## 8. Ce qui reste ouvert
