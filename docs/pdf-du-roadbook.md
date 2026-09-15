@@ -169,20 +169,25 @@ navigateur.
 
 Tout est pur sauf le route handler et les composants.
 
-| Fichier                                         | Rôle                                                                                                                                                             |
-| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/pdf/staticMap.ts`                          | Le cadrage. Un bbox et une taille de cadre entrent ; le zoom, le centre, la liste des tuiles `{z, x, y, dx, dy}` et la projection `(lat, lon) → (x, y)` sortent. |
-| `src/pdf/profile.ts`                            | Le relief en polygones, un par suite de points de même palier de pente, plus les marches d'allure et les arrêts du dégradé.                                      |
-| `src/pdf/sheet.ts`                              | Le plan et le roadbook entrent, les lignes de la feuille sortent. Il range, il ne dessine pas.                                                                   |
-| `src/pdf/Sheet.tsx`                             | Le document : `Document`, `Page size="A4"`, et l'assemblage.                                                                                                     |
-| `src/pdf/Map.tsx`                               | Les tuiles en `<Image>`, la trace et les bornes en `<Svg>`.                                                                                                      |
-| `src/pdf/Profile.tsx`                           | Le relief, la bande d'allure, les deux axes.                                                                                                                     |
-| `src/pdf/Tables.tsx`                            | Les tableaux des deux formes.                                                                                                                                    |
-| `src/app/plan/[accessId]/roadbook/pdf/route.ts` | Lit, calcule la bande, `renderToBuffer`, rend le fichier.                                                                                                        |
+| Fichier | Rôle |
+| --- | --- |
+| `src/pdf/staticMap.ts` | Le cadrage. Un bbox et une taille de cadre entrent ; le zoom, le centre, la liste des tuiles `{z, x, y, dx, dy}` et la projection `(lat, lon) → (x, y)` sortent. |
+| `src/pdf/tiles.ts` | Le chargement des tuiles, `User-Agent` et cache compris. Une tuile manquante laisse un carré blanc, elle ne fait pas échouer la feuille. |
+| `src/pdf/profile.ts` | Le relief lissé, l'escalier d'allure, et les graduations communes aux deux échelles. |
+| `src/pdf/sheet.ts` | Le plan et le roadbook entrent, les lignes de la feuille sortent. Il range, il ne dessine pas. |
+| `src/pdf/sheetMapData.ts` | Ce qu'il faut pour dessiner la carte : le cadrage, les tuiles chargées, la trace, les repères. |
+| `src/pdf/sheetProfileData.ts` | La bande d'allure de l'écran Course, calculée sur le profil pleine résolution. |
+| `src/pdf/styles.ts` | Le traitement de la feuille, et les dimensions qu'elle occupe. |
+| `src/pdf/SheetDocument.tsx` | Le document : `Document`, `Page size="A4"`, et l'assemblage. Pas `Sheet.tsx` : deux noms qui ne diffèrent que par la casse ne cohabitent pas avec `sheet.ts`. |
+| `src/pdf/SheetMap.tsx` | Les tuiles en `<Image>`, la trace et les bornes en `<Svg>`. |
+| `src/pdf/SheetProfile.tsx` | Le relief, la bande d'allure, les trois axes. |
+| `src/pdf/Tables.tsx` | Le tableau des secteurs, et la liste de courses. |
+| `src/app/plan/[accessId]/roadbook/pdf/route.ts` | Lit, calcule la bande, `renderToBuffer`, rend le fichier. |
 
-`staticMap.ts`, `profile.ts` et `sheet.ts` passent par `vitest`, comme
-`slopeColor.ts` et les données du graphique (`chart.test.ts`). Les composants
-se vérifient à l'œil sur le fichier produit.
+`staticMap.ts`, `profile.ts`, `sheet.ts` et le `bornesOf` de `sheetMapData.ts`
+passent par `vitest`, comme `slopeColor.ts` et les données du graphique
+(`chart.test.ts`). Les composants se vérifient à l'œil sur le fichier produit,
+sauf la décision du déclencheur, qui se teste (voir 2.6).
 
 ### 3.1 Le cadrage
 
