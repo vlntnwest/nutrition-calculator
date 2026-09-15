@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { entier, km } from "@/format/number";
 import { ArrowLeftIcon } from "@/ui/icons";
+import { PdfLink } from "./PdfLink";
 import { ShareButton } from "./ShareButton";
 
 /**
@@ -9,18 +10,23 @@ import { ShareButton } from "./ShareButton";
  * vers l'import, que le rail assure ailleurs.
  *
  * Le partage se tient contre le titre plutôt qu'au bout de la barre : c'est
- * ce plan-là qu'on passe, et le geste se lit de là où le nom se lit.
+ * ce plan-là qu'on passe, et le geste se lit de là où le nom se lit. Le
+ * téléchargement de la feuille l'accompagne : ce sont les deux façons de
+ * faire sortir le plan de l'écran.
  */
 export function PlanTopBar({
   accessId,
   nom,
   distanceM,
   ascentM,
+  calcule,
 }: {
   accessId: string;
   nom: string;
   distanceM: number;
   ascentM: number;
+  /** Le plan a des secteurs : il y a une feuille à imprimer. */
+  calcule: boolean;
 }) {
   return (
     <header className="flex shrink-0 items-center gap-3 border-line border-b bg-paper px-4 py-3 sm:px-6">
@@ -47,6 +53,7 @@ export function PlanTopBar({
       <p className="shrink-0 font-mono text-[12px] text-ink-soft sm:hidden">
         {km(distanceM)} km
       </p>
+      {calcule && <PdfLink accessId={accessId} tenue="icone" />}
       <ShareButton accessId={accessId} nom={nom} />
     </header>
   );
