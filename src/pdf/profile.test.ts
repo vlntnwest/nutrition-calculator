@@ -1,13 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { ProfilePoint } from "@/core/type";
-import {
-  axe,
-  couleurAllure,
-  courbe,
-  echantillonne,
-  figureOf,
-  graduations,
-} from "./profile";
+import { axe, courbe, echantillonne, figureOf } from "./profile";
 
 const CADRE = { largeur: 1000, hauteur: 300 };
 
@@ -42,27 +35,6 @@ describe("courbe", () => {
   test("ne rend rien sous deux points", () => {
     expect(courbe([])).toBe("");
     expect(courbe([{ x: 0, y: 0 }])).toBe("");
-  });
-});
-
-describe("graduations", () => {
-  test("tombe sur des valeurs rondes", () => {
-    expect(graduations(0, 1000, 4)).toEqual([0, 250, 500, 750, 1000]);
-  });
-
-  test("reste dans l'intervalle demandé", () => {
-    for (const valeur of graduations(137, 892, 4)) {
-      expect(valeur).toBeGreaterThanOrEqual(137);
-      expect(valeur).toBeLessThanOrEqual(892);
-    }
-  });
-
-  test("en pose au moins deux sur un intervalle étroit", () => {
-    expect(graduations(100, 100.5, 4).length).toBeGreaterThanOrEqual(2);
-  });
-
-  test("ne diverge pas sur un intervalle nul", () => {
-    expect(graduations(200, 200, 4)).toEqual([200]);
   });
 });
 
@@ -142,8 +114,8 @@ describe("figureOf", () => {
       cadre: CADRE,
     });
 
-    // Deux paliers, et la contremarche qui les relie.
-    expect(figure.allure).toHaveLength(3);
+    // Deux paliers, et la contremarche qui les relie, en un seul tracé.
+    expect(figure.allure?.escalier.match(/Z/g)).toHaveLength(3);
   });
 
   test("met le rapide en haut du cadre, comme l'écran Course", () => {
@@ -163,8 +135,10 @@ describe("figureOf", () => {
     });
 
     // Le premier tronçon est le plus rapide : son palier est au-dessus.
-    const [rapide, , lent] = figure.allure ?? [];
-    expect(rapide.y1).toBeLessThan(lent.y1);
+    const [rapide, , lent] = (figure.allure?.escalier ?? "").split("Z");
+    expect(Math.min(...ordonnees(rapide))).toBeLessThan(
+      Math.min(...ordonnees(lent)),
+    );
   });
 
   test("porte l'altitude et l'allure sur la même ligne de repère", () => {
@@ -253,20 +227,38 @@ describe("echantillonne", () => {
   });
 });
 
-describe("couleurAllure", () => {
-  const BAND = {
-    segments: [],
-    meanSPerKm: 450,
-    slowestSPerKm: 600,
-    fastestSPerKm: 300,
-  };
+describe("le dégradé d'allure", () => {
+  const POINTS = trace([100, 140, 300, 260, 180, 180, 220, 100]);
+  const degradeDe = (meanSPerKm: number) =>
+    figureOf({
+      points: POINTS,
+      band: {
+        segments: [{ startM: 0, endM: 700, sPerKm: meanSPerKm }],
+        meanSPerKm,
+        slowestSPerKm: 600,
+        fastestSPerKm: 300,
+      },
+      bornes: [],
+      cadre: CADRE,
+    }).allure?.degrade ?? [];
+  const vert = (mean: number) =>
+    degradeDe(mean).find((arret) => arret.color === "#3f9e4d")?.offset;
 
-  test("pose le vert sur l'allure moyenne", () => {
-    expect(couleurAllure(450, BAND)).toBe("#3f9e4d");
+  test("va du plus lent en bas du cadre au plus rapide en haut", () => {
+    const degrade = degradeDe(450);
+
+    expect(degrade[0]).toEqual({ offset: 0, color: "#2b7bd6" });
+    expect(degrade.at(-1)).toEqual({ offset: 1, color: "#cf3b1f" });
   });
 
-  test("tient les deux bouts de la rampe", () => {
-    expect(couleurAllure(600, BAND)).toBe("#2b7bd6");
-    expect(couleurAllure(300, BAND)).toBe("#cf3b1f");
+  test("pose le vert sur l'allure moyenne, pas à mi-hauteur", () => {
+    expect(vert(450)).toBeCloseTo(0.5, 3);
+    // Une moyenne penchée du côté lent tire le vert vers le bas du cadre.
+    expect(vert(550)).toBeCloseTo(0.2126, 3);
   });
 });
+
+/** Les ordonnées d'un sous-tracé, pour lire une hauteur sans la recalculer. */
+function ordonnees(trace: string): number[] {
+  return [...trace.matchAll(/-?[\d.]+\s+(-?[\d.]+)/g)].map((m) => Number(m[1]));
+}

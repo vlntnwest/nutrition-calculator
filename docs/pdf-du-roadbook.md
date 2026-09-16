@@ -125,6 +125,13 @@ n'y porte jamais seule l'information.
 `_race/pacing.ts` ne porte pas `"use client"`, il s'importe tel quel depuis le
 route handler.
 
+L'écran Roadbook lit désormais la même bande : la dérivation — temps de
+mouvement relu sur les secteurs, réglages d'allure relus sur le plan — vit dans
+`roadbook/racePaceBand.ts`, que la feuille et l'écran appellent tous deux. Deux
+dérivations séparées finiraient par diverger, et le papier ne montrerait plus
+l'écran. `legPaceBand` ne sert plus qu'à la réglette des secteurs, sous le
+graphique, qui compare des moyennes entre elles et garde donc son échelle.
+
 ### 2.6 Deux déclencheurs, un nom de fichier
 
 Le lien vit dans la barre du bas du Roadbook, contre « Enregistrer les
@@ -172,7 +179,7 @@ Tout est pur sauf le route handler et les composants.
 | Fichier                                         | Rôle                                                                                                                                                             |
 | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/pdf/staticMap.ts`                          | Le cadrage. Un bbox et une taille de cadre entrent ; le zoom, le centre, la liste des tuiles `{z, x, y, dx, dy}` et la projection `(lat, lon) → (x, y)` sortent. |
-| `src/pdf/profile.ts`                            | Le relief en polygones, un par suite de points de même palier de pente, plus les marches d'allure et les arrêts du dégradé.                                      |
+| `src/pdf/profile.ts`                            | Le relief en polygones, un par suite de points de même palier de pente, plus l'escalier d'allure et les arrêts de son dégradé.                                      |
 | `src/pdf/sheet.ts`                              | Le plan et le roadbook entrent, les lignes de la feuille sortent. Il range, il ne dessine pas.                                                                   |
 | `src/pdf/Sheet.tsx`                             | Le document : `Document`, `Page size="A4"`, et l'assemblage.                                                                                                     |
 | `src/pdf/Map.tsx`                               | Les tuiles en `<Image>`, la trace et les bornes en `<Svg>`.                                                                                                      |
@@ -331,19 +338,21 @@ a perdu les cinq gris de pente : un seul ton, une crête à l'encre, les arêtes
 lissées en cubiques de Bézier (`courbe`). Les gris de pente restent justes à
 l'écran, où la largeur les porte ; ils ne survivent pas à une A4.
 
-**La rampe d'allure.** Teindre une polyligne par un `<LinearGradient>` sort
-en noir : le rendu PDF n'applique pas la teinture au trait. La géométrie
-rendait de toute façon le dégradé inutile — un palier d'allure est horizontal,
-la rampe est verticale, donc chaque palier prend une couleur unie. L'escalier
-est donc fait de traits, chacun coloré par `couleurAllure`, qui inverse
-l'étirement de `paceGradientStops` pour que le vert tombe pile sur la moyenne.
+**La rampe d'allure.** Teindre un trait par un `<LinearGradient>` sort en
+noir : le rendu PDF n'applique la teinture qu'à un remplissage. L'escalier a
+donc d'abord été fait de traits, un par palier et par contremarche, chacun
+d'une couleur unie. Deux bouts francs ne fermant pas un angle droit, chaque
+raccord se voyait — une dent à tous les changements de tronçon, et il y en a
+quelques centaines. L'escalier est désormais un **seul tracé**, fait de pavés
+jointifs que le remplissage fusionne, et qui découpe sa part d'un dégradé
+vertical couvrant le cadre (`<ClipPath>` sur un `<Rect>`). La rampe est celle
+de l'écran, `paceGradientStops`, aux mêmes arrêts : la couleur dit la hauteur
+où le trait passe, et une contremarche se dégrade sur toute sa longueur.
 
 **Le sens de l'axe.** Écrit à l'envers du premier coup, et invisible tant
 qu'on ne lit pas les graduations : le rapide va **en haut**, comme partout
 ailleurs un sommet est un maximum. `ElevationChart` le dit, un test le tient
-désormais. Les traits sont à bouts francs : paliers et contremarches partagent
-leurs extrémités, et deux bouts arrondis superposés épaississent le joint au
-lieu de le fermer.
+désormais.
 
 ## 6. La mise en page des tableaux
 

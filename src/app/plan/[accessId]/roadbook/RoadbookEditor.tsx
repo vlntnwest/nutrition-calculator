@@ -11,6 +11,7 @@ import { duree } from "@/format/number";
 import { Button } from "@/ui/Button";
 import { Notice } from "@/ui/Notice";
 import { Toast } from "@/ui/Toast";
+import type { PaceBand } from "@/ui/track/chartTypes";
 import { PdfLink } from "../_shell/PdfLink";
 import { useDeclarerRetouches } from "../_shell/RetouchesEnCours";
 import { withFill, withServing } from "./edit";
@@ -69,12 +70,15 @@ export function RoadbookEditor({
   accessId,
   roadbook,
   points,
+  paceBand,
   cibleGH,
   entete,
 }: {
   accessId: string;
   roadbook: Roadbook;
   points: ProfilePoint[];
+  /** L'allure du plan calculé, tronçon par tronçon : voir `racePaceBand`. */
+  paceBand: PaceBand | null;
   /** La cible du plan, celle qui vaut pour un secteur sans consigne. */
   cibleGH: number;
   /** Le titre, le bouton Calculer et le départ : ils défilent avec la liste
@@ -279,6 +283,7 @@ export function RoadbookEditor({
               points={points}
               legs={roadbook.legs}
               totalM={roadbook.totalM}
+              paceBand={paceBand}
               onChoisir={versSecteur}
             />
           </div>
