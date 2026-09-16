@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import type { ProfilePoint, ResolvedPoint } from "@/core/type";
 import { db } from "@/db";
 import { tracks } from "@/db/schema/tracks";
+import { isAccessId } from "./accessId";
 
 /**
  * La géométrie d'une trace, lue à part du plan.
@@ -17,6 +18,8 @@ import { tracks } from "@/db/schema/tracks";
 export async function getTrackPoints(
   accessId: string,
 ): Promise<ResolvedPoint[]> {
+  if (!isAccessId(accessId)) return [];
+
   const [row] = await db
     .select({ points: tracks.points })
     .from(tracks)
@@ -34,6 +37,8 @@ export async function getTrackPoints(
 export async function getTrackProfile(
   accessId: string,
 ): Promise<ProfilePoint[]> {
+  if (!isAccessId(accessId)) return [];
+
   const [row] = await db
     .select({ profile: tracks.profile })
     .from(tracks)
