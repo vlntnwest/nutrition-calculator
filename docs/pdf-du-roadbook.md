@@ -125,6 +125,13 @@ n'y porte jamais seule l'information.
 `_race/pacing.ts` ne porte pas `"use client"`, il s'importe tel quel depuis le
 route handler.
 
+L'écran Roadbook lit désormais la même bande : la dérivation — temps de
+mouvement relu sur les secteurs, réglages d'allure relus sur le plan — vit dans
+`roadbook/racePaceBand.ts`, que la feuille et l'écran appellent tous deux. Deux
+dérivations séparées finiraient par diverger, et le papier ne montrerait plus
+l'écran. `legPaceBand` ne sert plus qu'à la réglette des secteurs, sous le
+graphique, qui compare des moyennes entre elles et garde donc son échelle.
+
 ### 2.6 Deux déclencheurs, un nom de fichier
 
 Le lien vit dans la barre du bas du Roadbook, contre « Enregistrer les

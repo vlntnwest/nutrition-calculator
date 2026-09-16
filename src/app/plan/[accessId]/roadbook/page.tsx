@@ -4,10 +4,11 @@ import { duree } from "@/format/number";
 import { ArrowRightIcon } from "@/ui/icons";
 import { EmptyNote } from "@/ui/Notice";
 import { calculable, destinations } from "../_shell/destinations";
-import { planOf, roadbookOf, trackPointsOf } from "../plan";
+import { planOf, roadbookOf, trackPointsOf, trackProfileOf } from "../plan";
 import { CalculeDepuis, ComputeButton } from "./ComputeButton";
 import { RaceStart } from "./RaceStart";
 import { RoadbookEditor } from "./RoadbookEditor";
+import { racePaceBand } from "./racePaceBand";
 
 /** Écran 7 — le calcul, et ce qu'il donne. */
 export default async function Page(
@@ -119,16 +120,21 @@ export default async function Page(
   }
 
   // Après la sortie du plan non calculé, et pas avant : l'écran qui liste ce
-  // qui manque n'a rien à tracer. La trace simplifiée seule — `LegProfile` ne
-  // dessine que la portion d'un secteur, le profil pleine résolution n'a rien
-  // à faire ici.
-  const points = await trackPointsOf(accessId);
+  // qui manque n'a rien à tracer. Les points simplifiés dessinent le relief,
+  // le profil pleine résolution ne sert qu'à la bande d'allure — et il est
+  // consommé ici, comme dans le route handler du PDF : seule la bande, quelques
+  // centaines de tronçons, traverse le réseau.
+  const [points, profile] = await Promise.all([
+    trackPointsOf(accessId),
+    trackProfileOf(accessId),
+  ]);
 
   return (
     <RoadbookEditor
       accessId={accessId}
       roadbook={roadbook}
       points={points}
+      paceBand={racePaceBand(plan, roadbook, profile)}
       cibleGH={cibles.carbsGH}
       entete={entete}
     />

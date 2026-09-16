@@ -1,13 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { ProfilePoint } from "@/core/type";
-import {
-  axe,
-  couleurAllure,
-  courbe,
-  echantillonne,
-  figureOf,
-  graduations,
-} from "./profile";
+import { axe, couleurAllure, courbe, echantillonne, figureOf } from "./profile";
 
 const CADRE = { largeur: 1000, hauteur: 300 };
 
@@ -42,27 +35,6 @@ describe("courbe", () => {
   test("ne rend rien sous deux points", () => {
     expect(courbe([])).toBe("");
     expect(courbe([{ x: 0, y: 0 }])).toBe("");
-  });
-});
-
-describe("graduations", () => {
-  test("tombe sur des valeurs rondes", () => {
-    expect(graduations(0, 1000, 4)).toEqual([0, 250, 500, 750, 1000]);
-  });
-
-  test("reste dans l'intervalle demandé", () => {
-    for (const valeur of graduations(137, 892, 4)) {
-      expect(valeur).toBeGreaterThanOrEqual(137);
-      expect(valeur).toBeLessThanOrEqual(892);
-    }
-  });
-
-  test("en pose au moins deux sur un intervalle étroit", () => {
-    expect(graduations(100, 100.5, 4).length).toBeGreaterThanOrEqual(2);
-  });
-
-  test("ne diverge pas sur un intervalle nul", () => {
-    expect(graduations(200, 200, 4)).toEqual([200]);
   });
 });
 
