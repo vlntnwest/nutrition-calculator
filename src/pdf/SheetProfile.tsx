@@ -1,4 +1,15 @@
-import { Line, Path, Svg, Text, View } from "@react-pdf/renderer";
+import {
+  ClipPath,
+  Defs,
+  Line,
+  LinearGradient,
+  Path,
+  Rect,
+  Stop,
+  Svg,
+  Text,
+  View,
+} from "@react-pdf/renderer";
 import type { ProfileFigure } from "./profile";
 import { GRILLE, INK, INK_SOFT, LINE, RELIEF } from "./styles";
 
@@ -157,6 +168,30 @@ export function SheetProfile({
           height: cadreH,
         }}
       >
+        {figure.allure !== null && (
+          <Defs>
+            <ClipPath id="escalier-allure">
+              <Path d={figure.allure.escalier} />
+            </ClipPath>
+            <LinearGradient
+              id="rampe-allure"
+              gradientUnits="userSpaceOnUse"
+              x1={0}
+              y1={figure.cadre.hauteur}
+              x2={0}
+              y2={0}
+            >
+              {figure.allure.degrade.map((arret) => (
+                <Stop
+                  key={arret.offset}
+                  offset={arret.offset}
+                  stopColor={arret.color}
+                />
+              ))}
+            </LinearGradient>
+          </Defs>
+        )}
+
         {/* La grille passe sous tout le reste. Une seule suite de lignes,
             lue en altitude d'un côté et en allure de l'autre. */}
         {figure.graduations.map((g) => (
@@ -193,23 +228,19 @@ export function SheetProfile({
           strokeLinejoin="round"
         />
 
-        {/* Un trait par palier et par contremarche, chacun avec sa couleur
-            de rampe : voir `escalier` dans `profile.ts`. */}
-        {figure.allure?.map((segment) => (
-          <Line
-            key={`${segment.x1}-${segment.y1}-${segment.x2}-${segment.y2}`}
-            x1={segment.x1}
-            y1={segment.y1}
-            x2={segment.x2}
-            y2={segment.y2}
-            stroke={segment.couleur}
-            strokeWidth={2.5}
-            // Bout franc, pas arrondi : paliers et contremarches partagent
-            // leurs extrémités, et deux bouts arrondis superposés
-            // épaississent le joint au lieu de le fermer.
-            strokeLinecap="butt"
+        {/* Le dégradé couvre le cadre, l'escalier y découpe sa part : c'est
+            la seule façon de teindre l'allure par une rampe, le rendu PDF ne
+            l'applique pas à un trait. Voir `escalier` dans `profile.ts`. */}
+        {figure.allure !== null && (
+          <Rect
+            x={0}
+            y={0}
+            width={figure.cadre.largeur}
+            height={figure.cadre.hauteur}
+            fill="url(#rampe-allure)"
+            clipPath="url(#escalier-allure)"
           />
-        ))}
+        )}
 
         <Line
           x1={0}

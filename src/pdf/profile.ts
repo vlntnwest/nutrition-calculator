@@ -1,7 +1,7 @@
 import type { ProfilePoint } from "@/core/type";
 import { graduations } from "@/format/axis";
 import type { PaceBand } from "@/ui/track/chartTypes";
-import { paceRampColor } from "@/ui/track/paceColor";
+import { paceGradientStops } from "@/ui/track/paceColor";
 
 /**
  * Le profil et la bande d'allure, ramenés à des tracés SVG.
@@ -19,21 +19,20 @@ import { paceRampColor } from "@/ui/track/paceColor";
 
 export type Cadre = { largeur: number; hauteur: number };
 
-/** Un palier d'allure, ou la contremarche qui mène au suivant. */
-export type Marche = {
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
-  couleur: string;
+/** L'escalier d'allure : son tracé, et le dégradé où il se découpe. */
+export type Allure = {
+  /** Les paliers et les contremarches, en pavés jointifs d'un seul tracé. */
+  escalier: string;
+  /** Les arrêts du dégradé, du bas du cadre vers le haut. */
+  degrade: { offset: number; color: string }[];
 };
 
 export type ProfileFigure = {
   cadre: Cadre;
   /** L'aplat du relief, fermé sur le sol, et la crête qui le souligne. */
   relief: { aplat: string; crete: string };
-  /** L'escalier d'allure : les paliers, les contremarches, et leur couleur. */
-  allure: Marche[] | null;
+  /** L'escalier d'allure, à découper dans son dégradé. */
+  allure: Allure | null;
   /**
    * Les lignes de repère, communes aux deux échelles : l'altitude se lit à
    * droite, l'allure à gauche, à la même hauteur. C'est ce qui permet de
@@ -141,31 +140,6 @@ export function echantillonne(
   return gardes;
 }
 
-/**
- * La couleur de la rampe pour une allure : bleu sur le tronçon le plus lent,
- * vert sur l'allure moyenne, rouge sur le plus rapide.
- *
- * Les deux moitiés s'étirent séparément pour que le vert tombe pile sur la
- * moyenne, qui n'est presque jamais à mi-chemin des extrêmes. C'est l'inverse
- * exact de `paceGradientStops`, qui fait le même étirement sur un dégradé de
- * canevas : ici l'escalier est horizontal et le dégradé vertical, si bien que
- * chaque palier prend de toute façon une couleur unie.
- */
-export function couleurAllure(sPerKm: number, band: PaceBand): string {
-  const etendue = band.slowestSPerKm - band.fastestSPerKm;
-  if (!(etendue > 0)) return paceRampColor(0.5);
-
-  const u = (band.slowestSPerKm - sPerKm) / etendue;
-  const pivot = Math.min(
-    Math.max((band.slowestSPerKm - band.meanSPerKm) / etendue, 0.02),
-    0.98,
-  );
-
-  return paceRampColor(
-    u <= pivot ? (u / pivot) * 0.5 : 0.5 + ((u - pivot) / (1 - pivot)) * 0.5,
-  );
-}
-
 export function figureOf({
   points,
   band,
@@ -220,7 +194,13 @@ export function figureOf({
       solM,
     ),
 
-    allure: band === null ? null : escalier(band, x, cadre),
+    allure:
+      band === null
+        ? null
+        : {
+            escalier: escalier(band, x, cadre),
+            degrade: degradeAllure(band, cadre),
+          },
 
     // Les altitudes commandent la grille, parce qu'elles tombent sur des
     // nombres ronds ; l'allure se lit ensuite à la hauteur où la ligne passe,
@@ -306,48 +286,66 @@ function allureA(y: number, band: PaceBand, cadre: Cadre): number {
   return rapide + (y / cadre.hauteur) * (lent - rapide);
 }
 
+/** L'épaisseur du trait d'allure, en unités de la `viewBox`. */
+const EPAISSEUR_ALLURE = 2.5;
+
 /**
  * L'allure en marches d'escalier : un palier par tronçon, relié au suivant
- * par une contremarche. Chaque trait porte sa couleur, prise sur la rampe à
- * la hauteur où il passe.
+ * par une contremarche, le tout en un seul tracé.
  *
- * Des traits plutôt qu'une polyligne teintée par un dégradé : une
- * contremarche traverse la rampe, un palier n'en touche qu'une hauteur, et
- * les deux se colorent donc par le même appel plutôt que par une teinture
- * que le rendu PDF n'applique pas au trait.
+ * Des pavés remplis plutôt que des traits : un trait par marche laissait voir
+ * chacun de ses raccords, deux bouts francs ne fermant pas un angle droit.
+ * Remplis d'une passe, les pavés fusionnent, et le dégradé les traverse.
  */
 function escalier(
   band: PaceBand,
   x: (d: number) => number,
   cadre: Cadre,
-): Marche[] {
+): string {
   const y = (sPerKm: number) => yAllure(sPerKm, band, cadre);
+  const demi = EPAISSEUR_ALLURE / 2;
+  const pave = (x1: number, y1: number, x2: number, y2: number) =>
+    `M ${net(x1)} ${net(y1)} L ${net(x2)} ${net(y1)} L ${net(x2)} ${net(y2)} L ${net(x1)} ${net(y2)} Z`;
 
-  return band.segments.flatMap((segment, i) => {
-    const hauteur = y(segment.sPerKm);
-    const palier = {
-      x1: x(segment.startM),
-      y1: hauteur,
-      x2: x(segment.endM),
-      y2: hauteur,
-      couleur: couleurAllure(segment.sPerKm, band),
-    };
-    const suivant = band.segments[i + 1];
-    if (suivant === undefined) return [palier];
+  return band.segments
+    .flatMap((segment, i) => {
+      const hauteur = y(segment.sPerKm);
+      const palier = pave(
+        x(segment.startM),
+        hauteur - demi,
+        x(segment.endM),
+        hauteur + demi,
+      );
+      const suivant = band.segments[i + 1];
+      if (suivant === undefined) return [palier];
 
-    return [
-      palier,
-      {
-        x1: x(segment.endM),
-        y1: hauteur,
-        x2: x(segment.endM),
-        y2: y(suivant.sPerKm),
-        // La contremarche prend la couleur de son milieu : elle traverse la
-        // rampe, aucune de ses deux extrémités ne la décrit seule.
-        couleur: couleurAllure((segment.sPerKm + suivant.sPerKm) / 2, band),
-      },
-    ];
-  });
+      const arrivee = y(suivant.sPerKm);
+
+      return [
+        palier,
+        pave(
+          x(segment.endM) - demi,
+          Math.min(hauteur, arrivee) - demi,
+          x(segment.endM) + demi,
+          Math.max(hauteur, arrivee) + demi,
+        ),
+      ];
+    })
+    .join(" ");
+}
+
+/**
+ * Le dégradé vertical où l'escalier se découpe, du bas du cadre vers le haut.
+ *
+ * Les arrêts sont ceux de l'écran : la couleur dit la hauteur où le trait
+ * passe, pas la moyenne du tronçon, et une contremarche se dégrade donc sur
+ * toute sa longueur. Voir `paceGradientStops`, qui étire ses deux moitiés
+ * pour que le vert tombe pile sur l'allure moyenne.
+ */
+function degradeAllure(band: PaceBand, cadre: Cadre): Allure["degrade"] {
+  return paceGradientStops(
+    1 - yAllure(band.meanSPerKm, band, cadre) / cadre.hauteur,
+  );
 }
 
 /** `456` → `7'36`. La même écriture que `paceLabel`, sur une allure connue. */
