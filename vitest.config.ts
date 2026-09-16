@@ -13,6 +13,12 @@ export default defineConfig({
     // Les tests d'intégration partagent une seule base : deux fichiers qui
     // écrivent en même temps s'entre-bloquent. Le noyau, lui, n'y perd rien.
     fileParallelism: false,
+    // Sans elle, le graphe de drizzle et de pg se rejoue pour chaque fichier :
+    // 805 ms d'import pour un fichier qui touche la base, 77 ms sans. Les
+    // fichiers partagent donc un registre de modules — ils tournent déjà en
+    // série, et un état de niveau module qui fuirait se verrait en mélangeant
+    // l'ordre : `npx vitest run --sequence.shuffle.files`.
+    isolate: false,
     // Un worktree d'agent laissé là contient une seconde copie de la suite :
     // sans cette ligne, `npm test` la ramasse et annonce le double de tests,
     // dont la moitié tourne sur du code périmé sous couvert d'une suite verte.
