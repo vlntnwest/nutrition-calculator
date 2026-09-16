@@ -181,15 +181,21 @@ Tout est pur sauf le route handler et les composants.
 | `src/pdf/staticMap.ts`                          | Le cadrage. Un bbox et une taille de cadre entrent ; le zoom, le centre, la liste des tuiles `{z, x, y, dx, dy}` et la projection `(lat, lon) → (x, y)` sortent. |
 | `src/pdf/profile.ts`                            | Le relief en polygones, un par suite de points de même palier de pente, plus l'escalier d'allure et les arrêts de son dégradé.                                      |
 | `src/pdf/sheet.ts`                              | Le plan et le roadbook entrent, les lignes de la feuille sortent. Il range, il ne dessine pas.                                                                   |
-| `src/pdf/Sheet.tsx`                             | Le document : `Document`, `Page size="A4"`, et l'assemblage.                                                                                                     |
-| `src/pdf/Map.tsx`                               | Les tuiles en `<Image>`, la trace et les bornes en `<Svg>`.                                                                                                      |
-| `src/pdf/Profile.tsx`                           | Le relief, la bande d'allure, les deux axes.                                                                                                                     |
+| `src/pdf/sheetMapData.ts`                       | Le cadrage, les tuiles chargées, la trace et les bornes : tout ce que la carte demande avant d'être dessinée.                                                     |
+| `src/pdf/sheetProfileData.ts`                   | La figure du profil, bande d'allure comprise — celle de l'écran Course, jamais la moyenne par secteur.                                                            |
+| `src/pdf/tiles.ts`                              | Le téléchargement des tuiles côté serveur, avec l'agent qui nomme l'application. Une tuile manquante laisse un carré blanc, elle ne fait pas échouer la feuille. |
+| `src/pdf/styles.ts`                             | Le traitement, pensé pour une imprimante de bureau en noir et blanc.                                                                                             |
+| `src/pdf/SheetDocument.tsx`                     | Le document : `Document`, `Page size="A4"`, et l'assemblage.                                                                                                     |
+| `src/pdf/SheetMap.tsx`                          | Les tuiles en `<Image>`, la trace et les bornes en `<Svg>`.                                                                                                      |
+| `src/pdf/SheetProfile.tsx`                      | Le relief, la bande d'allure, les deux axes.                                                                                                                     |
 | `src/pdf/Tables.tsx`                            | Les tableaux des deux formes.                                                                                                                                    |
 | `src/app/plan/[accessId]/roadbook/pdf/route.ts` | Lit, calcule la bande, `renderToBuffer`, rend le fichier.                                                                                                        |
 
 `staticMap.ts`, `profile.ts` et `sheet.ts` passent par `vitest`, comme
-`slopeColor.ts` et les données du graphique (`chart.test.ts`). Les composants
-se vérifient à l'œil sur le fichier produit.
+`slopeColor.ts` et les données du graphique (`chart.test.ts`). La route a les
+siens : les deux 404, le nom du fichier et le `%PDF-` qui sort, le fond de
+carte bouchonné pour ne pas télécharger à chaque passe. Les composants se
+vérifient à l'œil sur le fichier produit.
 
 ### 3.1 Le cadrage
 
