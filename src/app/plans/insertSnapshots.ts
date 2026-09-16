@@ -18,18 +18,23 @@ export async function insertSnapshots(
   planId: string,
   codes: string[],
 ): Promise<void> {
-  if (codes.length === 0) return;
+  // Les produits retenus sont un ensemble, pas une suite : un code répété
+  // désigne le même produit. Compté deux fois, il faisait échouer le plan
+  // entier sur un message qui ne nommait aucun produit.
+  const voulus = [...new Set(codes)];
+
+  if (voulus.length === 0) return;
 
   const catalogue = await tx
     .select()
     .from(products)
     .innerJoin(brands, eq(products.brandId, brands.id))
     .innerJoin(formats, eq(products.formatId, formats.id))
-    .where(inArray(products.codeSeed, codes));
+    .where(inArray(products.codeSeed, voulus));
 
-  if (catalogue.length !== codes.length) {
+  if (catalogue.length !== voulus.length) {
     const connus = new Set(catalogue.map((r) => r.products.codeSeed));
-    const manquants = codes.filter((c) => !connus.has(c));
+    const manquants = voulus.filter((c) => !connus.has(c));
 
     throw new PlanError(`Unknown product codes: ${manquants.join(", ")}`);
   }

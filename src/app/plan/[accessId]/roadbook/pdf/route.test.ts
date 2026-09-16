@@ -16,16 +16,28 @@ const TUILE = Buffer.from(
 const written: string[] = [];
 
 beforeEach(() => {
-  // Le fond de carte ne se télécharge pas ici : la politique d'usage
-  // d'OpenStreetMap n'a pas à payer une suite qui tourne en boucle. Le reste
-  // passe, car react-pdf va chercher le wasm de yoga par le même chemin.
+  // Rien ne sort sur le réseau ici. Le fond de carte est servi de mémoire —
+  // la politique d'usage d'OpenStreetMap n'a pas à payer une suite qui tourne
+  // en boucle — et react-pdf charge le wasm de yoga par une URL `data:`, qui
+  // ne quitte pas le processus. Toute autre adresse lève au lieu de partir :
+  // un appel sortant qui apparaîtrait se verrait ici, il ne ralentirait pas
+  // la suite en silence.
   const vrai = globalThis.fetch;
   vi.stubGlobal(
     "fetch",
-    async (entree: RequestInfo | URL, init?: RequestInit) =>
-      String(entree).startsWith("https://tile.openstreetmap.org/")
-        ? new Response(new Uint8Array(TUILE))
-        : vrai(entree, init),
+    async (entree: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(entree);
+
+      if (url.startsWith("https://tile.openstreetmap.org/")) {
+        return new Response(new Uint8Array(TUILE));
+      }
+
+      if (/^https?:/.test(url)) {
+        throw new Error(`Appel sortant inattendu pendant le test : ${url}`);
+      }
+
+      return vrai(entree, init);
+    },
   );
 });
 
@@ -43,13 +55,17 @@ function appeler(accessId: string) {
 }
 
 test("un identifiant qui n'est pas un UUID n'a pas de feuille", async () => {
-  expect((await appeler("pas-un-uuid")).status).toBe(404);
+  const reponse = await appeler("pas-un-uuid");
+
+  expect(reponse.status).toBe(404);
+  expect(await reponse.text()).toContain("introuvable");
 });
 
-test("un plan inconnu n'a pas de feuille", async () => {
-  expect((await appeler("00000000-0000-4000-8000-000000000000")).status).toBe(
-    404,
-  );
+test("un plan inconnu dit qu'il est introuvable, pas qu'il reste à calculer", async () => {
+  const reponse = await appeler("00000000-0000-4000-8000-000000000000");
+
+  expect(reponse.status).toBe(404);
+  expect(await reponse.text()).toContain("introuvable");
 });
 
 test("un plan jamais calculé n'a pas de feuille, et le dit", async () => {

@@ -10,15 +10,15 @@ import type { NextConfig } from "next";
  *
  * `no-referrer` plutôt que le défaut du navigateur : l'identifiant d'accès
  * vit dans l'URL, et un lien d'achat sortant le porterait à la boutique.
+ *
+ * Pas de HSTS non plus : posé ici, il partirait aussi des previews, et
+ * `includeSubDomains` engagerait pour deux ans des sous-domaines qui
+ * n'existent pas encore. C'est au domaine de production de le porter.
  */
 const SECURITE = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "no-referrer" },
-  {
-    key: "Strict-Transport-Security",
-    value: "max-age=63072000; includeSubDomains; preload",
-  },
 ];
 
 const nextConfig: NextConfig = {

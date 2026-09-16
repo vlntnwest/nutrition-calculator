@@ -193,8 +193,9 @@ Tout est pur sauf le route handler et les composants.
 
 `staticMap.ts`, `profile.ts` et `sheet.ts` passent par `vitest`, comme
 `slopeColor.ts` et les données du graphique (`chart.test.ts`). La route a les
-siens : les deux 404, le nom du fichier et le `%PDF-` qui sort, le fond de
-carte bouchonné pour ne pas télécharger à chaque passe. Les composants se
+siens : les trois 404 — identifiant malformé, plan inconnu, plan jamais
+calculé —, le nom du fichier et le `%PDF-` qui sort, le fond de carte servi
+de mémoire pour que rien ne parte sur le réseau. Les composants se
 vérifient à l'œil sur le fichier produit.
 
 ### 3.1 Le cadrage
