@@ -16,6 +16,7 @@ export function Slider({
   unite,
   bornes,
   aide,
+  defaut,
   onChange,
 }: {
   label: string;
@@ -28,6 +29,8 @@ export function Slider({
   /** Ce qu'on lit sous les deux extrémités de la piste. */
   bornes?: [string, string];
   aide?: string;
+  /** La valeur que le double-clic ramène. Sans elle, il ne fait rien. */
+  defaut?: number;
   onChange: (value: number) => void;
 }) {
   const id = useId();
@@ -57,6 +60,11 @@ export function Slider({
         step={step}
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
+        // Le double-clic repose le curseur à son défaut. Les deux clics
+        // l'auront d'abord emmené où ils tombent : c'est ce retour qui compte.
+        onDoubleClick={
+          defaut === undefined ? undefined : () => onChange(defaut)
+        }
         className="h-6 w-full cursor-pointer appearance-none bg-transparent [&::-moz-range-thumb]:size-4 [&::-moz-range-thumb]:cursor-grab [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-paper [&::-moz-range-thumb]:bg-accent [&::-moz-range-track]:h-1 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-paper-sunk [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-paper-sunk [&::-webkit-slider-thumb]:mt-[-6px] [&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:cursor-grab [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-paper [&::-webkit-slider-thumb]:bg-accent [&::-webkit-slider-thumb]:shadow-[0_1px_3px_#13131359]"
       />
 

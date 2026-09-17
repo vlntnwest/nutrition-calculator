@@ -10,9 +10,17 @@ export type HMS = { h: string; m: string; s: string };
 
 export const HMS_VIDE: HMS = { h: "", m: "", s: "" };
 
-/** Ne garde que des chiffres, sur deux caractères au plus. */
-export function digitsOnly(texte: string): string {
-  return texte.replace(/\D/g, "").slice(0, 2);
+/**
+ * Ne garde que des chiffres, sur deux caractères au plus, et jamais au-delà
+ * de `max` quand la case en a un. Taper `75` dans des minutes y écrit `59` :
+ * la case montre sa borne plutôt que de garder un nombre qu'un report
+ * silencieux corrigerait plus loin.
+ */
+export function digitsOnly(texte: string, max?: number): string {
+  const chiffres = texte.replace(/\D/g, "").slice(0, 2);
+  if (max === undefined || chiffres === "") return chiffres;
+
+  return Number(chiffres) > max ? String(max) : chiffres;
 }
 
 /**
