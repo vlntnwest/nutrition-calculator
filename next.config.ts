@@ -9,7 +9,9 @@ import type { NextConfig } from "next";
  * un test. C'est un geste à part.
  *
  * `no-referrer` plutôt que le défaut du navigateur : l'identifiant d'accès
- * vit dans l'URL, et un lien d'achat sortant le porterait à la boutique.
+ * vit dans l'URL, et un lien d'achat sortant le porterait à la boutique. Une
+ * exception, sur l'image seule : les tuiles de `RouteMap` doivent s'annoncer,
+ * sans quoi OSM répond un carré « Access denied ».
  *
  * Pas de HSTS non plus : posé ici, il partirait aussi des previews, et
  * `includeSubDomains` engagerait pour deux ans des sous-domaines qui

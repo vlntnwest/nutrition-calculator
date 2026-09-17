@@ -34,9 +34,22 @@ export function LegImpositions({
   const [dureeOuverte, setDureeOuverte] = useState(false);
   const [cibleOuverte, setCibleOuverte] = useState(false);
   const [saisieDuree, setSaisieDuree] = useState<HMS>(() =>
-    toHMS(leg.imposedDurationS ?? leg.durationS),
+    toHMS(leg.durationS),
   );
   const [saisieCible, setSaisieCible] = useState(String(Math.round(cibleGH)));
+
+  // Un tiroir s'ouvre sur ce que le calcul donne à cet instant. Une consigne
+  // posée puis retirée rend le secteur à sa durée d'origine : garder la
+  // saisie d'avant afficherait une valeur que plus rien ne porte.
+  function ouvrirDuree() {
+    setSaisieDuree(toHMS(leg.durationS));
+    setDureeOuverte(!dureeOuverte);
+  }
+
+  function ouvrirCible() {
+    setSaisieCible(String(Math.round(cibleGH)));
+    setCibleOuverte(!cibleOuverte);
+  }
 
   return (
     <>
@@ -46,7 +59,7 @@ export function LegImpositions({
             taille="sm"
             ton="contour"
             disabled={imposing}
-            onClick={() => setDureeOuverte(!dureeOuverte)}
+            onClick={ouvrirDuree}
             aria-expanded={dureeOuverte}
             iconeFin={
               <ChevronIcon
@@ -76,7 +89,7 @@ export function LegImpositions({
             taille="sm"
             ton="contour"
             disabled={imposing}
-            onClick={() => setCibleOuverte(!cibleOuverte)}
+            onClick={ouvrirCible}
             aria-expanded={cibleOuverte}
             iconeFin={
               <ChevronIcon
