@@ -112,3 +112,7 @@ test("ce qu'un ravito ne fournit pas se relit comme tel", async () => {
 
   expect((await getPlan(accessId))?.aidStations).toEqual(aidStations);
 });
+
+test("un identifiant qui n'est pas un UUID ne va pas jusqu'à la base", async () => {
+  expect(await getPlan("pas-un-uuid")).toBeNull();
+});

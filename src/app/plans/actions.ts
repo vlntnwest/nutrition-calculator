@@ -3,6 +3,7 @@
 import { pacingIssue } from "@/core/distribute";
 import type { ProfilePoint, ResolvedPoint } from "@/core/type";
 import { db } from "@/db";
+import { isAccessId } from "./accessId";
 import { createPlan } from "./createPlan";
 import { duplicatePlan } from "./duplicatePlan";
 import { getPlan } from "./getPlan";
@@ -36,13 +37,6 @@ export type ImportedTrack = {
   points: ResolvedPoint[];
   profile: ProfilePoint[];
 };
-
-/**
- * Un plan est un secret partagé : l'identifiant *est* le droit d'accès, il
- * n'y a pas de compte. Le vérifier avant la base évite qu'une saisie de
- * travers ressorte en `invalid input syntax for type uuid`.
- */
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Écran 1 — le GPX vient d'être lu, on ouvre un plan et on le retient. */
 export async function importTrack(
@@ -117,7 +111,7 @@ export async function loadOfficialRaceTrack(
 export async function loadPlanSummaries(
   accessIds: string[],
 ): Promise<Result<PlanSummary[]>> {
-  return guard(() => planSummaries(accessIds.filter((id) => UUID.test(id))));
+  return guard(() => planSummaries(accessIds.filter(isAccessId)));
 }
 
 /** Relit un plan — le retour sur un lien, ou un identifiant du navigateur. */
@@ -209,7 +203,7 @@ async function guard<T>(
   run: () => Promise<T>,
   accessId?: string,
 ): Promise<Result<T>> {
-  if (accessId !== undefined && !UUID.test(accessId)) {
+  if (accessId !== undefined && !isAccessId(accessId)) {
     return { ok: false, error: `Unknown plan: ${accessId}` };
   }
 

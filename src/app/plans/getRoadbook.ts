@@ -1,3 +1,4 @@
+import { isAccessId } from "./accessId";
 import type { Roadbook, Supply } from "./roadbook";
 import { getRoadbookHead, getRoadbookRows } from "./roadbookRows";
 import { resolveTargets } from "./targets";
@@ -23,6 +24,8 @@ const EMPTY: Supply = { carbsG: 0, energyKcal: 0, sodiumMg: 0, fluidMl: 0 };
  * affiché juste au-dessus.
  */
 export async function getRoadbook(accessId: string): Promise<Roadbook | null> {
+  if (!isAccessId(accessId)) return null;
+
   const row = await getRoadbookHead(accessId);
 
   const settings = row?.settings;

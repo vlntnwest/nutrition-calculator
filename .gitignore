@@ -24,6 +24,11 @@
 .DS_Store
 *.pem
 
+# fichiers d'échange des éditeurs
+*.swp
+*.swo
+*~
+
 # debug
 npm-debug.log*
 yarn-debug.log*
