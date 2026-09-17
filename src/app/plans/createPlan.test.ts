@@ -335,3 +335,17 @@ test("un plan nu n'a pas de cibles, il n'en a pas encore été question", async 
   });
   expect((await getPlan(accessId))?.settings.targets).toBeUndefined();
 });
+
+test("un code produit répété ne compte qu'une fois", async () => {
+  const [code] = input.productCodes;
+  const accessId = await createPlan({ ...input, productCodes: [code, code] });
+  written.push(accessId);
+
+  const figes = await db
+    .select()
+    .from(productSnapshots)
+    .where(eq(productSnapshots.planId, accessId));
+
+  expect(figes).toHaveLength(1);
+  expect((await getPlan(accessId))?.productCodes).toEqual([code]);
+});

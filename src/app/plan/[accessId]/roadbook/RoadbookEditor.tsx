@@ -11,6 +11,9 @@ import { duree } from "@/format/number";
 import { Button } from "@/ui/Button";
 import { Notice } from "@/ui/Notice";
 import { Toast } from "@/ui/Toast";
+import type { PaceBand } from "@/ui/track/chartTypes";
+import { PdfLink } from "../_shell/PdfLink";
+import { useDeclarerRetouches } from "../_shell/RetouchesEnCours";
 import { withFill, withServing } from "./edit";
 import { liveTotal, SOLIDE, spanFluidNeedMl, spanStart } from "./format";
 import { LegCard } from "./LegCard";
@@ -67,12 +70,15 @@ export function RoadbookEditor({
   accessId,
   roadbook,
   points,
+  paceBand,
   cibleGH,
   entete,
 }: {
   accessId: string;
   roadbook: Roadbook;
   points: ProfilePoint[];
+  /** L'allure du plan calculé, tronçon par tronçon : voir `racePaceBand`. */
+  paceBand: PaceBand | null;
   /** La cible du plan, celle qui vaut pour un secteur sans consigne. */
   cibleGH: number;
   /** Le titre, le bouton Calculer et le départ : ils défilent avec la liste
@@ -245,6 +251,10 @@ export function RoadbookEditor({
     boite.scrollTo({ top: haut - MARGE_SAUT, behavior: "smooth" });
   }
 
+  // Les deux déclencheurs du PDF refusent de partir tant qu'il reste des
+  // retouches : celui d'ici le sait, celui de la barre du haut l'apprend.
+  useDeclarerRetouches(sale);
+
   const vieux = sale ? "opacity-50" : "";
   const total = liveTotal(
     edit.servings,
@@ -273,6 +283,7 @@ export function RoadbookEditor({
               points={points}
               legs={roadbook.legs}
               totalM={roadbook.totalM}
+              paceBand={paceBand}
               onChoisir={versSecteur}
             />
           </div>
@@ -329,14 +340,17 @@ export function RoadbookEditor({
               ? "Les avertissements affichés datent du dernier enregistrement."
               : `${roadbook.legs.length} secteurs, ${duree(roadbook.legs.reduce((t, l) => t + l.durationS, 0))} de mouvement`}
           </p>
-          <Button
-            ton="encre"
-            disabled={!sale || pending}
-            onClick={save}
-            className="ml-auto"
-          >
-            {pending ? "Enregistrement" : "Enregistrer les retouches"}
-          </Button>
+          {/* Les deux boutons ont des états opposés : on enregistre tant
+              qu'il reste des retouches, on emporte la feuille une fois qu'il
+              n'en reste plus. Un seul des deux est actif à la fois, et la
+              barre se lit comme un seul choix. */}
+          <div className="ml-auto flex items-center gap-3">
+            <PdfLink accessId={accessId} tenue="bouton" />
+
+            <Button ton="encre" disabled={!sale || pending} onClick={save}>
+              {pending ? "Enregistrement" : "Enregistrer les retouches"}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

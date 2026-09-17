@@ -1,5 +1,6 @@
 import type { ChartOptions, Scale } from "chart.js";
 import type { ProfilePoint } from "@/core/type";
+import { graduations } from "@/format/axis";
 import { paceLabel } from "@/format/clock";
 import { INK, INK_SOFT, LINE, MONO_STACK, PAPER, PILE } from "./chartTheme";
 import type { PaceAxisRange, PaceBand } from "./chartTypes";
@@ -55,6 +56,29 @@ export function chartOptions({
   const yMin = Math.max(0, Math.floor((min - marge) / palier) * palier);
   const yMax = Math.ceil((max + marge) / palier) * palier;
 
+  // Les altitudes commandent la grille, parce qu'elles tombent sur des nombres
+  // ronds ; l'allure se lit ensuite à la hauteur où la ligne passe, et ses
+  // valeurs ne sont donc pas rondes. Deux axes qui gradueraient chacun pour
+  // son compte poseraient deux séries de traits à des hauteurs qui ne
+  // coïncident jamais : on ne saurait plus laquelle des deux lire. Même
+  // disposition que la feuille PDF (`pdf/profile.ts`) et que le PacePro des
+  // montres de course.
+  //
+  // Empilés, les deux lectures ne se superposent plus : chacune a son cadre,
+  // donc chacune reprend sa graduation.
+  const alignees = paceBand != null && !empile;
+  const lignes = graduations(yMin, yMax, 4);
+  // L'allure portée par une hauteur du cadre, de 0 en bas à 1 en haut.
+  // L'échelle est inversée : son minimum, le rapide, est en haut.
+  const bornes = paceAxisRange ?? paceBand;
+  const etendue = bornes ? bornes.slowestSPerKm - bornes.fastestSPerKm || 1 : 1;
+  // La même marge de 8 % que `grace` posait, mais explicite : c'est elle qui
+  // permet de convertir une hauteur en allure. Voir `bornesAllure` au PDF.
+  const paceMin = (bornes?.fastestSPerKm ?? 0) - etendue * 0.08;
+  const paceMax = (bornes?.slowestSPerKm ?? 0) + etendue * 0.08;
+  const allureA = (altitude: number) =>
+    paceMax - ((altitude - yMin) / (yMax - yMin || 1)) * (paceMax - paceMin);
+
   return {
     responsive: true,
     maintainAspectRatio: false,
@@ -100,6 +124,13 @@ export function chartOptions({
               },
             }
           : {}),
+        ...(alignees
+          ? {
+              afterBuildTicks: (axe: Scale) => {
+                axe.ticks = lignes.map((value) => ({ value }));
+              },
+            }
+          : {}),
         ticks: {
           color: INK_SOFT,
           font: { size: 9, family: MONO_STACK },
@@ -107,6 +138,9 @@ export function chartOptions({
           // faut quelques-unes de plus à distribuer pour qu'il en reste
           // une échelle.
           maxTicksLimit: empile ? 8 : 4,
+          // Les deux séries se répondent ligne à ligne : l'une ne peut pas
+          // en sauter une que l'autre garde.
+          ...(alignees ? { autoSkip: false } : {}),
           callback: (value) => `${Math.round(value as number)} m`,
         },
         border: { display: false },
@@ -119,22 +153,11 @@ export function chartOptions({
         // Des secondes par kilomètre : le rapide est le petit nombre, et
         // c'est lui qu'on veut en haut du cadre.
         reverse: true,
-        // `paceAxisRange` fixe des bornes explicites, la marge se pose
-        // donc à la main — `grace` ne joue que sur un axe qui s'ajuste
-        // encore à ses données. Sans borne fournie, l'axe continue de
-        // s'ajuster à `paceBand` comme avant.
-        ...(paceAxisRange
-          ? {
-              min:
-                paceAxisRange.fastestSPerKm -
-                (paceAxisRange.slowestSPerKm - paceAxisRange.fastestSPerKm) *
-                  0.08,
-              max:
-                paceAxisRange.slowestSPerKm +
-                (paceAxisRange.slowestSPerKm - paceAxisRange.fastestSPerKm) *
-                  0.08,
-            }
-          : { grace: "8%" }),
+        // Des bornes explicites, jamais `grace` : une hauteur du cadre ne se
+        // convertit en allure que si l'on sait ce que ses deux bouts valent.
+        // `paceAxisRange` les fournit quand un curseur est tenu — l'axe cesse
+        // alors de suivre la bande qui bouge sous lui.
+        ...(bornes ? { min: paceMin, max: paceMax } : {}),
         grid: { display: false },
         ...(empile && paceBand
           ? {
@@ -144,7 +167,7 @@ export function chartOptions({
               // des paliers ronds de Chart.js. Les trois allures que la
               // rampe de couleur nomme déjà en font une échelle : la plus
               // rapide en haut, la moyenne sur son pointillé, la plus lente
-              // en bas. La marge de `grace` les tient à distance des bords.
+              // en bas. Les 8 % de marge les tiennent à distance des bords.
               afterBuildTicks: (axe: Scale) => {
                 axe.ticks = [
                   paceBand.fastestSPerKm,
@@ -154,10 +177,21 @@ export function chartOptions({
               },
             }
           : {}),
+        ...(alignees
+          ? {
+              // Les hauteurs de la grille des altitudes, lues en allures.
+              afterBuildTicks: (axe: Scale) => {
+                axe.ticks = lignes.map((altitude) => ({
+                  value: allureA(altitude),
+                }));
+              },
+            }
+          : {}),
         ticks: {
           color: INK_SOFT,
           font: { size: 9, family: MONO_STACK },
           maxTicksLimit: 4,
+          ...(alignees ? { autoSkip: false } : {}),
           callback: (value) => paceText(value as number),
         },
         border: { display: false },

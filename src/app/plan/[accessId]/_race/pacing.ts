@@ -1,6 +1,11 @@
 import { distributeTime, timeSegments } from "@/core/distribute";
 import { splitBySlope } from "@/core/split";
-import type { PacingProfile, ProfilePoint, Segment } from "@/core/type";
+import type {
+  FixedSpan,
+  PacingProfile,
+  ProfilePoint,
+  Segment,
+} from "@/core/type";
 import type { PaceAxisRange, PaceBand } from "@/ui/track/ElevationChart";
 
 /**
@@ -23,12 +28,15 @@ export function paceSegments(profile: ProfilePoint[]): Segment[] {
  * n'est enregistré, c'est le chrono en cours de saisie qui parle.
  *
  * @param movingS Le temps de **mouvement**, arrêts déduits. ADR 010.
+ * @param fixed Les durées imposées, servies d'abord. Vide sur l'écran Course,
+ *   où le chrono se saisit sans consigne.
  */
 export function paceBand(
   profile: ProfilePoint[],
   segments: Segment[],
   movingS: number | undefined,
   pacing: PacingProfile,
+  fixed: FixedSpan[] = [],
 ): PaceBand | null {
   if (movingS === undefined || movingS <= 0) return null;
   if (profile.length < 2 || segments.length === 0) return null;
@@ -37,7 +45,7 @@ export function paceBand(
   if (totalM <= 0) return null;
 
   const timed = timeSegments(
-    distributeTime(profile, movingS, pacing),
+    distributeTime(profile, movingS, pacing, fixed),
     segments,
   );
   // Un tronçon de longueur ou de durée nulle n'a pas d'allure : la tracer

@@ -193,6 +193,16 @@ export function UploadIcon(props: IconProps) {
   );
 }
 
+/** Le téléchargement : la feuille qu'on emporte, sortie de l'écran. */
+export function DownloadIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M12 4v12M12 16l-5-5M12 16l5-5" />
+      <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+    </Glyph>
+  );
+}
+
 /** Le partage : le lien d'un plan, passé à qui doit l'ouvrir. */
 export function ShareIcon(props: IconProps) {
   return (

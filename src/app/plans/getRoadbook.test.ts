@@ -174,3 +174,7 @@ test("un secteur qui part d'une borne sans eau n'ouvre pas de portée", async ()
   // Et le calcul n'y a effectivement rien versé.
   expect(roadbook?.legs[2].fills).toEqual([]);
 });
+
+test("un identifiant qui n'est pas un UUID ne va pas jusqu'à la base", async () => {
+  expect(await getRoadbook("pas-un-uuid")).toBeNull();
+});
