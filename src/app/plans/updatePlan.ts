@@ -11,14 +11,10 @@ import { productSnapshots } from "@/db/schema/productSnapshots";
 import { products } from "@/db/schema/products";
 import { warnings } from "@/db/schema/warnings";
 import { getPlan } from "./getPlan";
+import { insertSnapshots } from "./insertSnapshots";
 import { PlanError } from "./planError";
 import type { NewPlan, StoredPlan } from "./planInput";
-import {
-  assertValid,
-  insertSnapshots,
-  normalize,
-  settingsColumns,
-} from "./planInput";
+import { assertValid, normalize, settingsColumns } from "./planInput";
 import { changed, survives } from "./survives";
 
 /**

@@ -6,11 +6,11 @@ import { legOverrides } from "@/db/schema/legOverrides";
 import { planSettings } from "@/db/schema/planSettings";
 import { plans } from "@/db/schema/plans";
 import { tracks } from "@/db/schema/tracks";
+import { insertSnapshots } from "./insertSnapshots";
 import type { NewPlan } from "./planInput";
 import {
   assertTrack,
   assertValid,
-  insertSnapshots,
   normalize,
   normalizeTrack,
   settingsColumns,

@@ -34,8 +34,15 @@ export async function GET(
     roadbookOf(accessId),
   ]);
 
+  // Deux 404 qui ne disent pas la même chose : un identifiant de travers ou un
+  // plan expiré n'a pas de roadbook à ouvrir, et envoyer son lecteur en
+  // lancer le calcul serait l'envoyer nulle part.
+  if (!plan) {
+    return new Response("Plan introuvable, ou expiré.", { status: 404 });
+  }
+
   // Un plan jamais calculé n'a pas de feuille : il n'a ni secteur, ni ration.
-  if (!plan || !roadbook) {
+  if (!roadbook) {
     return new Response(
       "Ce plan n'a pas encore été calculé. Ouvrez son roadbook et lancez le calcul.",
       { status: 404 },

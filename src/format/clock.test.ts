@@ -22,6 +22,19 @@ test.each([
   expect(digitsOnly(saisie)).toBe(attendu);
 });
 
+/** Une case bornée montre sa borne, elle ne garde pas le nombre refusé. */
+test.each([
+  ["75", 59, "59"],
+  ["60", 59, "59"],
+  ["9", 59, "9"],
+  ["00", 59, "00"],
+  ["", 59, ""],
+  ["ab", 59, ""],
+  ["25", 23, "23"],
+])("digitsOnly(%o, %o) → %o", (saisie, max, attendu) => {
+  expect(digitsOnly(saisie, max)).toBe(attendu);
+});
+
 test.each<[HMS, number | undefined]>([
   [{ h: "", m: "", s: "" }, undefined],
   [{ h: "03", m: "45", s: "00" }, 13500],

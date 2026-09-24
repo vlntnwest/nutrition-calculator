@@ -35,6 +35,7 @@ export function ChronoInput({
         ref={minute}
         label="min"
         taille={taille}
+        max={59}
         value={value.m}
         onChange={(m) => {
           onChange({ ...value, m });
@@ -45,6 +46,7 @@ export function ChronoInput({
         ref={seconde}
         label="s"
         taille={taille}
+        max={59}
         value={value.s}
         onChange={(s) => onChange({ ...value, s })}
       />
@@ -57,6 +59,7 @@ function Case({
   value,
   onChange,
   taille,
+  max,
   unite = true,
   ref,
 }: {
@@ -64,6 +67,8 @@ function Case({
   value: string;
   onChange: (value: string) => void;
   taille: "sm" | "md";
+  /** La valeur la plus haute que la case accepte. Les heures n'en ont pas. */
+  max?: number;
   /** L'unité écrite sous la case. Une heure de la journée s'en passe. */
   unite?: boolean;
   ref?: Ref<HTMLInputElement>;
@@ -73,7 +78,7 @@ function Case({
       <input
         ref={ref}
         value={value}
-        onChange={(event) => onChange(digitsOnly(event.target.value))}
+        onChange={(event) => onChange(digitsOnly(event.target.value, max))}
         inputMode="numeric"
         placeholder="00"
         aria-label={label}
@@ -123,6 +128,7 @@ export function HeureInput({
         label="heures"
         unite={false}
         taille={taille}
+        max={23}
         value={value.h}
         onChange={(h) => {
           onChange({ ...value, h });
@@ -137,6 +143,7 @@ export function HeureInput({
         label="minutes"
         unite={false}
         taille={taille}
+        max={59}
         value={value.m}
         onChange={(m) => onChange({ ...value, m })}
       />

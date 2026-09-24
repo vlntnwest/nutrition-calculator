@@ -5,6 +5,7 @@ import type { Roadbook } from "@/app/plans/getRoadbook";
 import type { ProfilePoint } from "@/core/type";
 import { paceLabel } from "@/format/clock";
 import { km } from "@/format/number";
+import type { PaceBand } from "@/ui/track/chartTypes";
 import { ElevationChart, type Gouttieres } from "@/ui/track/ElevationChart";
 import { paceRampColor } from "@/ui/track/paceColor";
 import { legBounds, legPaceBand, legPaceSPerKm, startOf } from "./format";
@@ -27,13 +28,20 @@ export function LegProfile({
   points,
   legs,
   totalM,
+  paceBand,
   onChoisir,
 }: {
   points: ProfilePoint[];
   legs: Roadbook["legs"];
   totalM: number;
+  /** L'allure tronçon par tronçon, calculée au serveur : `racePaceBand`. */
+  paceBand: PaceBand | null;
   onChoisir: (rank: number) => void;
 }) {
+  // La réglette compare des secteurs entre eux : elle garde son échelle à
+  // elle, celle des moyennes. Normaliser ses teintes sur la bande fine, dont
+  // les extrêmes sont ceux d'un raidard et d'une descente, les tasserait
+  // toutes au milieu de la rampe.
   const bande = legPaceBand(legs, totalM);
   const [gouttieres, setGouttieres] = useState<Gouttieres | null>(null);
   const allures = legs.map((_, i) => legPaceSPerKm(legs, i, totalM));
@@ -56,7 +64,7 @@ export function LegProfile({
       <div className="h-36 sm:h-44">
         <ElevationChart
           points={points}
-          paceBand={bande}
+          paceBand={paceBand}
           onCadre={setGouttieres}
           // Le nom du ravito, pas le repli « Ravito {rank} » du composant :
           // il ne tombait juste que tant que les ravitos s'appelaient comme

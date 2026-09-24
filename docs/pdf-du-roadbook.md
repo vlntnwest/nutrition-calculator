@@ -125,6 +125,13 @@ n'y porte jamais seule l'information.
 `_race/pacing.ts` ne porte pas `"use client"`, il s'importe tel quel depuis le
 route handler.
 
+L'écran Roadbook lit désormais la même bande : la dérivation — temps de
+mouvement relu sur les secteurs, réglages d'allure relus sur le plan — vit dans
+`roadbook/racePaceBand.ts`, que la feuille et l'écran appellent tous deux. Deux
+dérivations séparées finiraient par diverger, et le papier ne montrerait plus
+l'écran. `legPaceBand` ne sert plus qu'à la réglette des secteurs, sous le
+graphique, qui compare des moyennes entre elles et garde donc son échelle.
+
 ### 2.6 Deux déclencheurs, un nom de fichier
 
 Le lien vit dans la barre du bas du Roadbook, contre « Enregistrer les
@@ -169,25 +176,27 @@ navigateur.
 
 Tout est pur sauf le route handler et les composants.
 
-| Fichier | Rôle |
-| --- | --- |
-| `src/pdf/staticMap.ts` | Le cadrage. Un bbox et une taille de cadre entrent ; le zoom, le centre, la liste des tuiles `{z, x, y, dx, dy}` et la projection `(lat, lon) → (x, y)` sortent. |
-| `src/pdf/tiles.ts` | Le chargement des tuiles, `User-Agent` et cache compris. Une tuile manquante laisse un carré blanc, elle ne fait pas échouer la feuille. |
-| `src/pdf/profile.ts` | Le relief lissé, l'escalier d'allure, et les graduations communes aux deux échelles. |
-| `src/pdf/sheet.ts` | Le plan et le roadbook entrent, les lignes de la feuille sortent. Il range, il ne dessine pas. |
-| `src/pdf/sheetMapData.ts` | Ce qu'il faut pour dessiner la carte : le cadrage, les tuiles chargées, la trace, les repères. |
-| `src/pdf/sheetProfileData.ts` | La bande d'allure de l'écran Course, calculée sur le profil pleine résolution. |
-| `src/pdf/styles.ts` | Le traitement de la feuille, et les dimensions qu'elle occupe. |
-| `src/pdf/SheetDocument.tsx` | Le document : `Document`, `Page size="A4"`, et l'assemblage. Pas `Sheet.tsx` : deux noms qui ne diffèrent que par la casse ne cohabitent pas avec `sheet.ts`. |
-| `src/pdf/SheetMap.tsx` | Les tuiles en `<Image>`, la trace et les bornes en `<Svg>`. |
-| `src/pdf/SheetProfile.tsx` | Le relief, la bande d'allure, les trois axes. |
-| `src/pdf/Tables.tsx` | Le tableau des secteurs, et la liste de courses. |
-| `src/app/plan/[accessId]/roadbook/pdf/route.ts` | Lit, calcule la bande, `renderToBuffer`, rend le fichier. |
+| Fichier                                         | Rôle                                                                                                                                                             |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/pdf/staticMap.ts`                          | Le cadrage. Un bbox et une taille de cadre entrent ; le zoom, le centre, la liste des tuiles `{z, x, y, dx, dy}` et la projection `(lat, lon) → (x, y)` sortent. |
+| `src/pdf/profile.ts`                            | Le relief en polygones, un par suite de points de même palier de pente, plus l'escalier d'allure et les arrêts de son dégradé.                                      |
+| `src/pdf/sheet.ts`                              | Le plan et le roadbook entrent, les lignes de la feuille sortent. Il range, il ne dessine pas.                                                                   |
+| `src/pdf/sheetMapData.ts`                       | Le cadrage, les tuiles chargées, la trace et les bornes : tout ce que la carte demande avant d'être dessinée.                                                     |
+| `src/pdf/sheetProfileData.ts`                   | La figure du profil, bande d'allure comprise — celle de l'écran Course, jamais la moyenne par secteur.                                                            |
+| `src/pdf/tiles.ts`                              | Le téléchargement des tuiles côté serveur, avec l'agent qui nomme l'application. Une tuile manquante laisse un carré blanc, elle ne fait pas échouer la feuille. |
+| `src/pdf/styles.ts`                             | Le traitement, pensé pour une imprimante de bureau en noir et blanc.                                                                                             |
+| `src/pdf/SheetDocument.tsx`                     | Le document : `Document`, `Page size="A4"`, et l'assemblage.                                                                                                     |
+| `src/pdf/SheetMap.tsx`                          | Les tuiles en `<Image>`, la trace et les bornes en `<Svg>`.                                                                                                      |
+| `src/pdf/SheetProfile.tsx`                      | Le relief, la bande d'allure, les deux axes.                                                                                                                     |
+| `src/pdf/Tables.tsx`                            | Les tableaux des deux formes.                                                                                                                                    |
+| `src/app/plan/[accessId]/roadbook/pdf/route.ts` | Lit, calcule la bande, `renderToBuffer`, rend le fichier.                                                                                                        |
 
-`staticMap.ts`, `profile.ts`, `sheet.ts` et le `bornesOf` de `sheetMapData.ts`
-passent par `vitest`, comme `slopeColor.ts` et les données du graphique
-(`chart.test.ts`). Les composants se vérifient à l'œil sur le fichier produit,
-sauf la décision du déclencheur, qui se teste (voir 2.6).
+`staticMap.ts`, `profile.ts` et `sheet.ts` passent par `vitest`, comme
+`slopeColor.ts` et les données du graphique (`chart.test.ts`). La route a les
+siens : les trois 404 — identifiant malformé, plan inconnu, plan jamais
+calculé —, le nom du fichier et le `%PDF-` qui sort, le fond de carte servi
+de mémoire pour que rien ne parte sur le réseau. Les composants se
+vérifient à l'œil sur le fichier produit.
 
 ### 3.1 Le cadrage
 
@@ -336,19 +345,21 @@ a perdu les cinq gris de pente : un seul ton, une crête à l'encre, les arêtes
 lissées en cubiques de Bézier (`courbe`). Les gris de pente restent justes à
 l'écran, où la largeur les porte ; ils ne survivent pas à une A4.
 
-**La rampe d'allure.** Teindre une polyligne par un `<LinearGradient>` sort
-en noir : le rendu PDF n'applique pas la teinture au trait. La géométrie
-rendait de toute façon le dégradé inutile — un palier d'allure est horizontal,
-la rampe est verticale, donc chaque palier prend une couleur unie. L'escalier
-est donc fait de traits, chacun coloré par `couleurAllure`, qui inverse
-l'étirement de `paceGradientStops` pour que le vert tombe pile sur la moyenne.
+**La rampe d'allure.** Teindre un trait par un `<LinearGradient>` sort en
+noir : le rendu PDF n'applique la teinture qu'à un remplissage. L'escalier a
+donc d'abord été fait de traits, un par palier et par contremarche, chacun
+d'une couleur unie. Deux bouts francs ne fermant pas un angle droit, chaque
+raccord se voyait — une dent à tous les changements de tronçon, et il y en a
+quelques centaines. L'escalier est désormais un **seul tracé**, fait de pavés
+jointifs que le remplissage fusionne, et qui découpe sa part d'un dégradé
+vertical couvrant le cadre (`<ClipPath>` sur un `<Rect>`). La rampe est celle
+de l'écran, `paceGradientStops`, aux mêmes arrêts : la couleur dit la hauteur
+où le trait passe, et une contremarche se dégrade sur toute sa longueur.
 
 **Le sens de l'axe.** Écrit à l'envers du premier coup, et invisible tant
 qu'on ne lit pas les graduations : le rapide va **en haut**, comme partout
 ailleurs un sommet est un maximum. `ElevationChart` le dit, un test le tient
-désormais. Les traits sont à bouts francs : paliers et contremarches partagent
-leurs extrémités, et deux bouts arrondis superposés épaississent le joint au
-lieu de le fermer.
+désormais.
 
 ## 6. La mise en page des tableaux
 

@@ -43,12 +43,10 @@ export function SheetDocument({
       language="fr"
     >
       <Page size="A4" style={s.page}>
-        <View style={[s.rangee, { justifyContent: "space-between" }]}>
-          <Text style={s.titre}>{entete.nom}</Text>
-          <Text style={s.releve}>
-            {entete.distance} km · D+ {entete.denivele} m
-          </Text>
-        </View>
+        <Text style={s.titre}>{entete.nom}</Text>
+        <Text style={s.releve}>
+          {entete.distance} km · D+ {entete.denivele} m
+        </Text>
         <Text style={[s.releve, { marginTop: 3 }]}>{identite.join(" · ")}</Text>
 
         <View

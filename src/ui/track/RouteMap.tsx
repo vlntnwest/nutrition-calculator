@@ -132,8 +132,13 @@ export default function RouteMap({
           terrain traversé se lit mieux dans sa propre langue, et
           l'interface, elle, n'en emprunte aucune. */}
       <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        // Sans cet attribut, le `no-referrer` de next.config.ts ferait partir
+        // les tuiles anonymes et OSM les refuse. Posé sur l'image, il prime
+        // sur l'en-tête : part l'origine du site, jamais le chemin où vit
+        // l'identifiant d'accès.
+        referrerPolicy="strict-origin-when-cross-origin"
       />
       {/* Une gaine blanche sous le tracé : les tuiles gardent leurs
           couleurs, et c'est ce liseré qui détache l'encre de n'importe quel

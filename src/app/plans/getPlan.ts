@@ -19,6 +19,7 @@ import { productSnapshots } from "@/db/schema/productSnapshots";
 import { products } from "@/db/schema/products";
 import { tracks } from "@/db/schema/tracks";
 import { warnings } from "@/db/schema/warnings";
+import { isAccessId } from "./accessId";
 import type { StoredPlan } from "./planInput";
 
 /**
@@ -45,6 +46,8 @@ export const alive = or(
  * chaque navigation. Qui dessine appelle `getTrackPoints` — voir `getTrack`.
  */
 export async function getPlan(accessId: string): Promise<StoredPlan | null> {
+  if (!isAccessId(accessId)) return null;
+
   const [row] = await db
     .select({
       track: {

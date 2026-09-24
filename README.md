@@ -47,6 +47,10 @@ npm run lint        # biome check
 npm test            # vitest run
 ```
 
+`npm test` veut le Postgres local démarré : le `globalSetup` de Vitest migre et
+seed la base de test avant la première assertion. Sans `npm run db:up`, la suite
+échoue sur une connexion refusée, pas sur une régression.
+
 ## Architecture
 
 ```

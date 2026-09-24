@@ -1,3 +1,4 @@
+import type { Scale } from "chart.js";
 import { expect, test } from "vitest";
 import type { ProfilePoint } from "@/core/type";
 import { chartData, paceSeries } from "./chartData";
@@ -149,4 +150,58 @@ test("l'axe d'allure imposé l'emporte sur celui de la bande du moment", () => {
 
   expect(borne?.scales?.yPace?.min).not.toBe(libre?.scales?.yPace?.min);
   expect(borne?.scales?.yPace?.max).not.toBe(libre?.scales?.yPace?.max);
+});
+
+/**
+ * L'altitude commande la grille, l'allure se lit à la hauteur où la ligne
+ * passe. Deux axes qui gradueraient chacun pour son compte poseraient deux
+ * séries de traits à des hauteurs qui ne coïncident jamais.
+ */
+test("les allures se lisent en face des lignes d'altitude", () => {
+  const o = options({ paceBand: BANDE, allures: paceSeries(points, BANDE) });
+  const y = o?.scales?.y;
+  const yPace = o?.scales?.yPace;
+
+  const construites = (axe: typeof y) => {
+    const echelle = { ticks: [] } as unknown as Scale;
+    (axe?.afterBuildTicks as (s: Scale) => void)(echelle);
+
+    return echelle.ticks.map((t) => t.value);
+  };
+
+  const altitudes = construites(y);
+  const allures = construites(yPace);
+
+  expect(altitudes.length).toBeGreaterThanOrEqual(2);
+  expect(allures).toHaveLength(altitudes.length);
+
+  // La même hauteur dans le cadre des deux côtés : l'échelle d'allure est
+  // inversée, son minimum — le rapide — étant en haut.
+  for (const [i, altitude] of altitudes.entries()) {
+    const hauteur =
+      (altitude - (y?.min as number)) /
+      ((y?.max as number) - (y?.min as number));
+    const meme =
+      ((yPace?.max as number) - allures[i]) /
+      ((yPace?.max as number) - (yPace?.min as number));
+
+    expect(meme).toBeCloseTo(hauteur, 10);
+  }
+});
+
+/** Empilés, chacun a son cadre : l'allure reprend ses trois repères à elle. */
+test("empilée, l'allure ne suit plus la grille du relief", () => {
+  const o = options({
+    paceBand: BANDE,
+    allures: paceSeries(points, BANDE),
+    etroit: true,
+  });
+  const echelle = { ticks: [] } as unknown as Scale;
+  (o?.scales?.yPace?.afterBuildTicks as (s: Scale) => void)(echelle);
+
+  expect(echelle.ticks.map((t) => t.value)).toEqual([
+    BANDE.fastestSPerKm,
+    BANDE.meanSPerKm,
+    BANDE.slowestSPerKm,
+  ]);
 });

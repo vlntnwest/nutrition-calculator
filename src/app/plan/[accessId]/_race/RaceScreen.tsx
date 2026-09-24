@@ -182,6 +182,7 @@ export function RaceScreen({
                   min={-0.4}
                   max={0.4}
                   step={0.05}
+                  defaut={0}
                   bornes={["moins d'effort", "plus d'effort"]}
                   onChange={(value) => change(() => setClimb(value))}
                 />
@@ -191,6 +192,7 @@ export function RaceScreen({
                   min={-0.2}
                   max={0.2}
                   step={0.01}
+                  defaut={0}
                   bornes={["négatif", "positif"]}
                   onChange={(value) => change(() => setSplit(value))}
                 />
