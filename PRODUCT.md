@@ -10,7 +10,7 @@ web
 
 Des coureurs d'endurance qui préparent une épreuve à trace connue : un trail local
 de 45 km, la SaintéLyon, un ultra, un brevet de 400 km. Ils construisent leur plan
-au calme, en amont de la course, souvent plusieurs fois — on revient dessus quand
+au calme, en amont de la course, souvent plusieurs fois. On revient dessus quand
 le temps visé bouge ou qu'on change de produit.
 
 Le jour J, ils ne construisent plus : ils suivent. **Le livrable emporté est un
@@ -28,7 +28,7 @@ course sans la réinterpréter.
 
 ## Positioning
 
-Les calculateurs existants sont édités par des fabricants — bien faits, et
+Les calculateurs existants sont édités par des fabricants, bien faits et
 systématiquement verrouillés sur leur propre catalogue : le plan qui en sort est
 une liste de courses de la marque. Le plus abouti ne couvre par ailleurs que les
 épreuves d'un seul circuit.
@@ -59,7 +59,7 @@ sources, jamais des documents commerciaux d'un fabricant.
 - La persistance est bouclée : un plan s'écrit, se relit, se régénère.
 - **Les produits retenus sont figés en snapshot** au moment du choix. Corriger le
   catalogue ne réécrit jamais un plan enregistré.
-- Les valeurs nutritionnelles sont exprimées **par dose consommée** — l'unité pour
+- Les valeurs nutritionnelles sont exprimées **par dose consommée**, l'unité pour
   un gel, la mesurette pour une poudre.
 - Le roadbook est **modifiable, pas seulement lisible** : quantités au pas de 0,5
   quand le produit se coupe, ajout d'un produit par secteur, durée et cible
@@ -69,9 +69,15 @@ sources, jamais des documents commerciaux d'un fabricant.
   plan entier (glucides au-dessus du guide, sodium sous la cible, boisson
   au-delà de ce que portent les flasques, etc.).
 - **L'interface existe** : import GPX, puis un dossier à quatre destinations
-  (Course, Cibles, Produits, Roadbook), en desktop et en mobile. Restent hors
-  périmètre à ce jour : l'impression PDF du roadbook, et la saisie d'un produit
-  qui n'est pas au catalogue.
+  (Course, Cibles, Produits, Roadbook), en desktop et en mobile. Reste hors
+  périmètre à ce jour la saisie d'un produit qui n'est pas au catalogue.
+- **La feuille PDF se télécharge**, depuis le bas du Roadbook et depuis la
+  barre du haut contre le partage. Une A4 qui porte l'identité de la course, la
+  carte sur fond OpenStreetMap, le profil et sa bande d'allure, les temps de
+  passage avec les rations sous chaque borne, puis la liste de courses. Elle se
+  fabrique côté serveur et ne rend que l'état enregistré ; son déclencheur est
+  inerte tant que le Roadbook porte des retouches. Sa conception est dans
+  `docs/pdf-du-roadbook.md`.
 - La voix du produit est tenue par dix interdits vérifiables : `docs/voix.md`.
 
 Décisions produit explicitement ouvertes, à ne pas trancher à sa place :
@@ -79,10 +85,9 @@ Décisions produit explicitement ouvertes, à ne pas trancher à sa place :
 - Le **nom du produit** n'est pas choisi.
 - Une correction manuelle fige-t-elle son secteur au prochain recalcul ?
 - Les avertissements restent-ils sous leur secteur ou remontent-ils en tête ?
-- Où vit l'allure — sous le chrono dans Course, à confirmer une fois le calcul
+- Où vit l'allure : sous le chrono dans Course, à confirmer une fois le calcul
   branché.
 - La feuille de la carte doit-elle pouvoir se réduire à une poignée ?
-- L'impression PDF : icône seule, ou dans un menu ⋯ ?
 
 ## Brand Commitments
 
@@ -91,16 +96,16 @@ le fichier Figma et sert de matière de départ, sans avoir valeur d'engagement.
 
 Voix du produit, telle qu'elle s'écrit déjà dans le README et les wireframes :
 française, précise, sans superlatif, elle explique le mécanisme plutôt que de
-vanter le résultat. Elle assume les limites — « un plan se teste à l'entraînement
+vanter le résultat. Elle assume les limites : « un plan se teste à l'entraînement
 avant de s'appliquer en course ».
 
 ## Evidence on Hand
 
 - **Dix fixtures GPX de courses françaises réelles** confrontées à leur D+ officiel
-  publié (`src/core/fixtures/references/`) — SaintéLyon, Strasparis, UTDC, UTHK,
+  publié (`src/core/fixtures/references/`) : SaintéLyon, Strasparis, UTDC, UTHK,
   Saverne, Andlau.
 - Un catalogue produits réel, saisi par `/catalogue` et conservé en base de
-  production — 45 produits. Le dépôt n'en porte qu'un jeu d'essai de onze
+  production : 45 produits. Le dépôt n'en porte qu'un jeu d'essai de onze
   références (`src/fixtures/sampleProducts.ts`).
 - Les références scientifiques et la tension non résolue ACSM / ISSN sur les
   glucides en ultra : `docs/sources.md`.
