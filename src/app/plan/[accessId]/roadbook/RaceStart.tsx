@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { savePlan } from "@/app/plans/actions";
 import { clockLabel, fromHM, type HM, toHM } from "@/format/clock";
-import { Button } from "@/ui/Button";
 import { HeureInput } from "@/ui/Chrono";
 import { FieldLabel } from "@/ui/Field";
 import { Val } from "@/ui/Measure";
 import { ErrorNote } from "@/ui/Notice";
-import { usePlanSave } from "../save";
+import { useAutosave } from "../save";
 
 /**
  * La date et l'heure de départ, saisies là où elles servent.
@@ -19,9 +19,9 @@ import { usePlanSave } from "../save";
  * tête du roadbook, qu'elles se posent, et pas sur l'écran des réglages
  * d'allure où elles n'auraient rien réglé du tout.
  *
- * Le champ s'enregistre seul, sans toucher à la barre du bas : celle-là écrit
- * les retouches de rations, et mêler les deux ferait dépendre une heure de
- * passage d'un enregistrement qui ne la concerne pas.
+ * Les deux champs s'écrivent seuls, sans passer par les retouches de rations :
+ * une heure de passage n'a pas à attendre un rejeu du calcul qui ne la
+ * concerne pas.
  */
 export function RaceStart({
   accessId,
@@ -39,28 +39,12 @@ export function RaceStart({
 }) {
   const [date, setDate] = useState(raceDate ?? "");
   const [heure, setHeure] = useState<HM>(toHM(startTime));
-  const [modifie, setModifie] = useState(false);
-  const { pending, erreur, enregistre, save, reprise } = usePlanSave(accessId);
 
   const pose = fromHM(heure);
-
-  function change(fait: () => void) {
-    fait();
-    setModifie(true);
-    reprise();
-  }
-
-  function submit() {
-    save(
-      {
-        settings: {
-          raceDate: date === "" ? undefined : date,
-          startTime: pose,
-        },
-      },
-      () => setModifie(false),
-    );
-  }
+  const erreur = useAutosave(
+    { settings: { raceDate: date === "" ? undefined : date, startTime: pose } },
+    (patch) => savePlan(accessId, patch),
+  );
 
   return (
     <div className="flex flex-col gap-2">
@@ -71,29 +55,15 @@ export function RaceStart({
             id={`${accessId}-date`}
             type="date"
             value={date}
-            onChange={(event) => change(() => setDate(event.target.value))}
+            onChange={(event) => setDate(event.target.value)}
             className="rounded-[var(--radius-control)] border border-line bg-paper px-3 py-2 font-mono text-[15px] text-ink outline-none transition-colors focus:border-accent"
           />
         </div>
 
         <div className="flex flex-col gap-1.5">
           <FieldLabel>Départ</FieldLabel>
-          <HeureInput
-            value={heure}
-            onChange={(value) => change(() => setHeure(value))}
-          />
+          <HeureInput value={heure} onChange={setHeure} />
         </div>
-
-        {/* Toujours là, désactivé tant que rien n'a bougé : un bouton qui
-            apparaît décale ce qui l'entoure au moment même où l'on tape. */}
-        <Button
-          taille="sm"
-          ton="encre"
-          disabled={pending || !modifie}
-          onClick={submit}
-        >
-          {pending ? "Enregistrement" : "Enregistrer"}
-        </Button>
       </div>
 
       <p className="text-[12px] text-ink-soft leading-relaxed">
@@ -104,9 +74,6 @@ export function RaceStart({
           </>
         ) : (
           "Sans heure de départ, les secteurs portent le temps écoulé depuis le départ."
-        )}
-        {enregistre && !modifie && (
-          <span className="pl-1.5 text-ink-faint">Enregistré.</span>
         )}
       </p>
 
