@@ -13,6 +13,31 @@ function isLocalHost(url: string): boolean {
   );
 }
 
+/**
+ * `sslmode=verify-full`, là où l'URL annonce un mode que pg lit déjà ainsi.
+ *
+ * Neon donne ses URL en `sslmode=require`, et l'intégration Vercel les pose
+ * telles quelles, branches de preview comprises. pg v8 traite `prefer`,
+ * `require` et `verify-ca` comme `verify-full`, mais prévient à chaque
+ * démarrage qu'en v9 ils prendront le sens de libpq, où `require` chiffre sans
+ * vérifier le certificat. Écrire le mode ici garde la vérification
+ * d'aujourd'hui à travers la montée de version, sans dépendre des variables
+ * du projet Vercel.
+ *
+ * Une URL qui demande `uselibpqcompat=true` a choisi le sens de libpq : on la
+ * laisse, `verify-full` y exigerait un certificat racine qu'elle ne donne pas.
+ * Une réécriture de texte plutôt qu'un passage par `URL`, dont la
+ * sérialisation pourrait réencoder un mot de passe.
+ */
+export function withVerifiedSsl(url: string): string {
+  if (/[?&]uselibpqcompat=true(?=&|$)/.test(url)) return url;
+
+  return url.replace(
+    /([?&]sslmode=)(?:prefer|require|verify-ca)(?=&|$)/,
+    "$1verify-full",
+  );
+}
+
 // Une URL Neon dans un fichier d'environnement local a déjà fait écrire `npm
 // run dev`, `db:migrate` et surtout `npm test` dans la base de production.
 // Hors production, la base doit donc être sur cette machine.
@@ -34,7 +59,7 @@ function readUrl(name: string, value: string | undefined): string {
     );
   }
 
-  return value;
+  return withVerifiedSsl(value);
 }
 
 /** La connexion de l'application : poolée sur Neon. */
