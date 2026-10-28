@@ -8,12 +8,11 @@ import type { LegOverride } from "@/app/plans/planInput";
 import type { RoadbookEdit } from "@/app/plans/saveRoadbook";
 import type { ProfilePoint } from "@/core/type";
 import { duree } from "@/format/number";
-import { Button } from "@/ui/Button";
 import { Notice } from "@/ui/Notice";
 import { Toast } from "@/ui/Toast";
 import type { PaceBand } from "@/ui/track/chartTypes";
 import { PdfLink } from "../_shell/PdfLink";
-import { useDeclarerRetouches } from "../_shell/RetouchesEnCours";
+import { useEcriture } from "../save";
 import { withFill, withServing } from "./edit";
 import { liveTotal, SOLIDE, spanFluidNeedMl, spanStart } from "./format";
 import { LegCard } from "./LegCard";
@@ -89,30 +88,44 @@ export function RoadbookEditor({
   const router = useRouter();
   const [rendu, setRendu] = useState(roadbook);
   const [edit, setEdit] = useState(() => editOf(roadbook));
-  const [sale, setSale] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
-  const [pending, start] = useTransition();
   const [imposing, startImpose] = useTransition();
   const defilement = useRef<HTMLDivElement>(null);
   const collant = useRef<HTMLDivElement>(null);
+  // Chaque retouche part dès le clic, sans délai : rien ne se tape ici, tout
+  // se clique, et une retouche encore en attente partirait après un
+  // `Recalculer` cliqué juste derrière, pour réimposer ce qu'il vient de jeter.
+  const {
+    envoyer,
+    enCours,
+    erreur: refus,
+    effacerErreur,
+  } = useEcriture((suite: RoadbookEdit) => saveEditedRoadbook(accessId, suite));
 
   // `router.refresh()` ne remonte pas le composant. Sans ce retour à la
   // source, un recalcul rafraîchirait les agrégats en laissant les contrôles
-  // sur des retouches que le serveur vient de jeter — et l'enregistrement
-  // suivant les réimposerait, la confirmation de `Calculer` pour rien.
-  if (rendu !== roadbook) {
+  // sur des retouches que le serveur vient de jeter, et la retouche suivante
+  // les réimposerait. Le retour attend que les retouches parties soient
+  // rentrées : un rendu qui précède la dernière ramènerait les contrôles un
+  // clic en arrière. Celui qui la suit rend la quantité telle que le noyau
+  // l'a rangée sur le pas du produit (ADR 011).
+  if (rendu !== roadbook && !enCours) {
     setRendu(roadbook);
     setEdit(editOf(roadbook));
-    setSale(false);
     setErreur(null);
+  }
+
+  /** La retouche s'affiche et part au serveur dans le même geste. */
+  function retoucher(suite: RoadbookEdit) {
+    setEdit(suite);
+    envoyer(suite);
   }
 
   /** Pose une quantité sur un secteur — voir `withServing`. */
   function setServing(leg: number, snapshotId: string, quantity: number) {
-    setSale(true);
-    setEdit((e) =>
+    retoucher(
       withServing(
-        e,
+        edit,
         roadbook.legs,
         roadbook.catalogue,
         roadbook.flasks,
@@ -129,24 +142,16 @@ export function RoadbookEditor({
     flaskRank: number,
     contenu: { productSnapshotId: string | null; volumeMl: number } | null,
   ) {
-    setSale(true);
-    setEdit((e) =>
-      withFill(e, roadbook.legs, roadbook.catalogue, leg, flaskRank, contenu),
+    retoucher(
+      withFill(
+        edit,
+        roadbook.legs,
+        roadbook.catalogue,
+        leg,
+        flaskRank,
+        contenu,
+      ),
     );
-  }
-
-  function save() {
-    setErreur(null);
-    start(async () => {
-      const result = await saveEditedRoadbook(accessId, edit);
-      if (result.ok) {
-        setSale(false);
-        // Comme Calculer : c'est le rendu du serveur qu'il faut refaire.
-        router.refresh();
-      } else {
-        setErreur(result.error);
-      }
-    });
   }
 
   /**
@@ -221,13 +226,6 @@ export function RoadbookEditor({
     };
   }
 
-  // Les avertissements viennent du serveur et ne rejouent pas ici — seule la
-  // règle qui les déclenche compte, pas leur texte — donc tant qu'on n'a pas
-  // enregistré, ils décrivent l'état d'avant. On les estompe plutôt que de
-  // les refaire, ce serait rouvrir la divergence que getRoadbook évite (ADR
-  // 011). L'apport en glucides, lui, se resomme en direct dans `LegCard` et
-  // `PackSummary` : c'est une simple somme des retouches, pas un calcul du
-  // noyau, et rien n'y diverge.
   /**
    * Amène la carte d'un secteur sous le profil, et non dessous.
    *
@@ -251,11 +249,14 @@ export function RoadbookEditor({
     boite.scrollTo({ top: haut - MARGE_SAUT, behavior: "smooth" });
   }
 
-  // Les deux déclencheurs du PDF refusent de partir tant qu'il reste des
-  // retouches : celui d'ici le sait, celui de la barre du haut l'apprend.
-  useDeclarerRetouches(sale);
-
-  const vieux = sale ? "opacity-50" : "";
+  // Les avertissements viennent du serveur et ne rejouent pas ici — seule la
+  // règle qui les déclenche compte, pas leur texte — donc tant qu'une
+  // retouche n'est pas rentrée, ils décrivent l'état d'avant. On les estompe
+  // le temps de l'aller-retour plutôt que de les refaire, ce serait rouvrir
+  // la divergence que getRoadbook évite (ADR 011). L'apport en glucides, lui,
+  // se resomme en direct dans `LegCard` et `PackSummary` : c'est une simple
+  // somme des retouches, pas un calcul du noyau, et rien n'y diverge.
+  const vieux = enCours ? "opacity-50" : "";
   const total = liveTotal(
     edit.servings,
     roadbook.legs.map((leg) => leg.needG),
@@ -331,25 +332,24 @@ export function RoadbookEditor({
         </div>
       </div>
 
-      {erreur && <Toast onFermer={() => setErreur(null)}>{erreur}</Toast>}
+      {(erreur ?? refus) && (
+        <Toast
+          onFermer={() => {
+            setErreur(null);
+            effacerErreur();
+          }}
+        >
+          {erreur ?? refus}
+        </Toast>
+      )}
 
       <div className="sticky bottom-0 z-10 shrink-0 border-line border-t bg-paper">
         <div className="mx-auto flex w-full max-w-4xl items-center gap-3 px-4 py-3 sm:px-6">
           <p className="hidden min-w-0 flex-1 text-[12px] text-ink-soft sm:block">
-            {sale
-              ? "Les avertissements affichés datent du dernier enregistrement."
-              : `${roadbook.legs.length} secteurs, ${duree(roadbook.legs.reduce((t, l) => t + l.durationS, 0))} de mouvement`}
+            {`${roadbook.legs.length} secteurs, ${duree(roadbook.legs.reduce((t, l) => t + l.durationS, 0))} de mouvement`}
           </p>
-          {/* Les deux boutons ont des états opposés : on enregistre tant
-              qu'il reste des retouches, on emporte la feuille une fois qu'il
-              n'en reste plus. Un seul des deux est actif à la fois, et la
-              barre se lit comme un seul choix. */}
           <div className="ml-auto flex items-center gap-3">
             <PdfLink accessId={accessId} tenue="bouton" />
-
-            <Button ton="encre" disabled={!sale || pending} onClick={save}>
-              {pending ? "Enregistrement" : "Enregistrer les retouches"}
-            </Button>
           </div>
         </div>
       </div>

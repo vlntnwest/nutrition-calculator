@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { savePlan } from "@/app/plans/actions";
 import type { CatalogueEntry } from "@/app/plans/catalogue";
 import type { Targets } from "@/core/type";
 import { formatPluriel } from "@/format/produit";
@@ -10,8 +11,7 @@ import { ChevronIcon, CloseIcon, SearchIcon } from "@/ui/icons";
 import { EmptyNote, ErrorNote } from "@/ui/Notice";
 import { Pagination } from "@/ui/Pagination";
 import { Rule } from "@/ui/Panel";
-import { SaveBar } from "@/ui/SaveBar";
-import { usePlanSave } from "../save";
+import { useAutosave } from "../save";
 import {
   aucunFiltre,
   bascule,
@@ -29,8 +29,9 @@ const PAR_PAGE = 24;
 
 /**
  * Écran Produits : le catalogue entier, et ce qu'on en retient pour cette
- * course. Le plan ne fige les valeurs nutritionnelles qu'à l'enregistrement,
- * en instantané ; corriger le catalogue ensuite ne réécrit rien.
+ * course. Un produit mis au sac s'écrit dans la foulée, et le plan fige alors
+ * ses valeurs nutritionnelles en instantané ; corriger le catalogue ensuite ne
+ * réécrit rien.
  */
 export function ProductsForm({
   accessId,
@@ -47,9 +48,12 @@ export function ProductsForm({
   const [filtres, setFiltresBrut] = useState<Filtres>(FILTRES_VIDES);
   const [ouvert, setOuvert] = useState<string | null>(null);
   const [filtresOuverts, setFiltresOuverts] = useState(false);
-  const [modifie, setModifie] = useState(false);
   const [page, setPage] = useState(1);
-  const { pending, erreur, enregistre, save, reprise } = usePlanSave(accessId);
+  // Triés : retirer puis remettre un produit le range en queue du `Set`, et
+  // le sac, identique, partirait quand même pour un autre ordre.
+  const erreur = useAutosave({ productCodes: [...retenus].sort() }, (patch) =>
+    savePlan(accessId, patch),
+  );
 
   /** Un filtre qui bouge rouvre toujours sur la première page. */
   function setFiltres(suite: Filtres) {
@@ -84,8 +88,6 @@ export function ProductsForm({
     const suite = new Set(retenus);
     if (!suite.delete(codeSeed)) suite.add(codeSeed);
     setRetenus(suite);
-    setModifie(true);
-    reprise();
   }
 
   return (
@@ -271,22 +273,13 @@ export function ProductsForm({
         )}
       </div>
 
-      {/* `paper-dim` fait de ce pied un plateau creux, pas une bande
-          blanche posée sur le papier : le bouton s'y pose, il n'y flotte
-          plus seul. Même creux que `Panel ton="creux"`. */}
-      <div className="shrink-0 border-line border-t bg-paper-dim px-4 sm:px-6">
-        {erreur && <ErrorNote>{erreur}</ErrorNote>}
-
-        <SaveBar
-          pending={pending}
-          modifie={modifie}
-          enregistre={enregistre && !modifie}
-          consequence="le roadbook devra être recalculé"
-          onSave={() =>
-            save({ productCodes: [...retenus] }, () => setModifie(false))
-          }
-        />
-      </div>
+      {/* Le pied ne paraît que pour dire qu'une écriture a échoué. `paper-dim`
+          en fait un plateau creux, comme `Panel ton="creux"`. */}
+      {erreur && (
+        <div className="shrink-0 border-line border-t bg-paper-dim px-4 py-3 sm:px-6">
+          <ErrorNote>{erreur}</ErrorNote>
+        </div>
+      )}
 
       {detaille && (
         <ProductSheet

@@ -252,7 +252,7 @@ npm run test:watch
 
 Vitest tourne en environnement `node`, sans DOM. Un composant se teste donc par
 `renderToStaticMarkup`, sur son premier rendu, ce qui décrit ceux qui n'ont pas
-d'effet et ne lisent rien du navigateur (`LegCard`, `PdfTrigger`). Le reste de la
+d'effet et ne lisent rien du navigateur (`LegCard`, `PdfLink`). Le reste de la
 valeur est dans le noyau, dans l'écriture puis la relecture d'un plan contre un vrai
 Postgres, et dans la traduction entre saisie et valeur, isolée dans `src/format/` et
 dans les modules `stations.ts`, `filtres.ts`, `synthese.ts` et `warnings.ts` de

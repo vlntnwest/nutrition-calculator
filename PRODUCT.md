@@ -42,6 +42,9 @@ sources, jamais des documents commerciaux d'un fabricant.
 
 - **Pas de compte, pas d'installation.** Un plan s'ouvre par son `accessId`, se
   garde sur l'appareil, et expire au bout de six mois.
+- **Pas de bouton Enregistrer.** Chaque saisie s'écrit d'elle-même, une
+  demi-seconde après le dernier geste, et une retouche du Roadbook dès le clic
+  (ADR 014).
 - **Quatre destinations, pas un tunnel** : Course · Cibles · Produits · Roadbook.
   Un plan est un dossier qu'on rouvre. Chaque entrée porte une pastille d'état
   (○ vide · ● rempli · ◍ à recalculer).
@@ -75,9 +78,8 @@ sources, jamais des documents commerciaux d'un fabricant.
   barre du haut contre le partage. Une A4 qui porte l'identité de la course, la
   carte sur fond OpenStreetMap, le profil et sa bande d'allure, les temps de
   passage avec les rations sous chaque borne, puis la liste de courses. Elle se
-  fabrique côté serveur et ne rend que l'état enregistré ; son déclencheur est
-  inerte tant que le Roadbook porte des retouches. Sa conception est dans
-  `docs/pdf-du-roadbook.md`.
+  fabrique côté serveur et rend l'état en base, que chaque retouche met à jour
+  au clic. Sa conception est dans `docs/pdf-du-roadbook.md`.
 - La voix du produit est tenue par dix interdits vérifiables : `docs/voix.md`.
 
 Décisions produit explicitement ouvertes, à ne pas trancher à sa place :

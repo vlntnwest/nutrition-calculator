@@ -71,19 +71,19 @@ monte, c'est la première chose à revoir.
 
 ### 2.2 On ne rend que l'état enregistré
 
-Le bouton est inerte tant que le Roadbook porte des retouches non
-enregistrées. Rendre l'état à l'écran était l'autre option ; l'inertie du
-bouton a l'avantage de **dire** au coureur que ce qu'il voit n'est pas encore
-enregistré. La barre du bas le dit déjà, en mots ; un bouton qui refuse de
-partir le dit par le geste, au moment où le coureur le tente.
+La feuille lit la base, jamais l'écran. Depuis l'ADR 014, chaque retouche du
+Roadbook s'y écrit au clic : il n'y a plus d'écart à surveiller, et le
+déclencheur part toujours. Il restait jusque-là inerte tant que le Roadbook
+portait des retouches non enregistrées.
 
 Conséquence : `sheet.ts` ne connaît pas les retouches en cours. Il lit
 `roadbook.legs[].supply` et `roadbook.total` tels que `getRoadbook` les rend.
 Rien de ce qui existe dans `roadbook/format.ts` pour recalculer en direct
 (`liveSupply`, `liveTotal`) ne sert ici.
 
-**Ce qui dérange.** Un coureur qui vient de corriger une quantité doit
-enregistrer avant d'imprimer. C'est un pas de plus, assumé.
+**Ce qui dérange.** Un clic sur le lien dans la fraction de seconde qui suit
+une retouche peut rendre l'état d'avant : la retouche est partie, elle n'est
+pas forcément rentrée.
 
 ### 2.3 Rien n'est rastérisé, sauf les tuiles
 
@@ -134,43 +134,21 @@ graphique, qui compare des moyennes entre elles et garde donc son échelle.
 
 ### 2.6 Deux déclencheurs, un nom de fichier
 
-Le lien vit dans la barre du bas du Roadbook, contre « Enregistrer les
-retouches », et en haut contre le bouton « Partager » de `PlanTopBar`. Le
-partage et l'impression sont deux façons de faire sortir le plan, elles se
-tiennent au même endroit.
-
-En bas, les deux boutons ont des états **opposés** : on enregistre tant qu'il
-reste des retouches, on emporte la feuille une fois qu'il n'en reste plus. Un
-seul des deux est actif à la fois, et la barre se lit comme un seul choix
-plutôt que comme deux commandes.
+Le lien vit dans la barre du bas du Roadbook, et en haut contre le bouton
+« Partager » de `PlanTopBar`. Le partage et l'impression sont deux façons de
+faire sortir le plan, elles se tiennent au même endroit.
 
 Le fichier s'appelle `nom-de-la-trace_date.pdf`, sur la date de course. Le nom
 est assaini : minuscules, accents dépliés, tout ce qui n'est ni lettre ni
 chiffre ramené à un tiret, tirets consécutifs fondus. Un plan sans date de
 course garde le seul nom.
 
-**Comment les deux déclencheurs s'accordent.** `PlanTopBar` vit dans
-`_shell/` et sert les quatre destinations. Savoir si le plan est calculé ne
-posait pas de problème, la coquille le lit déjà pour ses pastilles d'état.
-Savoir s'il reste des retouches, si : cet état vit dans `RoadbookEditor`, et
-la barre du haut en est la **sœur**, pas la descendante.
-
-D'où `RetouchesEnCours`, un contexte client que la coquille pose au-dessus des
-deux. Il ne porte rien d'autre qu'un booléen : ce n'est pas un magasin d'état,
-c'est un fil entre deux points que l'arbre sépare. `RoadbookEditor` déclare le
-sien par `useDeclarerRetouches`, dont le nettoyage remet à propre en quittant
-l'écran — sans lui, revenir sur Cibles après une retouche laisserait la barre
-croire qu'il reste quelque chose à enregistrer.
-
-**Alternative écartée.** Ne garder que le déclencheur du bas, où `sale` est
-connu, et se passer du contexte. Elle évitait la plomberie, au prix du geste
-qu'on cherche là où le partage se trouve.
-
-**Ce qui dérange.** La décision et la lecture du contexte sont séparées en
-deux composants (`PdfTrigger` et `PdfLink`) parce que la suite de tests n'a
-pas de DOM et ne joue donc aucun effet : seule la première se teste. Le fil
-lui-même, du Roadbook à la barre, ne se vérifie qu'à la main dans un
-navigateur.
+**Comment les deux déclencheurs s'accordent.** Ils n'ont plus rien à se dire :
+c'est la même ancre, `PdfLink`, en deux tenues, et la coquille sait déjà si le
+plan est calculé pour ses pastilles d'état. Tant qu'il y avait un bouton
+Enregistrer, un contexte client (`RetouchesEnCours`) portait l'état des
+retouches de `RoadbookEditor` jusqu'à la barre du haut, sa sœur dans l'arbre.
+L'écriture au clic l'a rendu sans objet (ADR 014).
 
 ## 3. Les modules
 
@@ -427,13 +405,10 @@ Chaque étape se vérifie seule.
    faire coïncider deux listes par leur indice.
 6. ~~**Le bouton**, inerte tant que `sale`.~~ Fait. Deux déclencheurs, une
    icône contre le partage et un bouton nommé sous le sac, reliés par le
-   contexte décrit en 2.6.
+   contexte décrit en 2.6. L'inertie et le contexte sont partis avec
+   l'enregistrement explicite (ADR 014).
 
 ## 8. Ce qui reste ouvert
 
-- **La vérification du fil `sale`** entre le Roadbook et la barre du haut.
-  Elle demande un DOM que la suite de tests n'a pas. À faire à la main, ou en
-  ajoutant un environnement de test au projet, ce qui déborde de ce
-  sous-système.
 - **Un ADR.** Les décisions 2.1 et 2.3 en méritent un une fois qu'elles auront
   tenu à l'usage. On ne grave pas ce qui n'a pas encore tourné.

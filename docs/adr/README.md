@@ -18,6 +18,7 @@ déjà le *quoi*, et l'historique Git dit le *quand*.
 | [011](011-une-retouche-est-une-consigne-pas-une-sortie-modifiee.md) | Une retouche est une consigne au calcul, pas une sortie modifiée | Accepté |
 | [012](012-un-etage-une-base-et-la-migration-dans-le-build.md) | Un étage, une base, et la migration dans le build | Accepté |
 | [013](013-le-catalogue-est-une-donnee-de-production.md) | Le catalogue est une donnée de production, pas du code | Accepté |
+| [014](014-chaque-geste-s-ecrit-sans-bouton-enregistrer.md) | Chaque geste s'écrit, sans bouton Enregistrer | Accepté |
 
 ## Convention
 
