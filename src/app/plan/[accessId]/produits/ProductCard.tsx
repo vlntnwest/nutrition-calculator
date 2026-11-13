@@ -38,6 +38,7 @@ export function ProductCard({
         <span className="relative block aspect-[3/2] w-full overflow-hidden bg-paper">
           <ProductImage
             codeSeed={produit.codeSeed}
+            sansPhoto={produit.own}
             sizes="(min-width: 1280px) 22vw, (min-width: 640px) 30vw, 48vw"
             className="object-cover"
           />

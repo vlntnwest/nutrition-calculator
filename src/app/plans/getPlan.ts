@@ -174,6 +174,11 @@ async function deleteIfExpired(accessId: string): Promise<void> {
 
     await tx.delete(warnings).where(eq(warnings.planId, accessId));
     await tx.delete(legs).where(eq(legs.planId, accessId));
+    // Avant le plan : ses propres produits partent avec lui par cascade, et
+    // un instantané encore là en retiendrait un.
+    await tx
+      .delete(productSnapshots)
+      .where(eq(productSnapshots.planId, accessId));
     await tx.delete(plans).where(eq(plans.accessId, accessId));
   });
 }

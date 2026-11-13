@@ -1,12 +1,12 @@
 "use client";
 
-import { useId } from "react";
+import { useId, useState } from "react";
 import type { CatalogueEntry } from "@/app/plans/catalogue";
 import type { Targets } from "@/core/type";
 import { entier, quantite } from "@/format/number";
 import { coupeFr, formatFr, nomProduit } from "@/format/produit";
 import { Button, IconButton } from "@/ui/Button";
-import { CheckIcon, CloseIcon, PlusIcon } from "@/ui/icons";
+import { CheckIcon, CloseIcon, PlusIcon, TrashIcon } from "@/ui/icons";
 import { Stat, Val } from "@/ui/Measure";
 import { Modal, ModalFoot } from "@/ui/Modal";
 import { Rule } from "@/ui/Panel";
@@ -21,6 +21,7 @@ export function ProductSheet({
   dansLeSac,
   cibles,
   onBasculer,
+  onSupprimer,
   onFermer,
 }: {
   produit: CatalogueEntry;
@@ -28,9 +29,13 @@ export function ProductSheet({
   /** Les cibles du plan, pour dire ce que ce produit y couvre. */
   cibles: Targets | undefined;
   onBasculer: () => void;
+  /** Ne sert qu'à un produit saisi par le coureur : le catalogue ne s'efface pas d'ici. */
+  onSupprimer: () => void;
   onFermer: () => void;
 }) {
   const titreId = useId();
+  // Deux clics : la fiche saisie ne se retrouve nulle part une fois partie.
+  const [aConfirmer, setAConfirmer] = useState(false);
   // Combien de doses il faut par heure pour tenir la cible : la seule
   // question qu'on se pose vraiment devant un produit.
   const parHeure =
@@ -42,6 +47,7 @@ export function ProductSheet({
         <span className="relative size-20 shrink-0 overflow-hidden rounded-[var(--radius-control)] bg-paper">
           <ProductImage
             codeSeed={produit.codeSeed}
+            sansPhoto={produit.own}
             sizes="80px"
             className="object-cover"
           />
@@ -126,6 +132,26 @@ export function ProductSheet({
           <Val unite="mg">{entier(parHeure * produit.sodiumMg)}</Val> de sodium
           dans le même temps.
         </p>
+      )}
+
+      {produit.own && (
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-line border-t px-4 py-3">
+          <p className="text-[13px] text-ink-soft">
+            {aConfirmer
+              ? dansLeSac
+                ? "Il sortira aussi du sac, et un roadbook déjà calculé sera à refaire."
+                : "Sa fiche sera perdue."
+              : "Saisi pour cette course, absent du catalogue."}
+          </p>
+          <Button
+            ton="contour"
+            taille="sm"
+            icone={<TrashIcon className="size-3.5" />}
+            onClick={aConfirmer ? onSupprimer : () => setAConfirmer(true)}
+          >
+            {aConfirmer ? "Confirmer la suppression" : "Supprimer"}
+          </Button>
+        </div>
       )}
 
       <ModalFoot>
