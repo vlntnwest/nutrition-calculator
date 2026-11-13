@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { savePlan } from "@/app/plans/actions";
+import type { PlanPatch } from "@/app/plans/updatePlan";
 import type { Flask, Targets } from "@/core/type";
 import { duree, entier, toNumber } from "@/format/number";
 import { MeasureField } from "@/ui/Field";
 import { Val } from "@/ui/Measure";
 import { ErrorNote } from "@/ui/Notice";
 import { Panel, Rule } from "@/ui/Panel";
-import { SaveBar } from "@/ui/SaveBar";
-import { usePlanSave } from "../save";
+import { useAutosave } from "../save";
 import { FlaskTable, useFlaskRows, volumesLisibles } from "./FlaskTable";
 import { synthetiser } from "./synthese";
 import { TargetsPanel } from "./TargetsPanel";
@@ -36,17 +37,6 @@ export function TargetsForm({
   );
   const [masse, setMasse] = useState(String(massKg ?? ""));
   const [lignes, setLignes] = useFlaskRows(flasks);
-  const [modifie, setModifie] = useState(false);
-  const [reproche, setReproche] = useState<string | null>(null);
-  const { pending, erreur, enregistre, save, reprise } = usePlanSave(accessId);
-
-  /** Toute saisie annule la confirmation précédente et rouvre le bouton. */
-  function change(fait: () => void) {
-    fait();
-    setModifie(true);
-    setReproche(null);
-    reprise();
-  }
 
   // Ce qui est montré n'a pas encore été validé : tant que rien n'est
   // enregistré, ce sont les valeurs du noyau, pas celles du coureur.
@@ -55,32 +45,29 @@ export function TargetsForm({
     ? synthetiser(cibles, volumesLisibles(lignes), targetTimeS)
     : null;
 
-  function submit() {
-    const kg = toNumber(masse);
-    if (kg === undefined || kg <= 0) {
-      setReproche("Indiquez le poids du coureur : la suggestion en dépend.");
+  // Ce qui n'est pas lisible ne part pas, et ne retient pas le reste : un
+  // poids vidé pour être retapé n'empêche pas les cibles de s'écrire. Un
+  // poids vide n'appelle pas de reproche, le champ dit déjà ce qu'il attend.
+  const kg = toNumber(masse);
+  const masseLisible = kg !== undefined && kg > 0;
+  const volumes = volumesLisibles(lignes);
+  const flasquesLisibles = volumes.length === lignes.length;
+  const reproche =
+    masse.trim() !== "" && !masseLisible
+      ? "Le poids du coureur s'écrit en kilos, au-dessus de zéro."
+      : flasquesLisibles
+        ? null
+        : "Indiquez la contenance de chaque flasque, en millilitres.";
 
-      return;
-    }
-
-    const volumes: Flask[] = [];
-    for (const ligne of lignes) {
-      const volumeMl = toNumber(ligne.volumeMl);
-      if (volumeMl === undefined || volumeMl <= 0) {
-        setReproche(
-          "Indiquez la contenance de chaque flasque, en millilitres.",
-        );
-
-        return;
-      }
-      volumes.push({ volumeMl, onlyWater: ligne.onlyWater });
-    }
-
-    setReproche(null);
-    save({ settings: { massKg: kg, targets: cibles }, flasks: volumes }, () =>
-      setModifie(false),
-    );
-  }
+  const erreur = useAutosave<PlanPatch>(
+    {
+      settings: masseLisible
+        ? { massKg: kg, targets: cibles }
+        : { targets: cibles },
+      ...(flasquesLisibles ? { flasks: volumes } : {}),
+    },
+    (patch) => savePlan(accessId, patch),
+  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -118,33 +105,25 @@ export function TargetsForm({
                 onChange={(event) => {
                   const saisie = event.target.value;
 
-                  change(() => {
-                    setMasse(saisie);
-                    // Le débit de boisson suit le poids : 7 mL/kg/h, au cran
-                    // de 50 mL le plus proche. Retaper le poids remet donc à
-                    // jour la cible, même après une première sauvegarde.
-                    const kg = toNumber(saisie);
-                    if (kg !== undefined && kg > 0) {
-                      setCibles((c) => ({
-                        ...c,
-                        fluidMlH: Math.round((7 * kg) / 50) * 50,
-                      }));
-                    }
-                  });
+                  setMasse(saisie);
+                  // Le débit de boisson suit le poids : 7 mL/kg/h, au cran
+                  // de 50 mL le plus proche. Retaper le poids remet donc à
+                  // jour la cible, même après une première sauvegarde.
+                  const kg = toNumber(saisie);
+                  if (kg !== undefined && kg > 0) {
+                    setCibles((c) => ({
+                      ...c,
+                      fluidMlH: Math.round((7 * kg) / 50) * 50,
+                    }));
+                  }
                 }}
                 hint="La suggestion de boisson et la dépense en dépendent."
               />
             </Panel>
 
-            <TargetsPanel
-              cibles={cibles}
-              onChange={(suite) => change(() => setCibles(suite))}
-            />
+            <TargetsPanel cibles={cibles} onChange={setCibles} />
 
-            <FlaskTable
-              lignes={lignes}
-              onChange={(suite) => change(() => setLignes(suite))}
-            />
+            <FlaskTable lignes={lignes} onChange={setLignes} />
           </div>
 
           {synthese && (
@@ -184,22 +163,17 @@ export function TargetsForm({
         </div>
       </div>
 
-      {/* `paper-dim` fait de ce pied un plateau creux, pas une bande
-          blanche posée sur le papier : le bouton s'y pose, il n'y flotte
-          plus seul. Même creux que `Panel ton="creux"`. */}
-      <div className="shrink-0 border-line border-t bg-paper-dim">
-        <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
-          {reproche && <ErrorNote>{reproche}</ErrorNote>}
-          {erreur && <ErrorNote>{erreur}</ErrorNote>}
-          <SaveBar
-            pending={pending}
-            modifie={modifie}
-            enregistre={enregistre && !modifie}
-            consequence="le roadbook devra être recalculé"
-            onSave={submit}
-          />
+      {/* Le pied ne paraît que pour dire ce qui ne s'écrit pas : posé hors
+          de la zone qui défile, il se lit où qu'on soit dans le formulaire.
+          `paper-dim` en fait un plateau creux, comme `Panel ton="creux"`. */}
+      {(reproche || erreur) && (
+        <div className="shrink-0 border-line border-t bg-paper-dim">
+          <div className="mx-auto flex w-full max-w-5xl flex-col gap-2 px-4 py-3 sm:px-6">
+            {reproche && <ErrorNote>{reproche}</ErrorNote>}
+            {erreur && <ErrorNote>{erreur}</ErrorNote>}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

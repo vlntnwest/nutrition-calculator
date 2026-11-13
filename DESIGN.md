@@ -258,9 +258,9 @@ Des teintes de service, chacune sur un seul usage.
 - **Ambre d'avertissement** (`{colors.warn}` sur `{colors.warn-tint}`) : une
   remarque du calcul (`Notice`, `Tag ton="alerte"`). Jamais employée seule, un
   pictogramme et un mot portent l'alerte.
-- **Vert de confirmation** (`{colors.go}`) : le seul mot « Enregistré » de la barre
-  d'enregistrement, accompagné d'une coche. Tenu à 4,5:1 sur le papier, parce qu'il
-  habille du texte.
+- **Vert de confirmation** (`{colors.go}`) : une confirmation, accompagnée d'une
+  coche. Tenu à 4,5:1 sur le papier, parce qu'il habille du texte. Aucun écran n'en
+  porte depuis que la saisie s'écrit seule, sans barre d'enregistrement.
 - **Vert de marqueur** (`{colors.go-mark}`) : le disque de départ sur la carte, et
   lui seul. Six pixels posés sur un fond de tuiles : il lui faut de la lumière
   plutôt que du contraste, et c'est pourquoi il ne se confond pas avec `{colors.go}`.
@@ -366,9 +366,9 @@ qu'un surtitre décoratif.
 
 **La coquille du plan est à hauteur fixe.** `h-dvh overflow-hidden` : la page ne
 défile pas, chaque écran gère son propre défilement (`min-h-0 flex-1
-overflow-y-auto`), et la barre d'enregistrement est un pied posé hors de la zone qui
-défile. Rien ne passe derrière le bouton, et il reste sous le pouce sur un
-formulaire long.
+overflow-y-auto`), et ce qui doit se lire où qu'on soit dans un formulaire long
+(le refus d'une saisie, le téléchargement de la feuille) est un pied posé hors de la
+zone qui défile.
 
 **Navigation.** Rail vertical de `14rem` (`w-56`) à gauche à partir de `lg`, sur
 `paper-dim`, cerné d'un filet à droite. En dessous de `lg`, il disparaît au profit
@@ -387,7 +387,7 @@ formulaire en `flex-1`, une synthèse `lg:w-80` collante à `lg:top-6`. Roadbook
 titre, le bouton Calculer et le départ défilent avec les secteurs — sur un petit
 écran, ils ne doivent pas retenir en permanence la place que la liste réclame —, le
 profil devient collant (`sticky top-0`) une fois qu'on a défilé jusqu'à lui, et le
-pied d'enregistrement reste collant en bas.
+pied qui porte la feuille à télécharger reste collant en bas.
 
 **Le repli mobile de l'écran Course.** La carte passe en fond plein cadre
 (`absolute inset-0`, dans un contexte `isolate` que Leaflet impose), la feuille de
@@ -525,8 +525,8 @@ lourd. C'est la seule exception, et elle est locale à ce composant.
   champs annulent l'anneau global (`outline-none`) : c'est la bordure qui dit le
   focus, et elle seule.
 - **MeasureField:** le nombre en Geist Mono, l'unité posée dans le cadre à droite en
-  12px `ink-soft`. Le texte tapé sort tel quel, la conversion attend
-  l'enregistrement.
+  12px `ink-soft`. Le texte tapé sort tel quel, la conversion attend que la saisie
+  se pose.
 - **ChronoInput:** un chrono se saisit en trois cases de deux chiffres, jamais en
   boutons plus ou moins ni en champ unique. Chiffres centrés en Geist Mono 18px
   (`sm` 16px), l'unité `h`, `min`, `s` écrite sous la case en 10px capitales, et le
@@ -566,13 +566,14 @@ elle se centre, quatre coins arrondis, `max-h-[88dvh]`. Le pied (`ModalFoot`) es
 collant, sur `paper-dim` derrière un filet : ce qui annule à gauche en bouton
 `retrait`, ce qui engage à droite en bouton d'encre.
 
-### SaveBar
+### Enregistrement
 
-Le pied d'un écran de saisie, hors de la zone qui défile, derrière un filet. À
-droite, un état en 12px puis le bouton d'encre « Enregistrer », désactivé tant que
-rien n'a bougé. L'état a trois formes : en cours (roue et « Enregistrement »),
-abouti (coche et « Enregistré » en `go`), ou la conséquence annoncée avant le geste
-(« le roadbook devra être recalculé »).
+Il n'y a pas de bouton « Enregistrer » (ADR 014). Une saisie s'écrit une
+demi-seconde après le dernier geste, une retouche du Roadbook dès le clic. Rien ne
+signale l'écriture qui réussit : l'écran montre ce
+qui est en base. Ce qui ne s'écrit pas (un ravito sans nom, un refus du serveur) se
+dit en `ErrorNote`, sur Cibles et Produits dans un pied `paper-dim` qui ne paraît
+que pour lui. Le Roadbook estompe ses avertissements le temps de l'aller-retour.
 
 ### Notice / ErrorNote / EmptyNote
 
@@ -729,10 +730,9 @@ surface translucide.
   zone avec `paper-dim`.
 - **Do** prendre les icônes dans `src/ui/icons.tsx`, et en ajouter une là plutôt
   qu'ailleurs : `viewBox` 24, trait 1,6, bouts arrondis, jamais de remplissage.
-- **Do** laisser chaque écran gérer son propre défilement et poser la barre
-  d'enregistrement en dehors, en pied.
-- **Do** écrire les bornes d'un réglage sous sa piste, et la conséquence d'un
-  enregistrement avant de le déclencher.
+- **Do** laisser chaque écran gérer son propre défilement et poser en pied, hors de
+  lui, ce qui doit se lire où qu'on en soit.
+- **Do** écrire les bornes d'un réglage sous sa piste.
 - **Do** nommer un bouton icône par `aria-label` et par `title` : rien ne se pilote
   à l'icône seule.
 - **Do** rappeler les jetons en dur quand le contexte de rendu ne résout pas les

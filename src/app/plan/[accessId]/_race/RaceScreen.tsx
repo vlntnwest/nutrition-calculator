@@ -2,7 +2,9 @@
 
 import dynamic from "next/dynamic";
 import { useState } from "react";
+import { savePlan } from "@/app/plans/actions";
 import type { StoredPlan } from "@/app/plans/planInput";
+import type { PlanPatch } from "@/app/plans/updatePlan";
 import type { ProfilePoint, ResolvedPoint } from "@/core/type";
 import { type HMS, toHMS, toSecondsHMS } from "@/format/clock";
 import { duree } from "@/format/number";
@@ -12,10 +14,9 @@ import { ChevronIcon, PlusIcon } from "@/ui/icons";
 import { Val } from "@/ui/Measure";
 import { EmptyNote, ErrorNote } from "@/ui/Notice";
 import { Panel, PanelHead, Rule } from "@/ui/Panel";
-import { SaveBar } from "@/ui/SaveBar";
 import { Slider } from "@/ui/Slider";
 import { ElevationChart } from "@/ui/track/ElevationChart";
-import { usePlanSave } from "../save";
+import { useAutosave } from "../save";
 import { AidStationCard } from "./AidStationCard";
 import { usePacePreview } from "./pacePreview";
 import { useReserves } from "./reserves";
@@ -35,6 +36,8 @@ const RouteMap = dynamic(() => import("@/ui/track/RouteMap"), { ssr: false });
  * Un ravito se pose au clic, sur le profil ou sur la carte, puis se règle
  * dans sa carte. Une seule carte reste ouverte à la fois : la colonne garde
  * sa hauteur, et poser un point replie le précédent.
+ *
+ * Tout s'écrit au fil du geste, voir `useAutosave`.
  */
 export function RaceScreen({
   accessId,
@@ -52,7 +55,6 @@ export function RaceScreen({
   const [split, setSplit] = useState(plan.settings.paceSplit ?? 0);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [depliee, setDepliee] = useState(false);
-  const { pending, erreur, enregistre, save, reprise } = usePlanSave(accessId);
 
   const totalM = plan.track.distanceM;
 
@@ -61,11 +63,6 @@ export function RaceScreen({
     setLignes,
     ouverte,
     setOuverte,
-    modifie,
-    setModifie,
-    reproche,
-    setReproche,
-    change,
     poser,
     ouvrir,
     deplacer,
@@ -74,7 +71,6 @@ export function RaceScreen({
   } = useStationEditing({
     aidStations: plan.aidStations,
     points,
-    reprise,
     deplier: () => setDepliee(true),
   });
 
@@ -90,28 +86,22 @@ export function RaceScreen({
     split,
   });
 
-  function submit() {
-    const stations = toStations(lignes, totalM);
-    if (typeof stations === "string") {
-      setReproche(stations);
-
-      return;
-    }
-
-    setReproche(null);
-    save(
-      {
-        settings: {
-          targetTimeS,
-          climbEffort: climb,
-          paceSplit: split,
+  // Un ravito encore à moitié saisi ne part pas, et ne retient pas le reste :
+  // le chrono et les curseurs s'écrivent sans lui. Le reproche se lit sous
+  // les cartes tant que la saisie n'est pas lisible.
+  const stations = toStations(lignes, totalM);
+  const settings = { targetTimeS, climbEffort: climb, paceSplit: split };
+  const reproche = typeof stations === "string" ? stations : null;
+  const erreur = useAutosave<PlanPatch>(
+    typeof stations === "string"
+      ? { settings }
+      : {
+          settings,
+          aidStations: stations,
+          legOverrides: survivingOverrides(plan.legOverrides, stations, totalM),
         },
-        aidStations: stations,
-        legOverrides: survivingOverrides(plan.legOverrides, stations, totalM),
-      },
-      () => setModifie(false),
-    );
-  }
+    (patch) => savePlan(accessId, patch),
+  );
 
   return (
     <div className="relative isolate flex min-h-0 flex-1 flex-col lg:pb-72">
@@ -156,10 +146,7 @@ export function RaceScreen({
             <PanelHead titre="Chrono visé" />
             <Rule />
             <div className="flex flex-col gap-2.5 p-4">
-              <ChronoInput
-                value={chrono}
-                onChange={(value) => change(() => setChrono(value))}
-              />
+              <ChronoInput value={chrono} onChange={setChrono} />
               <p className="text-[12px] text-ink-soft leading-relaxed">
                 {allure ? (
                   <>
@@ -184,7 +171,7 @@ export function RaceScreen({
                   step={0.05}
                   defaut={0}
                   bornes={["moins d'effort", "plus d'effort"]}
-                  onChange={(value) => change(() => setClimb(value))}
+                  onChange={setClimb}
                 />
                 <Slider
                   label="Dérive d'allure"
@@ -194,7 +181,7 @@ export function RaceScreen({
                   step={0.01}
                   defaut={0}
                   bornes={["négatif", "positif"]}
-                  onChange={(value) => change(() => setSplit(value))}
+                  onChange={setSplit}
                 />
               </div>
             </div>
@@ -251,25 +238,21 @@ export function RaceScreen({
                   ligne={ligne}
                   ouverte={ouverte === i}
                   onOuvrir={() => setOuverte(ouverte === i ? null : i)}
-                  onChange={(patch) =>
-                    change(() => {
-                      // Retoucher la position doit ranger la borne à sa place,
-                      // pas la laisser à son rang de saisie : voir `rangees`.
-                      const suite = rangees(
-                        lignes.map((l) =>
-                          l.id === ligne.id ? { ...l, ...patch } : l,
-                        ),
-                      );
-                      setLignes(suite);
-                      setOuverte(suite.findIndex((l) => l.id === ligne.id));
-                    })
-                  }
-                  onRetirer={() =>
-                    change(() => {
-                      setLignes(lignes.filter((l) => l.id !== ligne.id));
-                      setOuverte(null);
-                    })
-                  }
+                  onChange={(patch) => {
+                    // Retoucher la position doit ranger la borne à sa place,
+                    // pas la laisser à son rang de saisie : voir `rangees`.
+                    const suite = rangees(
+                      lignes.map((l) =>
+                        l.id === ligne.id ? { ...l, ...patch } : l,
+                      ),
+                    );
+                    setLignes(suite);
+                    setOuverte(suite.findIndex((l) => l.id === ligne.id));
+                  }}
+                  onRetirer={() => {
+                    setLignes(lignes.filter((l) => l.id !== ligne.id));
+                    setOuverte(null);
+                  }}
                 />
               ))
             )}
@@ -295,13 +278,6 @@ export function RaceScreen({
 
           {reproche && <ErrorNote>{reproche}</ErrorNote>}
           {erreur && <ErrorNote>{erreur}</ErrorNote>}
-          <SaveBar
-            pending={pending}
-            modifie={modifie}
-            enregistre={enregistre && !modifie}
-            consequence="le roadbook devra être recalculé"
-            onSave={submit}
-          />
         </div>
       </section>
     </div>

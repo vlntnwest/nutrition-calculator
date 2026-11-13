@@ -8,6 +8,8 @@ import { createPlan } from "./createPlan";
 import { duplicatePlan } from "./duplicatePlan";
 import { getPlan } from "./getPlan";
 import { officialRacePlanId, officialRacePoints } from "./officialRaces";
+import type { OwnProductInput } from "./ownProducts";
+import { addOwnProduct, removeOwnProduct } from "./ownProducts";
 import { pacingIssueText } from "./pacingErrorText";
 import { PlanError } from "./planError";
 import type { LegOverride, StoredPlan } from "./planInput";
@@ -141,6 +143,29 @@ export async function savePlan(
     if (!plan) throw new PlanError(`Unknown plan: ${accessId}`);
 
     return plan;
+  }, accessId);
+}
+
+/**
+ * Écran Produits — saisir un produit qui n'est pas au catalogue. Rend son
+ * code, que l'écran pose au sac comme n'importe quel autre. ADR 015.
+ */
+export async function createOwnProduct(
+  accessId: string,
+  input: OwnProductInput,
+): Promise<Result<string>> {
+  return guard(() => addOwnProduct(accessId, input), accessId);
+}
+
+/** Écran Produits — supprimer un produit saisi, sac et calcul compris. */
+export async function deleteOwnProduct(
+  accessId: string,
+  codeSeed: string,
+): Promise<Result<null>> {
+  return guard(async () => {
+    await removeOwnProduct(accessId, codeSeed);
+
+    return null;
   }, accessId);
 }
 

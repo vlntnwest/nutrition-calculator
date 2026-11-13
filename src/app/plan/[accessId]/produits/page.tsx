@@ -1,4 +1,4 @@
-import { listProducts } from "@/app/plans/catalogue";
+import { listFormats, listProducts } from "@/app/plans/catalogue";
 import { planOf } from "../plan";
 import { ProductsForm } from "./ProductsForm";
 
@@ -7,9 +7,10 @@ export default async function Page(
   props: PageProps<"/plan/[accessId]/produits">,
 ) {
   const { accessId } = await props.params;
-  const [plan, catalogue] = await Promise.all([
+  const [plan, catalogue, formats] = await Promise.all([
     planOf(accessId),
-    listProducts(),
+    listProducts(accessId),
+    listFormats(),
   ]);
   if (!plan) return null;
 
@@ -17,6 +18,7 @@ export default async function Page(
     <ProductsForm
       accessId={accessId}
       catalogue={catalogue}
+      formatsConnus={formats}
       choisis={plan.productCodes}
       cibles={plan.settings.targets}
     />

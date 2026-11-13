@@ -3,6 +3,7 @@ import {
   boolean,
   check,
   foreignKey,
+  index,
   integer,
   numeric,
   primaryKey,
@@ -13,6 +14,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { brands } from "./brands";
 import { formats } from "./formats";
+import { plans } from "./plans";
 
 export const products = snakeCase.table(
   "products",
@@ -28,7 +30,19 @@ export const products = snakeCase.table(
      * du nom commercial — une clé qui suit le packaging n'est pas une clé.
      */
     codeSeed: text().notNull().unique(),
-    brandId: uuid().notNull(),
+    /**
+     * Le plan auquel ce produit appartient. Nul : il est au catalogue, donc à
+     * tout le monde. Renseigné : un coureur l'a saisi pour sa course, il ne se
+     * propose que là et part avec elle. ADR 015.
+     */
+    planId: uuid(),
+    /** Nulle sur un produit de coureur, qui porte `ownBrand` à la place. */
+    brandId: uuid(),
+    /**
+     * La marque telle que le coureur l'a tapée. Elle n'entre pas dans
+     * `brands` : cette table alimente les filtres de tout le monde.
+     */
+    ownBrand: text(),
     formatId: uuid().notNull(),
     name: text().notNull(),
     gtin: text().unique(),
@@ -68,10 +82,22 @@ export const products = snakeCase.table(
       foreignColumns: [brands.id],
     }),
     foreignKey({
+      name: "products_plan_fk",
+      columns: [table.planId],
+      foreignColumns: [plans.accessId],
+    }).onDelete("cascade"),
+    foreignKey({
       name: "products_format_fk",
       columns: [table.formatId],
       foreignColumns: [formats.id],
     }),
+    // La cascade d'un plan supprimé cherche ses produits par cette colonne.
+    index("products_plan_idx").on(table.planId),
+    check(
+      "products_brand_or_plan",
+      sql`(${table.planId} IS NULL AND ${table.brandId} IS NOT NULL AND ${table.ownBrand} IS NULL) OR (${table.planId} IS NOT NULL AND ${table.brandId} IS NULL)`,
+    ),
+    check("products_own_brand_not_empty", sql`${table.ownBrand} != ''`),
     check("products_carbs_positive", sql`${table.carbsG} > 0`),
     check(
       "products_energy_carbs_ratio",

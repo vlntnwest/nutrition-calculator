@@ -20,13 +20,10 @@ import {
 export function useStationEditing({
   aidStations,
   points,
-  reprise,
   deplier,
 }: {
   aidStations: NewAidStation[];
   points: ResolvedPoint[];
-  /** Une saisie reprend : voir `usePlanSave`. */
-  reprise: () => void;
   /** Au pouce, la feuille doit être dépliée pour qu'une carte se voie. */
   deplier: () => void;
 }) {
@@ -34,8 +31,6 @@ export function useStationEditing({
   const [ouverte, setOuverte] = useState<number | null>(null);
   /** Le rang d'une borne à amener sous les yeux, le temps d'un rendu. */
   const [vise, setVise] = useState<number | null>(null);
-  const [modifie, setModifie] = useState(false);
-  const [reproche, setReproche] = useState<string | null>(null);
 
   useEffect(() => {
     if (vise === null) return;
@@ -46,23 +41,14 @@ export function useStationEditing({
     setVise(null);
   }, [vise]);
 
-  function change(fait: () => void) {
-    fait();
-    setModifie(true);
-    setReproche(null);
-    reprise();
-  }
-
   /**
    * Poser une borne : elle prend son rang sur la trace, s'ouvre aussitôt, et
    * la précédente se replie.
    */
   function poser(positionM: number) {
-    change(() => {
-      const { lignes: suite, rang } = insererTriee(lignes, positionM);
-      setLignes(suite);
-      setOuverte(rang - 1);
-    });
+    const { lignes: suite, rang } = insererTriee(lignes, positionM);
+    setLignes(suite);
+    setOuverte(rang - 1);
   }
 
   /**
@@ -94,15 +80,13 @@ export function useStationEditing({
     const cible = lignes[rang - 1];
     if (!cible) return;
 
-    change(() => {
-      const suite = rangees(
-        lignes.map((l) =>
-          l.id === cible.id ? { ...l, km: kmTexte(positionM) } : l,
-        ),
-      );
-      setLignes(suite);
-      setOuverte(suite.findIndex((l) => l.id === cible.id));
-    });
+    const suite = rangees(
+      lignes.map((l) =>
+        l.id === cible.id ? { ...l, km: kmTexte(positionM) } : l,
+      ),
+    );
+    setLignes(suite);
+    setOuverte(suite.findIndex((l) => l.id === cible.id));
   }
 
   // Les bornes lisibles alimentent à la fois le profil et la carte : une
@@ -142,11 +126,6 @@ export function useStationEditing({
     setLignes,
     ouverte,
     setOuverte,
-    modifie,
-    setModifie,
-    reproche,
-    setReproche,
-    change,
     poser,
     ouvrir,
     deplacer,

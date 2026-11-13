@@ -15,6 +15,12 @@ const FORMATS: Record<string, string> = {
   capsule: "capsule",
 };
 
+/**
+ * Ce qui tient lieu de marque à un produit que le coureur a saisi sans en
+ * donner. Une marque qu'il a tapée s'affiche telle quelle.
+ */
+export const MARQUE_PERSO = "Perso";
+
 export function formatFr(label: string): string {
   return FORMATS[label] ?? label;
 }

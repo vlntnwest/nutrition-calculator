@@ -42,6 +42,9 @@ sources, jamais des documents commerciaux d'un fabricant.
 
 - **Pas de compte, pas d'installation.** Un plan s'ouvre par son `accessId`, se
   garde sur l'appareil, et expire au bout de six mois.
+- **Pas de bouton Enregistrer.** Chaque saisie s'écrit d'elle-même, une
+  demi-seconde après le dernier geste, et une retouche du Roadbook dès le clic
+  (ADR 014).
 - **Quatre destinations, pas un tunnel** : Course · Cibles · Produits · Roadbook.
   Un plan est un dossier qu'on rouvre. Chaque entrée porte une pastille d'état
   (○ vide · ● rempli · ◍ à recalculer).
@@ -69,15 +72,16 @@ sources, jamais des documents commerciaux d'un fabricant.
   plan entier (glucides au-dessus du guide, sodium sous la cible, boisson
   au-delà de ce que portent les flasques, etc.).
 - **L'interface existe** : import GPX, puis un dossier à quatre destinations
-  (Course, Cibles, Produits, Roadbook), en desktop et en mobile. Reste hors
-  périmètre à ce jour la saisie d'un produit qui n'est pas au catalogue.
+  (Course, Cibles, Produits, Roadbook), en desktop et en mobile.
+- **Ce qui manque au catalogue se saisit depuis l'écran Produits.** Le produit
+  appartient au plan : il ne se propose que là, va au sac et au calcul comme un
+  autre, et part avec la course. Il se supprime, il ne se corrige pas (ADR 015).
 - **La feuille PDF se télécharge**, depuis le bas du Roadbook et depuis la
   barre du haut contre le partage. Une A4 qui porte l'identité de la course, la
   carte sur fond OpenStreetMap, le profil et sa bande d'allure, les temps de
   passage avec les rations sous chaque borne, puis la liste de courses. Elle se
-  fabrique côté serveur et ne rend que l'état enregistré ; son déclencheur est
-  inerte tant que le Roadbook porte des retouches. Sa conception est dans
-  `docs/pdf-du-roadbook.md`.
+  fabrique côté serveur et rend l'état en base, que chaque retouche met à jour
+  au clic. Sa conception est dans `docs/pdf-du-roadbook.md`.
 - La voix du produit est tenue par dix interdits vérifiables : `docs/voix.md`.
 
 Décisions produit explicitement ouvertes, à ne pas trancher à sa place :
