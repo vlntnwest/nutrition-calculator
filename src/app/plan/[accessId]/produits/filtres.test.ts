@@ -16,6 +16,7 @@ function produit(patch: Partial<CatalogueEntry>): CatalogueEntry {
     divisibleBy: 1,
     multiTransportable: true,
     purchaseUrl: null,
+    own: false,
     ...patch,
   };
 }

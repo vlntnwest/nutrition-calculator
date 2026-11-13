@@ -72,8 +72,10 @@ sources, jamais des documents commerciaux d'un fabricant.
   plan entier (glucides au-dessus du guide, sodium sous la cible, boisson
   au-delà de ce que portent les flasques, etc.).
 - **L'interface existe** : import GPX, puis un dossier à quatre destinations
-  (Course, Cibles, Produits, Roadbook), en desktop et en mobile. Reste hors
-  périmètre à ce jour la saisie d'un produit qui n'est pas au catalogue.
+  (Course, Cibles, Produits, Roadbook), en desktop et en mobile.
+- **Ce qui manque au catalogue se saisit depuis l'écran Produits.** Le produit
+  appartient au plan : il ne se propose que là, va au sac et au calcul comme un
+  autre, et part avec la course. Il se supprime, il ne se corrige pas (ADR 015).
 - **La feuille PDF se télécharge**, depuis le bas du Roadbook et depuis la
   barre du haut contre le partage. Une A4 qui porte l'identité de la course, la
   carte sur fond OpenStreetMap, le profil et sa bande d'allure, les temps de

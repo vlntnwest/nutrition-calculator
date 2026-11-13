@@ -1,17 +1,18 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { savePlan } from "@/app/plans/actions";
+import { deleteOwnProduct, savePlan } from "@/app/plans/actions";
 import type { CatalogueEntry } from "@/app/plans/catalogue";
 import type { Targets } from "@/core/type";
 import { formatPluriel } from "@/format/produit";
 import { Button } from "@/ui/Button";
 import { FilterChip, ToggleChip } from "@/ui/Chip";
-import { ChevronIcon, CloseIcon, SearchIcon } from "@/ui/icons";
+import { ChevronIcon, CloseIcon, PlusIcon, SearchIcon } from "@/ui/icons";
 import { EmptyNote, ErrorNote } from "@/ui/Notice";
 import { Pagination } from "@/ui/Pagination";
 import { Rule } from "@/ui/Panel";
-import { useAutosave } from "../save";
+import { useAutosave, useEcriture } from "../save";
 import {
   aucunFiltre,
   bascule,
@@ -20,6 +21,7 @@ import {
   filtrer,
   PALIERS,
 } from "./filtres";
+import { OwnProductSheet } from "./OwnProductSheet";
 import { ProductCard } from "./ProductCard";
 import { ProductSheet } from "./ProductSheet";
 
@@ -32,15 +34,22 @@ const PAR_PAGE = 24;
  * course. Un produit mis au sac s'écrit dans la foulée, et le plan fige alors
  * ses valeurs nutritionnelles en instantané ; corriger le catalogue ensuite ne
  * réécrit rien.
+ *
+ * Ce qui manque au catalogue se saisit ici, pour cette course seulement, et
+ * se range en tête de liste. ADR 015.
  */
 export function ProductsForm({
   accessId,
   catalogue,
+  formatsConnus,
   choisis,
   cibles,
 }: {
   accessId: string;
+  /** Le catalogue, précédé des produits saisis pour ce plan. */
   catalogue: CatalogueEntry[];
+  /** Tous les formats de la base, y compris ceux qu'aucun produit ne porte. */
+  formatsConnus: string[];
   choisis: string[];
   cibles: Targets | undefined;
 }) {
@@ -49,10 +58,15 @@ export function ProductsForm({
   const [ouvert, setOuvert] = useState<string | null>(null);
   const [filtresOuverts, setFiltresOuverts] = useState(false);
   const [page, setPage] = useState(1);
+  const [saisie, setSaisie] = useState(false);
+  const router = useRouter();
   // Triés : retirer puis remettre un produit le range en queue du `Set`, et
   // le sac, identique, partirait quand même pour un autre ordre.
   const erreur = useAutosave({ productCodes: [...retenus].sort() }, (patch) =>
     savePlan(accessId, patch),
+  );
+  const suppression = useEcriture((codeSeed: string) =>
+    deleteOwnProduct(accessId, codeSeed),
   );
 
   /** Un filtre qui bouge rouvre toujours sur la première page. */
@@ -89,6 +103,32 @@ export function ProductsForm({
     if (!suite.delete(codeSeed)) suite.add(codeSeed);
     setRetenus(suite);
   }
+
+  /**
+   * Le produit vient d'être écrit. Il va au sac par l'écriture de tout le
+   * monde, et les filtres tombent : il se range en tête, autant qu'il s'y
+   * voie.
+   */
+  function accueillir(codeSeed: string) {
+    setRetenus(new Set(retenus).add(codeSeed));
+    setFiltres(FILTRES_VIDES);
+    setSaisie(false);
+    router.refresh();
+  }
+
+  /**
+   * Il quitte le sac d'ici dans le même geste : sans cela, l'écriture
+   * suivante renverrait au serveur un code qui n'existe plus.
+   */
+  function supprimer(codeSeed: string) {
+    const suite = new Set(retenus);
+    suite.delete(codeSeed);
+    setRetenus(suite);
+    setOuvert(null);
+    suppression.envoyer(codeSeed);
+  }
+
+  const refus = erreur ?? suppression.erreur;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -140,6 +180,16 @@ export function ProductsForm({
             }
           >
             Filtrer
+          </Button>
+
+          <Button
+            taille="sm"
+            onClick={() => setSaisie(true)}
+            aria-label="Créer un produit"
+            icone={<PlusIcon className="size-3.5" />}
+          >
+            Créer
+            <span className="hidden sm:inline">un produit</span>
           </Button>
         </div>
 
@@ -244,10 +294,21 @@ export function ProductsForm({
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6">
         {gardes.length === 0 ? (
-          <EmptyNote titre="Rien ne correspond">
-            Aucun produit du catalogue ne passe ces filtres. Retirez-en un, ou
-            videz la recherche.
-          </EmptyNote>
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-full">
+              <EmptyNote titre="Rien ne correspond">
+                Aucun produit ne passe ces filtres. Retirez-en un, ou videz la
+                recherche. S'il manque au catalogue, créez-le pour cette course.
+              </EmptyNote>
+            </div>
+            <Button
+              taille="sm"
+              onClick={() => setSaisie(true)}
+              icone={<PlusIcon className="size-3.5" />}
+            >
+              Créer un produit
+            </Button>
+          </div>
         ) : (
           <>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
@@ -275,9 +336,9 @@ export function ProductsForm({
 
       {/* Le pied ne paraît que pour dire qu'une écriture a échoué. `paper-dim`
           en fait un plateau creux, comme `Panel ton="creux"`. */}
-      {erreur && (
+      {refus && (
         <div className="shrink-0 border-line border-t bg-paper-dim px-4 py-3 sm:px-6">
-          <ErrorNote>{erreur}</ErrorNote>
+          <ErrorNote>{refus}</ErrorNote>
         </div>
       )}
 
@@ -287,7 +348,17 @@ export function ProductsForm({
           dansLeSac={retenus.has(detaille.codeSeed)}
           cibles={cibles}
           onBasculer={() => basculer(detaille.codeSeed)}
+          onSupprimer={() => supprimer(detaille.codeSeed)}
           onFermer={() => setOuvert(null)}
+        />
+      )}
+
+      {saisie && (
+        <OwnProductSheet
+          accessId={accessId}
+          formats={formatsConnus}
+          onCree={accueillir}
+          onFermer={() => setSaisie(false)}
         />
       )}
     </div>

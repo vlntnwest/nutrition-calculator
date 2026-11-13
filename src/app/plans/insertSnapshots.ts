@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import type { Tx } from "@/db";
 import { brands } from "@/db/schema/brands";
 import { formats } from "@/db/schema/formats";
@@ -12,6 +12,10 @@ import { PlanError } from "./planError";
  * Figés à la sélection : corriger le catalogue ne réécrit jamais un plan
  * enregistré. `divisibleBy` et `multiTransportable` en font partie, ils
  * entrent tous deux dans le calcul.
+ *
+ * Un plan ne fige que le catalogue et ses propres produits : le code d'un
+ * produit saisi pour une autre course est inconnu ici, comme s'il n'existait
+ * pas.
  */
 export async function insertSnapshots(
   tx: Tx,
@@ -28,9 +32,14 @@ export async function insertSnapshots(
   const catalogue = await tx
     .select()
     .from(products)
-    .innerJoin(brands, eq(products.brandId, brands.id))
+    .leftJoin(brands, eq(products.brandId, brands.id))
     .innerJoin(formats, eq(products.formatId, formats.id))
-    .where(inArray(products.codeSeed, voulus));
+    .where(
+      and(
+        inArray(products.codeSeed, voulus),
+        or(isNull(products.planId), eq(products.planId, planId)),
+      ),
+    );
 
   if (catalogue.length !== voulus.length) {
     const connus = new Set(catalogue.map((r) => r.products.codeSeed));
@@ -44,7 +53,7 @@ export async function insertSnapshots(
       planId,
       productId: p.id,
       name: p.name,
-      brandName: b.name,
+      brandName: b?.name ?? p.ownBrand,
       formatLabel: f.label,
       energyKcal: p.energyKcal,
       carbsG: p.carbsG,

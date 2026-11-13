@@ -140,6 +140,11 @@ de vérité, voir
 pour qu'un poste neuf ne démarre pas à vide. `npm run db:pull` ramène le vrai
 catalogue en local.
 
+**Un coureur saisit ce qui manque au catalogue depuis l'écran Produits.** Ces
+produits vivent dans la même table, rattachés à leur plan par `plan_id` : ils ne
+se proposent que là et partent avec lui, voir
+[ADR 015](docs/adr/015-un-produit-saisi-appartient-a-son-plan.md).
+
 **Une course officielle est une donnée d'exploitation aussi.** C'est un plan comme
 un autre, importé et garni de ses ravitos par les écrans, qu'on inscrit ensuite à
 l'accueil :
